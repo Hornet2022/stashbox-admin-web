@@ -3,13 +3,14 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { login } from '../api/auth'
 import { toErrorMessage } from '../api/client'
 import { useAuthStore } from '../store/auth'
-import { buttonPrimaryClass, inputClass } from '../components/ui'
+import { toast } from '../store/toast'
+import { Skeleton, buttonPrimaryClass, inputClass } from '../components/ui'
 
 /**
  * 登录页 —— 接 POST /api/v1/admin/auth/login（CP3.6.2-XIN）。
  *
  * 成功：写 role / user_id 到 sessionStorage + Zustand，跳 /dashboard。
- * 失败：页面内展示错误文案（无 toast 库，同时 console.warn 留痕）。
+ * 失败：页面内展示错误文案 + 全局 Toast 提示。
  */
 export function Login() {
   const navigate = useNavigate()
@@ -34,27 +35,33 @@ export function Login() {
     try {
       const result = await login(email, password)
       setAuth(result.role, result.userId)
+      toast('登录成功', 'success')
       navigate('/dashboard', { replace: true })
     } catch (err) {
       const message = toErrorMessage(err)
-      console.warn('[CP-ADMIN-2] admin login failed:', message)
+      console.warn('[CP-ADMIN-3] admin login failed:', message)
       setError(message)
+      toast(message, 'error')
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="w-96 bg-white rounded-lg shadow p-8">
-        <h1 className="text-2xl font-bold text-gray-900">stashbox-admin</h1>
-        <p className="mt-1 text-sm text-gray-500">运营管理后台登录</p>
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-slate-950">
+      <div className="w-96 rounded-lg bg-white p-8 shadow dark:bg-slate-800">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+          stashbox-admin
+        </h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+          运营管理后台登录
+        </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
             >
               邮箱
             </label>
@@ -74,7 +81,7 @@ export function Login() {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
             >
               密码
             </label>
@@ -92,7 +99,7 @@ export function Login() {
           </div>
 
           {error && (
-            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
               {error}
             </p>
           )}
@@ -100,14 +107,19 @@ export function Login() {
           <button
             type="submit"
             disabled={submitting}
-            className={`w-full ${buttonPrimaryClass}`}
+            className={`flex w-full items-center justify-center ${buttonPrimaryClass}`}
           >
-            {submitting ? '登录中…' : '登录'}
+            {submitting ? (
+              // 登录中：按钮内骨架条（CP-ADMIN-3 Loading 骨架屏）
+              <Skeleton className="h-4 w-16" />
+            ) : (
+              '登录'
+            )}
           </button>
         </form>
 
-        <p className="mt-4 text-xs text-gray-400">
-          数据源：POST /api/v1/admin/auth/login
+        <p className="mt-4 text-xs text-gray-400 dark:text-slate-500">
+          数据源：POST /api/v1/admin/auth/login ｜ 按 ? 看快捷键
         </p>
       </div>
     </div>

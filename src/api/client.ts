@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { toast } from '../store/toast'
 
 /**
  * Axios 实例 —— 所有 admin 端点的统一入口。
@@ -68,19 +69,32 @@ apiClient.interceptors.request.use((config) => {
 })
 
 /**
- * 响应拦截器 —— 401 时清会话跳登录页。
+ * 响应拦截器 —— 统一把失败状态转成 Toast，401 额外清会话跳登录页。
+ *
+ * - 401 → “登录已过期” + 跳 /login
+ * - 5xx → “服务异常（xxx）”
+ * - 4xx → 按状态码给中文文案
+ * - 无 response（网关/后端未起）→ 不弹 toast，页面侧已有“功能待上线”提示
  */
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error?.response?.status === 401) {
+    const status = (error as { response?: { status?: number } })?.response?.status
+
+    if (status === 401) {
       clearAuthToken()
       sessionStorage.removeItem('admin_role')
       sessionStorage.removeItem('admin_user_id')
+      toast('登录已过期，请重新登录', 'error')
       if (window.location.pathname !== '/login') {
         window.location.href = '/login'
       }
+    } else if (typeof status === 'number' && status >= 500) {
+      toast(`服务异常（${status}）`, 'error')
+    } else if (typeof status === 'number' && status >= 400) {
+      toast(toErrorMessage(error), 'error')
     }
+
     return Promise.reject(error)
   },
 )

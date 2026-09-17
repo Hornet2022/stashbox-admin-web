@@ -9,7 +9,8 @@ import {
 } from 'recharts'
 import { getStats } from '../api/admin'
 import { useApi } from '../hooks/useApi'
-import { ErrorNotice } from '../components/ui'
+import { useThemeStore } from '../store/theme'
+import { ErrorNotice, Skeleton, pageHintClass, pageTitleClass } from '../components/ui'
 import type { DashboardStats } from '../types'
 
 /**
@@ -42,15 +43,21 @@ const growthMock = [
   { day: '09-17', users: 213 },
 ]
 
+/** 图表配色随主题切换 */
+const chartColors = {
+  light: { grid: '#f1f5f9', axis: '#94a3b8', line: '#1e293b' },
+  dark: { grid: '#334155', axis: '#64748b', line: '#e2e8f0' },
+}
+
 export function Dashboard() {
   const { data, loading, error, missing, reload } = useApi(getStats, 'stats')
+  const theme = useThemeStore((s) => s.theme)
+  const colors = theme === 'dark' ? chartColors.dark : chartColors.light
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">总览</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        数据源：GET /api/v1/admin/stats
-      </p>
+      <h1 className={pageTitleClass}>总览</h1>
+      <p className={pageHintClass}>数据源：GET /api/v1/admin/stats</p>
 
       {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
 
@@ -58,45 +65,71 @@ export function Dashboard() {
         {statCards.map((card) => (
           <div
             key={card.field}
-            className="rounded-lg border border-gray-200 bg-white p-5"
+            className="rounded-lg border border-gray-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800"
           >
-            <div className="text-sm text-gray-500">{card.label}</div>
+            <div className="text-sm text-gray-500 dark:text-slate-400">
+              {card.label}
+            </div>
             {loading ? (
-              <div className="mt-3 h-7 w-20 animate-pulse rounded bg-gray-100" />
+              <div className="mt-3">
+                <Skeleton className="h-7 w-20" />
+              </div>
             ) : (
-              <div className="mt-2 text-2xl font-semibold text-gray-900">
+              <div className="mt-2 text-2xl font-semibold text-gray-900 dark:text-slate-100">
                 {data ? data[card.field].toLocaleString('zh-CN') : '—'}
               </div>
             )}
-            <div className="mt-1 text-xs text-gray-400">{card.hint}</div>
+            <div className="mt-1 text-xs text-gray-400 dark:text-slate-500">
+              {card.hint}
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-base font-semibold text-gray-900">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">
             近 7 天用户增长
           </h2>
-          <span className="text-xs text-gray-400">mock 数据（趋势端点待上线）</span>
+          <span className="text-xs text-gray-400 dark:text-slate-500">
+            mock 数据（趋势端点待上线）
+          </span>
         </div>
         <div className="mt-4 h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={growthMock}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="day" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-              <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="users"
-                name="用户数"
-                stroke="#1e293b"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {loading ? (
+            <div className="flex h-full items-end gap-3">
+              {[40, 55, 48, 62, 70, 80, 92].map((height, i) => (
+                <div
+                  key={i}
+                  className="flex-1"
+                  style={{ height: `${height}%` }}
+                >
+                  <Skeleton className="h-full w-full" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={growthMock}>
+                <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
+                <XAxis
+                  dataKey="day"
+                  tick={{ fontSize: 12 }}
+                  stroke={colors.axis}
+                />
+                <YAxis tick={{ fontSize: 12 }} stroke={colors.axis} />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="users"
+                  name="用户数"
+                  stroke={colors.line}
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>

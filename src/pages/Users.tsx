@@ -1,19 +1,30 @@
 import { useState, type FormEvent } from 'react'
-import { adjustQuota, listUsers } from '../api/admin'
+import { adjustQuota, downloadCsv, listUsers } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
+import { toast } from '../store/toast'
 import {
   Badge,
   EmptyRow,
   ErrorNotice,
   Field,
-  Loading,
+  TableSkeleton,
   Modal,
   buttonGhostClass,
   buttonPrimaryClass,
+  cellMutedClass,
+  cellStrongClass,
+  cellTextClass,
+  footerCountClass,
   formatNumber,
   formatTime,
   inputClass,
+  pageHintClass,
+  pageTitleClass,
+  rowClass,
+  tableWrapClass,
+  thClass,
+  theadClass,
 } from '../components/ui'
 import type { UserRow } from '../types'
 
@@ -77,6 +88,12 @@ export function Users() {
     setModalError(null)
   }
 
+  /** CSV 导出：走 window.location 触发浏览器原生下载 */
+  const handleExport = () => {
+    toast('正在导出用户 CSV…', 'info')
+    downloadCsv('users')
+  }
+
   const handleQuotaSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!target) return
@@ -95,11 +112,12 @@ export function Users() {
     setModalError(null)
     try {
       await adjustQuota(target.id, value, reason.trim())
+      toast(`已调整 ${target.email} 的月配额为 ${value}`, 'success')
       closeQuotaModal()
       reload()
     } catch (err) {
       const message = toErrorMessage(err)
-      console.warn('[CP-ADMIN-2] adjustQuota failed:', message)
+      console.warn('[CP-ADMIN-3] adjustQuota failed:', message)
       setModalError(message)
       setSubmitting(false)
     }
@@ -109,10 +127,15 @@ export function Users() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">用户管理</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        数据源：GET /api/v1/admin/users
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className={pageTitleClass}>用户管理</h1>
+          <p className={pageHintClass}>数据源：GET /api/v1/admin/users</p>
+        </div>
+        <button type="button" className={buttonGhostClass} onClick={handleExport}>
+          导出 CSV
+        </button>
+      </div>
 
       {/* 过滤条 */}
       <form
@@ -185,12 +208,12 @@ export function Users() {
 
       {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
 
-      <div className="mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className={tableWrapClass}>
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500">
+          <thead className={theadClass}>
             <tr>
               {columns.map((col) => (
-                <th key={col} className="px-4 py-3 font-medium whitespace-nowrap">
+                <th key={col} className={thClass}>
                   {col}
                 </th>
               ))}
@@ -198,7 +221,7 @@ export function Users() {
           </thead>
           <tbody>
             {loading ? (
-              <Loading colSpan={columns.length} />
+              <TableSkeleton colSpan={columns.length} rows={5} />
             ) : rows.length === 0 ? (
               <EmptyRow
                 colSpan={columns.length}
@@ -206,24 +229,22 @@ export function Users() {
               />
             ) : (
               rows.map((user) => (
-                <tr key={user.id} className="border-t border-gray-100">
-                  <td className="px-4 py-3 text-gray-500">{user.id}</td>
-                  <td className="px-4 py-3 text-gray-900">{user.email}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {user.display_name ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{user.role ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{user.tier ?? '—'}</td>
+                <tr key={user.id} className={rowClass}>
+                  <td className={cellMutedClass}>{user.id}</td>
+                  <td className={cellStrongClass}>{user.email}</td>
+                  <td className={cellTextClass}>{user.display_name ?? '—'}</td>
+                  <td className={cellTextClass}>{user.role ?? '—'}</td>
+                  <td className={cellTextClass}>{user.tier ?? '—'}</td>
                   <td className="px-4 py-3">
                     <Badge value={user.status} />
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
+                  <td className={cellTextClass}>
                     {formatNumber(user.monthly_quota)}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
+                  <td className={cellTextClass}>
                     {formatNumber(user.used_quota)}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                  <td className={`${cellMutedClass} whitespace-nowrap`}>
                     {formatTime(user.created_at)}
                   </td>
                   <td className="px-4 py-3">
@@ -243,7 +264,7 @@ export function Users() {
       </div>
 
       {!loading && rows.length > 0 && (
-        <p className="mt-3 text-xs text-gray-400">
+        <p className={footerCountClass}>
           共 {formatNumber(data?.total)} 条
         </p>
       )}
@@ -274,7 +295,7 @@ export function Users() {
           </Field>
 
           {modalError && (
-            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
               {modalError}
             </p>
           )}

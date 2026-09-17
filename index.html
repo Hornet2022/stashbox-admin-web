@@ -5,6 +5,21 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>stashbox-admin</title>
+    <script>
+      // 首屏前应用主题，避免暗色模式下闪白（与 src/store/theme.ts 同 key）
+      ;(function () {
+        try {
+          var saved = localStorage.getItem('stashbox_admin_theme')
+          var dark =
+            saved === 'dark' ||
+            (saved !== 'light' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          if (dark) document.documentElement.classList.add('dark')
+        } catch (e) {
+          /* localStorage 不可用时忽略 */
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

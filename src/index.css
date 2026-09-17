@@ -9,3 +9,14 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* 暗色模式：html.dark 由 src/store/theme.ts 维护 */
+html.dark body {
+  background-color: #020617; /* slate-950 */
+  color: #e2e8f0;
+}
+
+/* 暗色下滚动条跟随，避免亮色滚动条突兀 */
+html.dark {
+  color-scheme: dark;
+}

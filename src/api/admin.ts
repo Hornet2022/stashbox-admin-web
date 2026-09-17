@@ -1,4 +1,4 @@
-import apiClient from './client'
+import apiClient, { ADMIN_API_PREFIX, API_BASE_URL, getAuthToken } from './client'
 import type {
   ArticleRow,
   AuditLogRow,
@@ -165,6 +165,31 @@ export async function getStats(): Promise<DashboardStats> {
     active_audio_files: stats?.active_audio_files ?? 0,
     failed_distillations_24h: stats?.failed_distillations_24h ?? 0,
   }
+}
+
+/* --------------------------------- CSV 导出 -------------------------------- */
+
+/** CP5.6 后端提供的 4 个导出端点（GET /api/v1/admin/export/{kind}.csv） */
+export type ExportKind = 'users' | 'articles' | 'tags' | 'audit-log'
+
+/**
+ * 拼 CSV 导出直链。
+ *
+ * 走 `window.location.href` 触发浏览器原生下载，不经过 axios
+ * （避免把 CSV 当 JSON 解析）。cookie 鉴权由浏览器自动带上，
+ * 另外附 token 查询参数兼容纯 token 场景。
+ */
+export function exportCsvUrl(kind: ExportKind): string {
+  const token = getAuthToken()
+  const query = token ? `?token=${encodeURIComponent(token)}` : ''
+  return `${API_BASE_URL}${ADMIN_API_PREFIX}/export/${kind}.csv${query}`
+}
+
+/** 触发下载（返回实际使用的 URL，便于测试 / 断言） */
+export function downloadCsv(kind: ExportKind): string {
+  const url = exportCsvUrl(kind)
+  window.location.href = url
+  return url
 }
 
 export type { PageParams }

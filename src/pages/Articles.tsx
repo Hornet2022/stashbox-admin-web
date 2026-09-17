@@ -1,18 +1,34 @@
 import { useState, type FormEvent } from 'react'
-import { forceRetryArticle, invalidateAudio, listArticles } from '../api/admin'
+import {
+  downloadCsv,
+  forceRetryArticle,
+  invalidateAudio,
+  listArticles,
+} from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
+import { toast } from '../store/toast'
 import {
   Badge,
   EmptyRow,
   ErrorNotice,
   Field,
-  Loading,
+  TableSkeleton,
   Modal,
   buttonGhostClass,
   buttonPrimaryClass,
+  cellMutedClass,
+  cellStrongClass,
+  cellTextClass,
+  footerCountClass,
   formatTime,
   inputClass,
+  pageHintClass,
+  pageTitleClass,
+  rowClass,
+  tableWrapClass,
+  thClass,
+  theadClass,
 } from '../components/ui'
 import type { ArticleRow } from '../types'
 
@@ -84,6 +100,12 @@ export function Articles() {
     setModalError(null)
   }
 
+  /** CSV 导出：走 window.location 触发浏览器原生下载 */
+  const handleExport = () => {
+    toast('正在导出文章 CSV…', 'info')
+    downloadCsv('articles')
+  }
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!action || !target) return
@@ -97,17 +119,19 @@ export function Articles() {
     try {
       if (action === 'retry') {
         await forceRetryArticle(target.id, reason.trim())
+        toast(`已提交强制重试 · 文章 ${target.id}`, 'success')
       } else {
         if (target.audio_id === undefined || target.audio_id === null) {
           throw new Error('该文章没有关联音频，无法失效')
         }
         await invalidateAudio(target.audio_id, reason.trim())
+        toast(`已失效音频 · 文章 ${target.id}`, 'success')
       }
       closeModal()
       reload()
     } catch (err) {
       const message = toErrorMessage(err)
-      console.warn(`[CP-ADMIN-2] article ${action} failed:`, message)
+      console.warn(`[CP-ADMIN-3] article ${action} failed:`, message)
       setModalError(message)
       setSubmitting(false)
     }
@@ -117,10 +141,17 @@ export function Articles() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">文章管理</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        数据源：GET /api/v1/articles ｜ 操作：force-retry / audio-invalidate
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className={pageTitleClass}>文章管理</h1>
+          <p className={pageHintClass}>
+            数据源：GET /api/v1/articles ｜ 操作：force-retry / audio-invalidate
+          </p>
+        </div>
+        <button type="button" className={buttonGhostClass} onClick={handleExport}>
+          导出 CSV
+        </button>
+      </div>
 
       <form
         className="mt-6 flex flex-wrap items-end gap-3"
@@ -176,12 +207,12 @@ export function Articles() {
 
       {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
 
-      <div className="mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className={tableWrapClass}>
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500">
+          <thead className={theadClass}>
             <tr>
               {columns.map((col) => (
-                <th key={col} className="px-4 py-3 font-medium whitespace-nowrap">
+                <th key={col} className={thClass}>
                   {col}
                 </th>
               ))}
@@ -189,7 +220,7 @@ export function Articles() {
           </thead>
           <tbody>
             {loading ? (
-              <Loading colSpan={columns.length} />
+              <TableSkeleton colSpan={columns.length} rows={5} />
             ) : rows.length === 0 ? (
               <EmptyRow
                 colSpan={columns.length}
@@ -200,21 +231,21 @@ export function Articles() {
                 const hasAudio =
                   article.audio_id !== undefined && article.audio_id !== null
                 return (
-                  <tr key={article.id} className="border-t border-gray-100">
-                    <td className="px-4 py-3 text-gray-500">{article.id}</td>
-                    <td className="px-4 py-3 text-gray-900 max-w-xs truncate">
+                  <tr key={article.id} className={rowClass}>
+                    <td className={cellMutedClass}>{article.id}</td>
+                    <td className={`${cellStrongClass} max-w-xs truncate`}>
                       {article.title}
                     </td>
                     <td className="px-4 py-3">
                       <Badge value={article.status} />
                     </td>
-                    <td className="px-4 py-3 text-gray-600 max-w-xs truncate">
+                    <td className={`${cellTextClass} max-w-xs truncate`}>
                       {renderTags(article.tags)}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className={cellTextClass}>
                       {article.quality_score ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                    <td className={`${cellMutedClass} whitespace-nowrap`}>
                       {formatTime(article.created_at)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -246,7 +277,7 @@ export function Articles() {
       </div>
 
       {!loading && rows.length > 0 && (
-        <p className="mt-3 text-xs text-gray-400">共 {data?.total ?? rows.length} 条</p>
+        <p className={footerCountClass}>共 {data?.total ?? rows.length} 条</p>
       )}
 
       <Modal
@@ -259,7 +290,7 @@ export function Articles() {
         onClose={closeModal}
       >
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <p className="text-sm text-gray-600 truncate">
+          <p className="truncate text-sm text-gray-600 dark:text-slate-300">
             {target?.title ?? ''}
           </p>
           <Field label="操作原因">
@@ -273,7 +304,7 @@ export function Articles() {
           </Field>
 
           {modalError && (
-            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
               {modalError}
             </p>
           )}

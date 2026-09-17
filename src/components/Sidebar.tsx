@@ -19,8 +19,8 @@ export function Sidebar() {
   const location = useLocation()
 
   return (
-    <aside className="w-56 shrink-0 bg-slate-800 text-white flex flex-col">
-      <div className="p-4 text-xl font-bold border-b border-slate-700">
+    <aside className="flex w-56 shrink-0 flex-col bg-slate-800 text-white dark:border-r dark:border-slate-700 dark:bg-slate-900">
+      <div className="border-b border-slate-700 p-4 text-xl font-bold">
         stashbox-admin
       </div>
       <nav className="mt-2 flex-1">
@@ -41,8 +41,8 @@ export function Sidebar() {
           )
         })}
       </nav>
-      <div className="p-4 text-xs text-slate-400 border-t border-slate-700">
-        CP-ADMIN-2 已接线
+      <div className="border-t border-slate-700 p-4 text-xs text-slate-400">
+        CP-ADMIN-3 v0.5 ｜ 按 ? 看快捷键
       </div>
     </aside>
   )

@@ -1,18 +1,29 @@
 import { useState, type FormEvent } from 'react'
-import { createTag, listTags } from '../api/admin'
+import { createTag, downloadCsv, listTags } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
+import { toast } from '../store/toast'
 import {
   EmptyRow,
   ErrorNotice,
   Field,
-  Loading,
+  TableSkeleton,
   Modal,
   buttonGhostClass,
   buttonPrimaryClass,
+  cellMutedClass,
+  cellStrongClass,
+  cellTextClass,
+  footerCountClass,
   formatNumber,
   formatTime,
   inputClass,
+  pageHintClass,
+  pageTitleClass,
+  rowClass,
+  tableWrapClass,
+  thClass,
+  theadClass,
 } from '../components/ui'
 
 /**
@@ -36,6 +47,12 @@ export function Tags() {
     setModalError(null)
   }
 
+  /** CSV 导出：走 window.location 触发浏览器原生下载 */
+  const handleExport = () => {
+    toast('正在导出标签 CSV…', 'info')
+    downloadCsv('tags')
+  }
+
   const handleCreate = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!name.trim()) {
@@ -47,13 +64,14 @@ export function Tags() {
     setModalError(null)
     try {
       await createTag(name.trim(), description.trim() || undefined)
+      toast(`标签「${name.trim()}」已创建`, 'success')
       setName('')
       setDescription('')
       closeModal()
       reload()
     } catch (err) {
       const message = toErrorMessage(err)
-      console.warn('[CP-ADMIN-2] createTag failed:', message)
+      console.warn('[CP-ADMIN-3] createTag failed:', message)
       setModalError(message)
       setSubmitting(false)
     }
@@ -63,30 +81,33 @@ export function Tags() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">标签管理</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            数据源：GET /api/v1/tags
-          </p>
+          <h1 className={pageTitleClass}>标签管理</h1>
+          <p className={pageHintClass}>数据源：GET /api/v1/tags</p>
         </div>
-        <button
-          type="button"
-          className={buttonPrimaryClass}
-          onClick={() => setOpen(true)}
-        >
-          新增标签
-        </button>
+        <div className="flex gap-2">
+          <button type="button" className={buttonGhostClass} onClick={handleExport}>
+            导出 CSV
+          </button>
+          <button
+            type="button"
+            className={buttonPrimaryClass}
+            onClick={() => setOpen(true)}
+          >
+            新增标签
+          </button>
+        </div>
       </div>
 
       {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
 
-      <div className="mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className={tableWrapClass}>
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500">
+          <thead className={theadClass}>
             <tr>
               {columns.map((col) => (
-                <th key={col} className="px-4 py-3 font-medium whitespace-nowrap">
+                <th key={col} className={thClass}>
                   {col}
                 </th>
               ))}
@@ -94,7 +115,7 @@ export function Tags() {
           </thead>
           <tbody>
             {loading ? (
-              <Loading colSpan={columns.length} />
+              <TableSkeleton colSpan={columns.length} rows={5} />
             ) : rows.length === 0 ? (
               <EmptyRow
                 colSpan={columns.length}
@@ -102,18 +123,14 @@ export function Tags() {
               />
             ) : (
               rows.map((tag) => (
-                <tr key={tag.id} className="border-t border-gray-100">
-                  <td className="px-4 py-3 text-gray-500">{tag.id}</td>
-                  <td className="px-4 py-3 text-gray-900 font-medium">
-                    {tag.name}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {tag.description ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">
+                <tr key={tag.id} className={rowClass}>
+                  <td className={cellMutedClass}>{tag.id}</td>
+                  <td className={`${cellStrongClass} font-medium`}>{tag.name}</td>
+                  <td className={cellTextClass}>{tag.description ?? '—'}</td>
+                  <td className={cellTextClass}>
                     {formatNumber(tag.subscriber_count)}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                  <td className={`${cellMutedClass} whitespace-nowrap`}>
                     {formatTime(tag.created_at)}
                   </td>
                 </tr>
@@ -124,7 +141,7 @@ export function Tags() {
       </div>
 
       {!loading && rows.length > 0 && (
-        <p className="mt-3 text-xs text-gray-400">共 {data?.total ?? rows.length} 条</p>
+        <p className={footerCountClass}>共 {data?.total ?? rows.length} 条</p>
       )}
 
       <Modal open={open} title="新增标签" onClose={closeModal}>
@@ -148,7 +165,7 @@ export function Tags() {
           </Field>
 
           {modalError && (
-            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
               {modalError}
             </p>
           )}

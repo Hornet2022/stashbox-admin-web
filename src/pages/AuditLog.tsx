@@ -1,15 +1,26 @@
 import { useState, type FormEvent } from 'react'
-import { listAuditLog } from '../api/admin'
+import { downloadCsv, listAuditLog } from '../api/admin'
 import { useApi } from '../hooks/useApi'
+import { toast } from '../store/toast'
 import {
   EmptyRow,
   ErrorNotice,
   Field,
-  Loading,
+  TableSkeleton,
   buttonGhostClass,
   buttonPrimaryClass,
+  cellMutedClass,
+  cellStrongClass,
+  cellTextClass,
+  footerCountClass,
   formatTime,
   inputClass,
+  pageHintClass,
+  pageTitleClass,
+  rowClass,
+  tableWrapClass,
+  thClass,
+  theadClass,
 } from '../components/ui'
 
 /**
@@ -42,14 +53,25 @@ export function AuditLog() {
     setActionType(actionDraft.trim())
   }
 
+  /** CSV 导出：走 window.location 触发浏览器原生下载 */
+  const handleExport = () => {
+    toast('正在导出审计日志 CSV…', 'info')
+    downloadCsv('audit-log')
+  }
+
   const rows = data?.items ?? []
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">审计日志</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        数据源：GET /api/v1/admin/audit-log
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className={pageTitleClass}>审计日志</h1>
+          <p className={pageHintClass}>数据源：GET /api/v1/admin/audit-log</p>
+        </div>
+        <button type="button" className={buttonGhostClass} onClick={handleExport}>
+          导出 CSV
+        </button>
+      </div>
 
       <form className="mt-6 flex flex-wrap items-end gap-3" onSubmit={handleFilter}>
         <div className="w-44">
@@ -96,12 +118,12 @@ export function AuditLog() {
 
       {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
 
-      <div className="mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className={tableWrapClass}>
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500">
+          <thead className={theadClass}>
             <tr>
               {columns.map((col) => (
-                <th key={col} className="px-4 py-3 font-medium whitespace-nowrap">
+                <th key={col} className={thClass}>
                   {col}
                 </th>
               ))}
@@ -109,7 +131,7 @@ export function AuditLog() {
           </thead>
           <tbody>
             {loading ? (
-              <Loading colSpan={columns.length} />
+              <TableSkeleton colSpan={columns.length} rows={5} />
             ) : rows.length === 0 ? (
               <EmptyRow
                 colSpan={columns.length}
@@ -117,21 +139,13 @@ export function AuditLog() {
               />
             ) : (
               rows.map((log) => (
-                <tr key={log.id} className="border-t border-gray-100">
-                  <td className="px-4 py-3 text-gray-500">{log.id}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {log.actor_id ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-900">
-                    {log.action_type ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {log.target_type ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {log.target_id ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                <tr key={log.id} className={rowClass}>
+                  <td className={cellMutedClass}>{log.id}</td>
+                  <td className={cellTextClass}>{log.actor_id ?? '—'}</td>
+                  <td className={cellStrongClass}>{log.action_type ?? '—'}</td>
+                  <td className={cellTextClass}>{log.target_type ?? '—'}</td>
+                  <td className={cellTextClass}>{log.target_id ?? '—'}</td>
+                  <td className={`${cellMutedClass} whitespace-nowrap`}>
                     {formatTime(log.created_at)}
                   </td>
                 </tr>
@@ -142,7 +156,7 @@ export function AuditLog() {
       </div>
 
       {!loading && rows.length > 0 && (
-        <p className="mt-3 text-xs text-gray-400">共 {data?.total ?? rows.length} 条</p>
+        <p className={footerCountClass}>共 {data?.total ?? rows.length} 条</p>
       )}
     </div>
   )
