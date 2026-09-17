@@ -1,8 +1,9 @@
 /**
  * stashbox-admin-web 全局类型定义
  *
- * 本期（CP-ADMIN-1）只定义骨架类型，字段以后端 v1 §3.6 admin 端点为参考。
- * 后续 CP-ADMIN-2 接 API 时如有偏差，以实际响应为准修正。
+ * 字段以后端 v1 §3.6 admin 端点为参考（snake_case）。
+ * 后端尚未上线的端点，字段按任务包约定先声明，实际响应有偏差时在
+ * src/api/admin.ts 的 normalize 层做兼容。
  */
 
 /** 统一后端响应包装（api-gateway 约定） */
@@ -15,125 +16,86 @@ export interface ApiResponse<T> {
 /** 分页请求参数 */
 export interface PageParams {
   page?: number
-  pageSize?: number
+  size?: number
 }
 
-/** 分页响应体 */
+/** 分页响应体（后端可能是 items / list / records 三种命名） */
 export interface PageResult<T> {
-  items: T[]
-  total: number
-  page: number
-  pageSize: number
-}
-
-/** 管理员账号 */
-export interface AdminUser {
-  id: number
-  username: string
-  displayName?: string
-  role: AdminRole
-  lastLoginAt?: string
+  items?: T[]
+  list?: T[]
+  records?: T[]
+  total?: number
+  page?: number
+  size?: number
+  pageSize?: number
 }
 
 export type AdminRole = 'super_admin' | 'operator' | 'viewer'
 
-/** 登录请求 / 响应 */
-export interface LoginRequest {
-  username: string
-  password: string
-}
-
-export interface LoginResponse {
-  token: string
-  expiresIn: number
-  user: AdminUser
-}
-
-/** 总览统计（GET /api/v1/admin/stats） */
+/** GET /api/v1/admin/stats */
 export interface DashboardStats {
-  totalUsers: number
-  activeUsers: number
-  totalArticles: number
-  pendingArticles: number
-  totalTags: number
-  pendingPushCount: number
-  storageUsedBytes: number
+  total_users: number
+  total_articles: number
+  total_distilled: number
+  active_audio_files: number
+  failed_distillations_24h: number
 }
 
-/** 普通用户（GET /api/v1/admin/users） */
-export interface User {
+/** GET /api/v1/admin/users 行 */
+export interface UserRow {
   id: number
   email: string
-  nickname?: string
-  status: UserStatus
-  quotaBytes: number
-  usedBytes: number
-  articleCount: number
-  createdAt: string
-  lastActiveAt?: string
+  display_name?: string
+  role?: string
+  tier?: string
+  status?: string
+  monthly_quota?: number
+  used_quota?: number
+  created_at?: string
 }
 
-export type UserStatus = 'active' | 'suspended' | 'deleted'
+/** GET /api/v1/articles 行（用户端文章列表 API，admin 复用） */
+export interface ArticleRow {
+  id: string | number
+  title: string
+  status?: string
+  tags?: string[] | { id: number; name: string }[]
+  quality_score?: number | null
+  audio_id?: string | number | null
+  created_at?: string
+}
 
-/** 标签 */
-export interface Tag {
+/** GET /api/v1/tags 行 */
+export interface TagRow {
   id: number
   name: string
-  color?: string
-  articleCount: number
-  createdAt: string
+  description?: string
+  subscriber_count?: number
+  created_at?: string
 }
 
-/** 文章状态 */
-export type ArticleStatus =
-  | 'pending'
-  | 'processing'
-  | 'completed'
-  | 'failed'
-
-/** 文章 */
-export interface Article {
+/** GET /api/v1/notifications 行 */
+export interface PushNotificationRow {
   id: number
-  title: string
-  sourceUrl: string
-  status: ArticleStatus
-  tagIds: number[]
-  userId: number
-  retryCount: number
-  createdAt: string
-  updatedAt: string
+  user_id?: number
+  title?: string
+  body?: string
+  status?: string
+  created_at?: string
 }
 
-/** 推送队列条目 */
-export type PushStatus = 'queued' | 'sending' | 'sent' | 'failed'
-
-export interface PushNotification {
+/** GET /api/v1/admin/audit-log 行 */
+export interface AuditLogRow {
   id: number
-  title: string
-  body: string
-  status: PushStatus
-  targetCount: number
-  successCount: number
-  failCount: number
-  scheduledAt?: string
-  createdAt: string
+  actor_id?: number
+  action_type?: string
+  target_type?: string
+  target_id?: string | number | null
+  created_at?: string
 }
 
-/** 审计日志 */
-export interface AuditLogEntry {
-  id: number
-  actorId: number
-  actorName: string
-  action: string
-  targetType: string
-  targetId?: string
-  detail?: string
-  ip?: string
-  createdAt: string
-}
-
-/** 用户配额调整请求（POST /api/v1/admin/users/{id}/quota-adjust） */
-export interface QuotaAdjustRequest {
-  deltaBytes: number
-  reason: string
+/** 列表查询结果（已归一化） */
+export interface ListResult<T> {
+  items: T[]
+  total: number
 }

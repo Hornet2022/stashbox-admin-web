@@ -42,7 +42,7 @@ export function Sidebar() {
         })}
       </nav>
       <div className="p-4 text-xs text-slate-400 border-t border-slate-700">
-        CP-ADMIN-1 骨架
+        CP-ADMIN-2 已接线
       </div>
     </aside>
   )

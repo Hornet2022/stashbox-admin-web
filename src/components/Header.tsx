@@ -1,22 +1,24 @@
 import { useNavigate } from 'react-router-dom'
+import { logout } from '../api/auth'
+import { useAuthStore } from '../store/auth'
 
 export function Header() {
   const navigate = useNavigate()
+  const role = useAuthStore((s) => s.role)
+  const clearAuth = useAuthStore((s) => s.clearAuth)
 
-  /**
-   * 本期只清本地 token 并跳登录页。
-   * CP-ADMIN-2 接 /admin/auth/login 后补齐登出接口调用。
-   */
+  /** 清本地会话 + 清 Zustand + 回登录页 */
   const handleLogout = () => {
-    localStorage.removeItem('stashbox_admin_token')
-    navigate('/login')
+    clearAuth()
+    logout()
+    navigate('/login', { replace: true })
   }
 
   return (
     <header className="h-14 shrink-0 bg-white border-b border-gray-200 px-6 flex items-center justify-between">
       <span className="text-sm text-gray-500">运营管理后台</span>
       <div className="flex items-center gap-4">
-        <span className="text-sm text-gray-600">Hornet</span>
+        <span className="text-sm text-gray-600">{role ?? 'admin'}</span>
         <button
           type="button"
           onClick={handleLogout}
