@@ -4,10 +4,12 @@ Stashbox 管理后台 Web 前端 —— Hornet 运营管理界面。
 
 ## 技术栈
 
-- React 18 + TypeScript
-- Vite 5（构建工具）
-- Tailwind CSS 3（样式）
-- React Router 6（路由）
+> 版本为 `pnpm create vite@latest --template react-ts` 实际装出来的版本（2026-09-17）。
+
+- React 19 + TypeScript 6
+- Vite 8（构建工具）
+- Tailwind CSS 3（样式，PostCSS + autoprefixer）
+- React Router 7（路由）
 - Axios（HTTP 客户端）
 - React Query / SWR（后续考虑）
 
@@ -19,6 +21,9 @@ pnpm install  # 或 npm install
 
 # 启动 dev server（默认 http://localhost:5173）
 pnpm dev
+
+# 类型检查（tsc -b，全量检查 app + node 两个 project）
+pnpm typecheck
 
 # 构建生产
 pnpm build
