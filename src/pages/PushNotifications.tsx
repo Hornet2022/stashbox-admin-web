@@ -57,6 +57,8 @@ export function PushNotifications() {
               key={tab.key || 'all'}
               type="button"
               onClick={() => setStatus(tab.key)}
+              aria-pressed={active}
+              aria-label={`筛选：${tab.label}`}
               className={`-mb-px border-b-2 px-4 py-2 text-sm transition-colors ${
                 active
                   ? 'border-slate-800 font-medium text-slate-900 dark:border-slate-200 dark:text-slate-100'
@@ -71,6 +73,7 @@ export function PushNotifications() {
           type="button"
           className={`ml-auto ${buttonGhostClass}`}
           onClick={reload}
+          aria-label="刷新推送列表"
         >
           刷新
         </button>
