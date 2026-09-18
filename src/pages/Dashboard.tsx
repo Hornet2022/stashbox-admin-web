@@ -7,16 +7,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { useRef } from 'react'
-import gsap from 'gsap'
-import { useGSAP } from '@gsap/react'
 import { getStats } from '../api/admin'
 import { useApi } from '../hooks/useApi'
-import { useThemeStore } from '../store/theme'
 import { ErrorNotice, Skeleton, pageHintClass, pageTitleClass } from '../components/ui'
 import type { DashboardStats } from '../types'
-
-gsap.registerPlugin(useGSAP)
 
 /**
  * 总览页 —— 接 GET /api/v1/admin/stats（CP3.6-A3）。
@@ -50,58 +44,15 @@ const growthMock = [
 
 /** 图表配色随主题切换 */
 const chartColors = {
-  light: { grid: '#f1f5f9', axis: '#94a3b8', line: '#1e293b' },
-  dark: { grid: '#334155', axis: '#64748b', line: '#e2e8f0' },
+  light: { grid: '#E8E4DD', axis: '#8C8680', line: '#1A1A1A' },
+  dark: { grid: '#353129', axis: '#8C8680', line: '#E8E4DD' },
 }
 
 export function Dashboard() {
   const { data, loading, error, missing, reload } = useApi(getStats, 'stats')
-  const theme = useThemeStore((s) => s.theme)
-  const colors = theme === 'dark' ? chartColors.dark : chartColors.light
 
-  // Refs for GSAP count-up animation
-  const numRefs = useRef<(HTMLDivElement | null)[]>([])
-
-  const mm = gsap.matchMedia()
-
-  useGSAP(
-    () => {
-      mm.add(
-        '(prefers-reduced-motion: reduce)',
-        () => {
-          // Skip animation when user prefers reduced motion
-          numRefs.current.forEach((el) => {
-            if (el) el.textContent = data ? String(data[statCards[numRefs.current.indexOf(el)]?.field] ?? '—') : '—'
-          })
-        },
-      )
-
-      mm.add('(prefers-reduced-motion: no-preference)', () => {
-        numRefs.current.forEach((el, i) => {
-          if (!el || !data) return
-          const target = data[statCards[i]?.field] as number
-          gsap.fromTo(
-            el,
-            { textContent: 0 },
-            {
-              textContent: target,
-              duration: 1.8,
-              ease: 'power2.out',
-              snap: { textContent: 1 },
-              onUpdate() {
-                const v = Math.round(Number(el.textContent))
-                el.textContent = v.toLocaleString('zh-CN')
-              },
-              onComplete() {
-                el.textContent = target.toLocaleString('zh-CN')
-              },
-            },
-          )
-        })
-      })
-    },
-    { dependencies: [data] },
-  )
+  const isDark = document.documentElement.classList.contains('dark')
+  const activeColors = isDark ? chartColors.dark : chartColors.light
 
   return (
     <div>
@@ -111,12 +62,12 @@ export function Dashboard() {
       {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {statCards.map((card, i) => (
+        {statCards.map((card) => (
           <div
             key={card.field}
-            className="rounded-lg border border-gray-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800"
+            className="rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-700 dark:bg-neutral-800/50"
           >
-            <div className="text-sm text-gray-500 dark:text-slate-400">
+            <div className="text-sm text-neutral-500 dark:text-neutral-400">
               {card.label}
             </div>
             {loading ? (
@@ -124,26 +75,22 @@ export function Dashboard() {
                 <Skeleton className="h-7 w-20" />
               </div>
             ) : (
-              <div
-                ref={(el) => { numRefs.current[i] = el }}
-                className="mt-2 text-2xl font-semibold text-gray-900 dark:text-slate-100"
-              >
+              <div className="mt-2 font-serif text-2xl font-semibold text-ink dark:text-neutral-100">
                 {data ? data[card.field].toLocaleString('zh-CN') : '—'}
               </div>
             )}
-            <div className="mt-1 text-xs text-gray-400 dark:text-slate-500">
+            <div className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
               {card.hint}
             </div>
           </div>
         ))}
       </div>
 
-      <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+      <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-700 dark:bg-neutral-800/50">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">
+          <h2 className="font-serif text-base font-semibold text-ink dark:text-neutral-100">
             近 7 天用户增长
           </h2>
-          {/* TODO (@admin): 趋势端点上生产线后替换为真实 API，移除 mock 数据 */}
         </div>
         <div className="mt-4 h-72">
           {loading ? (
@@ -161,19 +108,19 @@ export function Dashboard() {
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={growthMock}>
-                <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
+                <CartesianGrid strokeDasharray="3 3" stroke={activeColors.grid} />
                 <XAxis
                   dataKey="day"
                   tick={{ fontSize: 12 }}
-                  stroke={colors.axis}
+                  stroke={activeColors.axis}
                 />
-                <YAxis tick={{ fontSize: 12 }} stroke={colors.axis} />
+                <YAxis tick={{ fontSize: 12 }} stroke={activeColors.axis} />
                 <Tooltip />
                 <Line
                   type="monotone"
                   dataKey="users"
                   name="用户数"
-                  stroke={colors.line}
+                  stroke={activeColors.line}
                   strokeWidth={2}
                   dot={{ r: 3 }}
                 />

@@ -48,12 +48,12 @@ export function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-slate-950">
-      <div className="w-96 rounded-lg bg-white p-8 shadow dark:bg-slate-800">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
-          stashbox-admin
+    <div className="flex min-h-screen items-center justify-center bg-neutral-100 dark:bg-neutral-900">
+      <div className="w-96 rounded-lg border border-neutral-200 bg-neutral-50 p-8 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+        <h1 className="font-serif text-2xl font-semibold text-ink dark:text-neutral-100">
+          stashbox
         </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
           运营管理后台登录
         </p>
 
@@ -61,7 +61,7 @@ export function Login() {
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
+              className="block text-sm font-medium text-neutral-600 dark:text-neutral-300"
             >
               邮箱
             </label>
@@ -81,7 +81,7 @@ export function Login() {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
+              className="block text-sm font-medium text-neutral-600 dark:text-neutral-300"
             >
               密码
             </label>
@@ -99,7 +99,7 @@ export function Login() {
           </div>
 
           {error && (
-            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+            <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm text-error">
               {error}
             </p>
           )}
@@ -110,7 +110,6 @@ export function Login() {
             className={`flex w-full items-center justify-center ${buttonPrimaryClass}`}
           >
             {submitting ? (
-              // 登录中：按钮内骨架条（CP-ADMIN-3 Loading 骨架屏）
               <Skeleton className="h-4 w-16" />
             ) : (
               '登录'
@@ -118,8 +117,8 @@ export function Login() {
           </button>
         </form>
 
-        <p className="mt-4 text-xs text-gray-400 dark:text-slate-500">
-          数据源：POST /api/v1/admin/auth/login ｜ 按 ? 看快捷键
+        <p className="mt-4 text-xs text-neutral-400 dark:text-neutral-500">
+          数据源：POST /api/v1/admin/auth/login
         </p>
       </div>
     </div>

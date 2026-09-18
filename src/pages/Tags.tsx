@@ -222,7 +222,7 @@ export function Tags() {
           </Field>
 
           {modalError && (
-            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+            <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
               {modalError}
             </p>
           )}
@@ -238,7 +238,7 @@ export function Tags() {
                   <path d="M10 25 L20 35 L38 14" />
                 </svg>
               </span>
-              <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">标签已创建</span>
+              <span className="text-sm font-medium text-success">标签已创建</span>
             </div>
           ) : (
             <div className="flex justify-end gap-2 pt-4">

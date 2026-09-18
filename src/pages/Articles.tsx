@@ -363,7 +363,7 @@ export function Articles() {
                           </button>
                         </div>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-neutral-400">—</span>
                       )}
                     </td>
                   </tr>
@@ -388,7 +388,7 @@ export function Articles() {
         onClose={closeModal}
       >
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <p className="truncate text-sm text-gray-600 dark:text-slate-300">
+          <p className="truncate text-sm text-neutral-600 dark:text-neutral-300">
             {target?.title ?? ''}
           </p>
           <Field label="操作原因">
@@ -402,7 +402,7 @@ export function Articles() {
           </Field>
 
           {modalError && (
-            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+            <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
               {modalError}
             </p>
           )}
@@ -426,18 +426,20 @@ export function Articles() {
       <Drawer.Root open={createOpen} onOpenChange={(open) => !open && closeCreateModal()}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-          <Drawer.Content className="fixed bottom-0 right-0 top-0 z-50 flex flex-col bg-white dark:bg-slate-800 outline-none">
-            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-slate-700">
-              <Drawer.Title className="text-base font-semibold text-gray-900 dark:text-slate-100">
+          <Drawer.Content className="fixed bottom-0 right-0 top-0 z-50 flex flex-col bg-neutral-50 dark:bg-neutral-800 outline-none">
+            <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3 dark:border-neutral-700">
+              <Drawer.Title className="font-serif text-base font-semibold text-ink dark:text-neutral-100">
                 新建文章
               </Drawer.Title>
               <button
                 type="button"
                 onClick={closeCreateModal}
-                className="text-gray-400 hover:text-gray-700 dark:text-slate-500 dark:hover:text-slate-200"
+                className="text-neutral-400 hover:text-neutral-700 dark:text-neutral-500 dark:hover:text-neutral-200"
                 aria-label="关闭"
               >
-                ✕
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M3 3l10 10M13 3L3 13" />
+                </svg>
               </button>
             </div>
             <form className="flex-1 overflow-y-auto px-5 py-4 space-y-4" onSubmit={handleCreate}>
@@ -484,7 +486,7 @@ export function Articles() {
               </Field>
 
               {createModalError && (
-                <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+                <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
                   {createModalError}
                 </p>
               )}
@@ -500,7 +502,7 @@ export function Articles() {
                       <path d="M10 25 L20 35 L38 14" />
                     </svg>
                   </span>
-                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">文章已创建</span>
+                  <span className="text-sm font-medium text-success">文章已创建</span>
                 </div>
               ) : (
               <div className="flex justify-end gap-2 pt-4">

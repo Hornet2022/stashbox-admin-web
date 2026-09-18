@@ -1,25 +1,27 @@
 import type { ReactNode } from 'react'
 
-/* ------------------------------- 骨架屏 / Loading ------------------------------ */
+/* ─────────────────────────────────────────────────────────
+   听匣 Design System — Shared UI Components
+   安静 / 留白 / 工具感
+───────────────────────────────────────────────────────── */
+
+/* ── Skeleton ──────────────────────────────────────────── */
 
 /**
- * 通用骨架条（0 依赖手写，不引第三方 UI 库）。
- *
+ * 通用骨架条。
  * 传 className 控制宽高，例如 `<Skeleton className="h-4 w-32" />`。
  */
 export function Skeleton({ className = '' }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={`animate-pulse rounded bg-gray-200 dark:bg-slate-700 ${className}`}
+      className={`animate-pulse rounded bg-neutral-200 dark:bg-neutral-700 ${className}`}
     />
   )
 }
 
 /**
  * 表格骨架屏 —— 默认 5 行灰条。
- *
- * 用单行整宽灰条模拟加载中的表格体，避免列宽抖动。
  */
 export function TableSkeleton({
   rows = 5,
@@ -58,7 +60,7 @@ export function EmptyRow({ colSpan, text = '暂无数据' }: { colSpan: number; 
     <tr>
       <td
         colSpan={colSpan}
-        className="px-4 py-10 text-center text-gray-400 dark:text-slate-500"
+        className="px-4 py-10 text-center text-neutral-400 dark:text-neutral-500"
       >
         {text}
       </td>
@@ -66,11 +68,10 @@ export function EmptyRow({ colSpan, text = '暂无数据' }: { colSpan: number; 
   )
 }
 
+/* ── Error / Notice ──────────────────────────────────── */
+
 /**
  * 错误提示条。
- *
- * `missing` 为 true 时表示端点未上线（404 / 网关不可达），
- * 此时提示“功能待上线”，不阻塞页面其他内容。
  */
 export function ErrorNotice({
   message,
@@ -83,10 +84,10 @@ export function ErrorNotice({
 }) {
   return (
     <div
-      className={`mt-6 flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${
+      className={`mt-6 flex items-center justify-between rounded-md border px-4 py-3 text-sm ${
         missing
-          ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200'
-          : 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200'
+          ? 'border-warning/30 bg-warning/10 text-warning'
+          : 'border-error/30 bg-error/10 text-error'
       }`}
     >
       <span>
@@ -97,7 +98,7 @@ export function ErrorNotice({
         <button
           type="button"
           onClick={onRetry}
-          className="ml-4 shrink-0 rounded border border-current px-3 py-1 text-xs hover:bg-white/60 dark:hover:bg-white/10"
+          className="ml-4 shrink-0 rounded border border-current px-3 py-1 text-xs hover:bg-white/20 dark:hover:bg-black/10"
         >
           重试
         </button>
@@ -106,7 +107,9 @@ export function ErrorNotice({
   )
 }
 
-/** 轻量弹窗（无第三方 UI 库） */
+/* ── Modal ───────────────────────────────────────────── */
+
+/** 轻量弹窗 */
 export function Modal({
   open,
   title,
@@ -121,30 +124,34 @@ export function Modal({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-md rounded-lg bg-white shadow-xl dark:bg-slate-800"
+        className="w-full max-w-md rounded-lg border border-neutral-200 bg-neutral-50 shadow-md dark:border-neutral-700 dark:bg-neutral-800"
       >
-        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-slate-700">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">
+        <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3 dark:border-neutral-700">
+          <h2 className="font-serif text-base font-semibold text-ink dark:text-neutral-100">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-700 dark:text-slate-500 dark:hover:text-slate-200"
+            className="text-neutral-400 hover:text-neutral-700 dark:text-neutral-500 dark:hover:text-neutral-200"
             aria-label="关闭"
           >
-            ✕
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M3 3l10 10M13 3L3 13" />
+            </svg>
           </button>
         </div>
-        <div className="px-5 py-4 text-gray-700 dark:text-slate-200">{children}</div>
+        <div className="px-5 py-4 text-neutral-600 dark:text-neutral-200">{children}</div>
       </div>
     </div>
   )
 }
+
+/* ── Form ────────────────────────────────────────────── */
 
 /** 表单字段包装 */
 export function Field({
@@ -156,7 +163,7 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-sm font-medium text-gray-700 dark:text-slate-300">
+      <span className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">
         {label}
       </span>
       <span className="mt-1 block">{children}</span>
@@ -164,51 +171,55 @@ export function Field({
   )
 }
 
+/* ── Input / Button Classes ───────────────────────────── */
+
 export const inputClass =
-  'w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-1 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus-visible:ring-slate-400'
+  'w-full rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-ink placeholder:text-neutral-400 focus:border-warm-ochre focus:outline-none focus-visible:ring-2 focus-visible:ring-warm-ochre/30 focus-visible:ring-offset-1 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus-visible:ring-warm-ochre/40'
 
 export const buttonPrimaryClass =
-  'rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 transition-colors focus-visible:outline focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white dark:focus-visible:ring-slate-400'
+  'rounded-md bg-ink px-4 py-2 text-sm font-medium text-cream hover:bg-neutral-700 disabled:opacity-50 focus-visible:outline focus-visible:ring-2 focus-visible:ring-warm-ochre focus-visible:ring-offset-2 dark:bg-neutral-100 dark:text-ink dark:hover:bg-white dark:focus-visible:ring-warm-ochre'
 
 export const buttonGhostClass =
-  'rounded border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors focus-visible:outline focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 dark:focus-visible:ring-slate-400'
+  'rounded-md border border-neutral-200 bg-transparent px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 disabled:opacity-50 focus-visible:outline focus-visible:ring-2 focus-visible:ring-neutral-400 focus-visible:ring-offset-1 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:focus-visible:ring-neutral-500'
 
-/* ------------------------------ 暗色模式共享样式 ------------------------------ */
+/* ── Page Shared ──────────────────────────────────────── */
 
 export const pageTitleClass =
-  'text-2xl font-bold text-gray-900 dark:text-slate-100'
+  'font-serif text-xl font-semibold text-ink dark:text-neutral-100'
 
-export const pageHintClass = 'mt-1 text-sm text-gray-500 dark:text-slate-400'
+export const pageHintClass = 'mt-1 text-sm text-neutral-500 dark:text-neutral-400'
 
 export const tableWrapClass =
-  'mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-800'
+  'mt-6 overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800/50'
 
 export const theadClass =
-  'bg-gray-50 text-gray-500 dark:bg-slate-900/60 dark:text-slate-400'
+  'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
 
-export const thClass = 'px-4 py-3 font-medium whitespace-nowrap'
+export const thClass = 'px-4 py-3 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap'
 
-export const rowClass = 'border-t border-gray-100 dark:border-slate-700'
+export const rowClass = 'border-t border-neutral-100 dark:border-neutral-700/60'
 
-export const cellMutedClass = 'px-4 py-3 text-gray-500 dark:text-slate-400'
+export const cellMutedClass = 'px-4 py-3 text-sm text-neutral-400 dark:text-neutral-500'
 
-export const cellTextClass = 'px-4 py-3 text-gray-600 dark:text-slate-300'
+export const cellTextClass = 'px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300'
 
-export const cellStrongClass = 'px-4 py-3 text-gray-900 dark:text-slate-100'
+export const cellStrongClass = 'px-4 py-3 text-sm font-medium text-ink dark:text-neutral-100'
 
-export const footerCountClass = 'mt-3 text-xs text-gray-400 dark:text-slate-500'
+export const footerCountClass = 'mt-3 text-xs text-neutral-400 dark:text-neutral-500'
 
-/** 状态徽标 */
+/* ── Badge ────────────────────────────────────────────── */
+
+/** 状态徽标 — 低饱和度语义色 */
 export function Badge({ value }: { value?: string | null }) {
   const text = value ?? '—'
   const tone =
     text === 'active' || text === 'completed' || text === 'sent'
-      ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
+      ? 'bg-success/10 text-success'
       : text === 'failed' || text === 'suspended' || text === 'deleted'
-        ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
+        ? 'bg-error/10 text-error'
         : text === 'pending' || text === 'processing' || text === 'queued'
-          ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-          : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'
+          ? 'bg-warning/10 text-warning'
+          : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400'
 
   return (
     <span role="status" className={`inline-block rounded px-2 py-0.5 text-xs ${tone}`}>
@@ -216,4 +227,3 @@ export function Badge({ value }: { value?: string | null }) {
     </span>
   )
 }
-
