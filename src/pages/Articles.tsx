@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import {
+  createArticle,
   downloadCsv,
   forceRetryArticle,
   invalidateAudio,
@@ -103,6 +104,47 @@ export function Articles() {
     setModalError(null)
   }
 
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createUrl, setCreateUrl] = useState('')
+  const [createTitle, setCreateTitle] = useState('')
+  const [createTags, setCreateTags] = useState('')
+  const [createSubmitting, setCreateSubmitting] = useState(false)
+  const [createModalError, setCreateModalError] = useState<string | null>(null)
+
+  const closeCreateModal = () => {
+    setCreateOpen(false)
+    setCreateUrl('')
+    setCreateTitle('')
+    setCreateTags('')
+    setCreateSubmitting(false)
+    setCreateModalError(null)
+  }
+
+  const handleCreate = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!createUrl.trim()) {
+      setCreateModalError('URL 不能为空')
+      return
+    }
+    setCreateSubmitting(true)
+    setCreateModalError(null)
+    try {
+      await createArticle(
+        createUrl.trim(),
+        'url',
+        createTitle.trim() || undefined,
+      )
+      toast(`文章已创建`, 'success')
+      closeCreateModal()
+      reload()
+    } catch (err) {
+      const message = toErrorMessage(err)
+      console.warn('[CP-ADMIN-3] createArticle failed:', message)
+      setCreateModalError(message)
+      setCreateSubmitting(false)
+    }
+  }
+
   /** CSV 导出：走 window.location 触发浏览器原生下载 */
   const handleExportArticles = () => {
     toast('正在导出文章 CSV…', 'info')
@@ -161,6 +203,13 @@ export function Articles() {
         </button>
         <button type="button" className={buttonGhostClass} onClick={handleExportFeedback}>
           导出反馈
+        </button>
+        <button
+          type="button"
+          className={buttonPrimaryClass}
+          onClick={() => setCreateOpen(true)}
+        >
+          + 新建文章
         </button>
       </div>
 
@@ -334,6 +383,57 @@ export function Articles() {
               disabled={submitting}
             >
               {submitting ? '提交中…' : '确认'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={createOpen} title="新建文章" onClose={closeCreateModal}>
+        <form className="space-y-4" onSubmit={handleCreate}>
+          <Field label="URL *">
+            <input
+              type="url"
+              value={createUrl}
+              onChange={(e) => setCreateUrl(e.target.value)}
+              placeholder="https://..."
+              className={inputClass}
+            />
+          </Field>
+          <Field label="标题（可选）">
+            <input
+              type="text"
+              value={createTitle}
+              onChange={(e) => setCreateTitle(e.target.value)}
+              placeholder="文章标题"
+              className={inputClass}
+            />
+          </Field>
+          <Field label="标签（可选）">
+            <input
+              type="text"
+              value={createTags}
+              onChange={(e) => setCreateTags(e.target.value)}
+              placeholder="标签，多个用逗号分隔"
+              className={inputClass}
+            />
+          </Field>
+
+          {createModalError && (
+            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+              {createModalError}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <button type="button" className={buttonGhostClass} onClick={closeCreateModal}>
+              取消
+            </button>
+            <button
+              type="submit"
+              className={buttonPrimaryClass}
+              disabled={createSubmitting}
+            >
+              {createSubmitting ? '提交中…' : '创建'}
             </button>
           </div>
         </form>

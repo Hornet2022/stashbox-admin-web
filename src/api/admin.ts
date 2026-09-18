@@ -98,6 +98,15 @@ export async function listArticles(
   return normalizeList<ArticleRow>(data)
 }
 
+/** POST /api/v1/articles 新建文章 */
+export async function createArticle(
+  url: string,
+  source: string = 'url',
+  title?: string,
+): Promise<void> {
+  await apiClient.post('/api/v1/articles', { url, source, title })
+}
+
 /** POST /api/v1/admin/articles/{id}/force-retry */
 export async function forceRetryArticle(
   articleId: string | number,
