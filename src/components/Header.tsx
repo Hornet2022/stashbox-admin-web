@@ -51,6 +51,7 @@ export function Header() {
         <button
           type="button"
           onClick={handleLogout}
+          aria-label="退出登录"
           className="rounded border border-gray-300 px-3 py-1 text-sm text-gray-500 transition-colors hover:text-gray-900 dark:border-slate-600 dark:text-slate-300 dark:hover:text-white"
         >
           Logout
