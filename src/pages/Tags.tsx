@@ -4,7 +4,7 @@ import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
 import { useRole, hasPermission } from '../hooks/useRole'
 import { toast } from '../store/toast'
-import { Drawer } from 'vaul'
+import { Modal } from '../components/ui'
 import {
   EmptyRow,
   ErrorNotice,
@@ -187,93 +187,75 @@ export function Tags() {
         <p className={footerCountClass}>共 {data?.total ?? rows.length} 条</p>
       )}
 
-      <Drawer.Root open={open} onOpenChange={(o) => !o && closeModal()}>
-        <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-          <Drawer.Content className="fixed bottom-0 right-0 top-0 z-50 flex flex-col bg-white dark:bg-slate-800 outline-none">
-            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-slate-700">
-              <Drawer.Title className="text-base font-semibold text-gray-900 dark:text-slate-100">
-                新增标签
-              </Drawer.Title>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="text-gray-400 hover:text-gray-700 dark:text-slate-500 dark:hover:text-slate-200"
-                aria-label="关闭"
+      <Modal open={open} title="新增标签" onClose={closeModal}>
+        <form className="space-y-4" onSubmit={handleCreate}>
+          <Field label="名称">
+            <div className="t-input-wrap">
+              <input
+                ref={nameInputRef}
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value)
+                  const wrap = nameInputRef.current?.closest('.t-input-wrap') as HTMLElement | null
+                  const input = nameInputRef.current
+                  if (wrap?.classList.contains('is-error') && e.target.value.trim()) {
+                    const revertKey = 'data-revert-timer'
+                    const existing = wrap.getAttribute(revertKey)
+                    if (existing) clearTimeout(Number(existing))
+                    wrap.classList.remove('is-error')
+                    input?.classList.remove('is-error')
+                  }
+                }}
+                placeholder="如：machine-learning"
+                className={`t-input ${inputClass}`}
+              />
+            </div>
+          </Field>
+          <Field label="描述（可选）">
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className={inputClass}
+            />
+          </Field>
+
+          {modalError && (
+            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+              {modalError}
+            </p>
+          )}
+
+          {showSuccess ? (
+            <div className="flex items-center justify-center gap-2 py-6">
+              <span
+                className="t-success-check text-emerald-500"
+                data-state="in"
+                aria-hidden="true"
               >
-                ✕
+                <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 25 L20 35 L38 14" />
+                </svg>
+              </span>
+              <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">标签已创建</span>
+            </div>
+          ) : (
+            <div className="flex justify-end gap-2 pt-4">
+              <button type="button" className={buttonGhostClass} onClick={closeModal}>
+                取消
+              </button>
+              <button
+                type="submit"
+                className={buttonPrimaryClass}
+                disabled={submitting}
+              >
+                {submitting ? '提交中…' : '创建'}
               </button>
             </div>
-            <form className="flex-1 overflow-y-auto px-5 py-4 space-y-4" onSubmit={handleCreate}>
-              <Field label="名称">
-                <div className="t-input-wrap">
-                  <input
-                    ref={nameInputRef}
-                    type="text"
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value)
-                      const wrap = nameInputRef.current?.closest('.t-input-wrap') as HTMLElement | null
-                      const input = nameInputRef.current
-                      if (wrap?.classList.contains('is-error') && e.target.value.trim()) {
-                        const revertKey = 'data-revert-timer'
-                        const existing = wrap.getAttribute(revertKey)
-                        if (existing) clearTimeout(Number(existing))
-                        wrap.classList.remove('is-error')
-                        input?.classList.remove('is-error')
-                      }
-                    }}
-                    placeholder="如：machine-learning"
-                    className={`t-input ${inputClass}`}
-                  />
-                </div>
-              </Field>
-              <Field label="描述（可选）">
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                  className={inputClass}
-                />
-              </Field>
-
-              {modalError && (
-                <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
-                  {modalError}
-                </p>
-              )}
-
-              {showSuccess ? (
-                <div className="flex items-center justify-center gap-2 py-6">
-                  <span
-                    className="t-success-check text-emerald-500"
-                    data-state="in"
-                    aria-hidden="true"
-                  >
-                    <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M10 25 L20 35 L38 14" />
-                    </svg>
-                  </span>
-                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">标签已创建</span>
-                </div>
-              ) : (
-              <div className="flex justify-end gap-2 pt-4">
-                <button type="button" className={buttonGhostClass} onClick={closeModal}>
-                  取消
-                </button>
-                <button
-                  type="submit"
-                  className={buttonPrimaryClass}
-                  disabled={submitting}
-                >
-                  {submitting ? '提交中…' : '创建'}
-                </button>
-              </div>
-              )}
-            </form>
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
+          )}
+        </form>
+      </Modal>
     </div>
   )
 }
