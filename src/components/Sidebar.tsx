@@ -43,6 +43,7 @@ export function Sidebar() {
             <Link
               key={item.path}
               to={item.path}
+              aria-current={active ? 'page' : undefined}
               className={`block px-4 py-2 text-sm transition-colors ${
                 active
                   ? 'bg-slate-700 text-white font-medium'
