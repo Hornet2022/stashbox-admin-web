@@ -7,11 +7,16 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useRef } from 'react'
+import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
 import { getStats } from '../api/admin'
 import { useApi } from '../hooks/useApi'
 import { useThemeStore } from '../store/theme'
 import { ErrorNotice, Skeleton, pageHintClass, pageTitleClass } from '../components/ui'
 import type { DashboardStats } from '../types'
+
+gsap.registerPlugin(useGSAP)
 
 /**
  * 总览页 —— 接 GET /api/v1/admin/stats（CP3.6-A3）。
@@ -54,6 +59,50 @@ export function Dashboard() {
   const theme = useThemeStore((s) => s.theme)
   const colors = theme === 'dark' ? chartColors.dark : chartColors.light
 
+  // Refs for GSAP count-up animation
+  const numRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  const mm = gsap.matchMedia()
+
+  useGSAP(
+    () => {
+      mm.add(
+        '(prefers-reduced-motion: reduce)',
+        () => {
+          // Skip animation when user prefers reduced motion
+          numRefs.current.forEach((el) => {
+            if (el) el.textContent = data ? String(data[statCards[numRefs.current.indexOf(el)]?.field] ?? '—') : '—'
+          })
+        },
+      )
+
+      mm.add('(prefers-reduced-motion: no-preference)', () => {
+        numRefs.current.forEach((el, i) => {
+          if (!el || !data) return
+          const target = data[statCards[i]?.field] as number
+          gsap.fromTo(
+            el,
+            { textContent: 0 },
+            {
+              textContent: target,
+              duration: 1.8,
+              ease: 'power2.out',
+              snap: { textContent: 1 },
+              onUpdate() {
+                const v = Math.round(Number(el.textContent))
+                el.textContent = v.toLocaleString('zh-CN')
+              },
+              onComplete() {
+                el.textContent = target.toLocaleString('zh-CN')
+              },
+            },
+          )
+        })
+      })
+    },
+    { dependencies: [data] },
+  )
+
   return (
     <div>
       <h1 className={pageTitleClass}>总览</h1>
@@ -62,7 +111,7 @@ export function Dashboard() {
       {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {statCards.map((card) => (
+        {statCards.map((card, i) => (
           <div
             key={card.field}
             className="rounded-lg border border-gray-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800"
@@ -75,7 +124,10 @@ export function Dashboard() {
                 <Skeleton className="h-7 w-20" />
               </div>
             ) : (
-              <div className="mt-2 text-2xl font-semibold text-gray-900 dark:text-slate-100">
+              <div
+                ref={(el) => { numRefs.current[i] = el }}
+                className="mt-2 text-2xl font-semibold text-gray-900 dark:text-slate-100"
+              >
                 {data ? data[card.field].toLocaleString('zh-CN') : '—'}
               </div>
             )}
