@@ -30,7 +30,7 @@ export interface PageResult<T> {
   pageSize?: number
 }
 
-export type AdminRole = 'super_admin' | 'operator' | 'viewer'
+export type AdminRole = 'admin' | 'super_admin' | 'operator' | 'viewer'
 
 /** GET /api/v1/admin/stats */
 export interface DashboardStats {

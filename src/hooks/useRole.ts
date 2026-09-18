@@ -8,5 +8,6 @@ export function useRole(): AdminRole | null {
 
 export function hasPermission(role: AdminRole | null, required: AdminRole[]): boolean {
   if (!role) return false
+  if (role === 'admin') return required.includes('super_admin')
   return required.includes(role)
 }
