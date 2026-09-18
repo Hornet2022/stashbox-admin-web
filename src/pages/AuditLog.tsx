@@ -13,7 +13,6 @@ import {
   cellStrongClass,
   cellTextClass,
   footerCountClass,
-  formatTime,
   inputClass,
   pageHintClass,
   pageTitleClass,
@@ -22,6 +21,7 @@ import {
   thClass,
   theadClass,
 } from '../components/ui'
+import { formatTime } from '../utils'
 
 /**
  * 审计日志页 —— GET /api/v1/admin/audit-log（actor_id + action_type 过滤）。

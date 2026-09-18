@@ -18,8 +18,6 @@ import {
   cellStrongClass,
   cellTextClass,
   footerCountClass,
-  formatNumber,
-  formatTime,
   inputClass,
   pageHintClass,
   pageTitleClass,
@@ -28,6 +26,7 @@ import {
   thClass,
   theadClass,
 } from '../components/ui'
+import { formatNumber, formatTime } from '../utils'
 import type { UserRow } from '../types'
 
 /**

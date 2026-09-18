@@ -11,7 +11,6 @@ import {
   cellStrongClass,
   cellTextClass,
   footerCountClass,
-  formatTime,
   pageHintClass,
   pageTitleClass,
   rowClass,
@@ -19,6 +18,7 @@ import {
   thClass,
   theadClass,
 } from '../components/ui'
+import { formatTime } from '../utils'
 
 /**
  * 推送队列页 —— GET /api/v1/notifications（状态 tab 过滤）。

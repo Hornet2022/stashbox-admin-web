@@ -16,8 +16,6 @@ import {
   cellStrongClass,
   cellTextClass,
   footerCountClass,
-  formatNumber,
-  formatTime,
   inputClass,
   pageHintClass,
   pageTitleClass,
@@ -26,6 +24,7 @@ import {
   thClass,
   theadClass,
 } from '../components/ui'
+import { formatNumber, formatTime } from '../utils'
 
 /**
  * 标签管理页 —— GET /api/v1/tags + POST /api/v1/tags。

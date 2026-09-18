@@ -23,7 +23,6 @@ import {
   cellStrongClass,
   cellTextClass,
   footerCountClass,
-  formatTime,
   inputClass,
   pageHintClass,
   pageTitleClass,
@@ -32,6 +31,7 @@ import {
   thClass,
   theadClass,
 } from '../components/ui'
+import { formatTime } from '../utils'
 import type { ArticleRow } from '../types'
 
 /**
