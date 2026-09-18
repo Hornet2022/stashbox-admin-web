@@ -169,8 +169,8 @@ export async function getStats(): Promise<DashboardStats> {
 
 /* --------------------------------- CSV 导出 -------------------------------- */
 
-/** CP5.6 后端提供的 4 个导出端点（GET /api/v1/admin/export/{kind}.csv） */
-export type ExportKind = 'users' | 'articles' | 'tags' | 'audit-log'
+/** CP5.6 后端提供的 6 个导出端点（GET /api/v1/admin/export/{kind}.csv） */
+export type ExportKind = 'users' | 'articles' | 'tags' | 'audit-log' | 'feedback' | 'subscriptions'
 
 /**
  * 拼 CSV 导出直链。

@@ -101,9 +101,14 @@ export function Articles() {
   }
 
   /** CSV 导出：走 window.location 触发浏览器原生下载 */
-  const handleExport = () => {
+  const handleExportArticles = () => {
     toast('正在导出文章 CSV…', 'info')
     downloadCsv('articles')
+  }
+
+  const handleExportFeedback = () => {
+    toast('正在导出反馈 CSV…', 'info')
+    downloadCsv('feedback')
   }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -148,8 +153,11 @@ export function Articles() {
             数据源：GET /api/v1/articles ｜ 操作：force-retry / audio-invalidate
           </p>
         </div>
-        <button type="button" className={buttonGhostClass} onClick={handleExport}>
+        <button type="button" className={buttonGhostClass} onClick={handleExportArticles}>
           导出 CSV
+        </button>
+        <button type="button" className={buttonGhostClass} onClick={handleExportFeedback}>
+          导出反馈
         </button>
       </div>
 

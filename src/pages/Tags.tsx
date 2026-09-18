@@ -48,9 +48,15 @@ export function Tags() {
   }
 
   /** CSV 导出：走 window.location 触发浏览器原生下载 */
-  const handleExport = () => {
+  const handleExportTags = () => {
     toast('正在导出标签 CSV…', 'info')
     downloadCsv('tags')
+  }
+
+  const handleExportSubscriptions = () => {
+    if (!window.confirm('将导出全量订阅用户，确认？')) return
+    toast('正在导出订阅用户 CSV…', 'info')
+    downloadCsv('subscriptions')
   }
 
   const handleCreate = async (e: FormEvent<HTMLFormElement>) => {
@@ -87,8 +93,11 @@ export function Tags() {
           <p className={pageHintClass}>数据源：GET /api/v1/tags</p>
         </div>
         <div className="flex gap-2">
-          <button type="button" className={buttonGhostClass} onClick={handleExport}>
+          <button type="button" className={buttonGhostClass} onClick={handleExportTags}>
             导出 CSV
+          </button>
+          <button type="button" className={buttonGhostClass} onClick={handleExportSubscriptions}>
+            导出订阅
           </button>
           <button
             type="button"
