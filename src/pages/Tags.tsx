@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useRef, type FormEvent } from 'react'
 import { createTag, downloadCsv, listTags } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
@@ -49,6 +49,30 @@ export function Tags() {
     setModalError(null)
   }
 
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  const shakeError = () => {
+    const wrap = nameInputRef.current?.closest('.t-input-wrap') as HTMLElement | null
+    const input = nameInputRef.current
+    if (!wrap || !input) return
+    const revertKey = 'data-revert-timer'
+    const existing = wrap.getAttribute(revertKey)
+    if (existing) clearTimeout(Number(existing))
+    wrap.classList.add('is-error')
+    input.classList.add('is-error')
+    input.classList.remove('is-shaking')
+    void input.offsetWidth
+    input.classList.add('is-shaking')
+    const shakeMs = 80 * 2 + 60 * 2
+    setTimeout(() => input.classList.remove('is-shaking'), shakeMs + 20)
+    const timer = setTimeout(() => {
+      wrap.classList.remove('is-error')
+      input.classList.remove('is-error')
+      wrap.removeAttribute(revertKey)
+    }, 3000)
+    wrap.setAttribute(revertKey, String(timer))
+  }
+
   /** CSV 导出：走 window.location 触发浏览器原生下载 */
   const handleExportTags = () => {
     toast('正在导出标签 CSV…', 'info')
@@ -65,6 +89,7 @@ export function Tags() {
     e.preventDefault()
     if (!name.trim()) {
       setModalError('标签名称必填')
+      shakeError()
       return
     }
 
@@ -176,13 +201,27 @@ export function Tags() {
             </div>
             <form className="flex-1 overflow-y-auto px-5 py-4 space-y-4" onSubmit={handleCreate}>
               <Field label="名称">
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="如：machine-learning"
-                  className={inputClass}
-                />
+                <div className="t-input-wrap">
+                  <input
+                    ref={nameInputRef}
+                    type="text"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value)
+                      const wrap = nameInputRef.current?.closest('.t-input-wrap') as HTMLElement | null
+                      const input = nameInputRef.current
+                      if (wrap?.classList.contains('is-error') && e.target.value.trim()) {
+                        const revertKey = 'data-revert-timer'
+                        const existing = wrap.getAttribute(revertKey)
+                        if (existing) clearTimeout(Number(existing))
+                        wrap.classList.remove('is-error')
+                        input?.classList.remove('is-error')
+                      }
+                    }}
+                    placeholder="如：machine-learning"
+                    className={`t-input ${inputClass}`}
+                  />
+                </div>
               </Field>
               <Field label="描述（可选）">
                 <textarea

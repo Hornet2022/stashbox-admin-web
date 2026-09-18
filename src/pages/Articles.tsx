@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useRef, type FormEvent } from 'react'
 import {
   createArticle,
   downloadCsv,
@@ -121,10 +121,35 @@ export function Articles() {
     setCreateModalError(null)
   }
 
+  const createUrlRef = useRef<HTMLInputElement>(null)
+
+  const shakeError = () => {
+    const wrap = createUrlRef.current?.closest('.t-input-wrap') as HTMLElement | null
+    const input = createUrlRef.current
+    if (!wrap || !input) return
+    const revertKey = 'data-revert-timer'
+    const existing = wrap.getAttribute(revertKey)
+    if (existing) clearTimeout(Number(existing))
+    wrap.classList.add('is-error')
+    input.classList.add('is-error')
+    input.classList.remove('is-shaking')
+    void input.offsetWidth
+    input.classList.add('is-shaking')
+    const shakeMs = 80 * 2 + 60 * 2
+    setTimeout(() => input.classList.remove('is-shaking'), shakeMs + 20)
+    const timer = setTimeout(() => {
+      wrap.classList.remove('is-error')
+      input.classList.remove('is-error')
+      wrap.removeAttribute(revertKey)
+    }, 3000)
+    wrap.setAttribute(revertKey, String(timer))
+  }
+
   const handleCreate = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!createUrl.trim()) {
       setCreateModalError('URL 不能为空')
+      shakeError()
       return
     }
     setCreateSubmitting(true)
@@ -413,13 +438,27 @@ export function Articles() {
             </div>
             <form className="flex-1 overflow-y-auto px-5 py-4 space-y-4" onSubmit={handleCreate}>
               <Field label="URL *">
-                <input
-                  type="url"
-                  value={createUrl}
-                  onChange={(e) => setCreateUrl(e.target.value)}
-                  placeholder="https://..."
-                  className={inputClass}
-                />
+                <div className="t-input-wrap">
+                  <input
+                    ref={createUrlRef}
+                    type="url"
+                    value={createUrl}
+                    onChange={(e) => {
+                      setCreateUrl(e.target.value)
+                      const wrap = createUrlRef.current?.closest('.t-input-wrap') as HTMLElement | null
+                      const input = createUrlRef.current
+                      if (wrap?.classList.contains('is-error') && e.target.value.trim()) {
+                        const revertKey = 'data-revert-timer'
+                        const existing = wrap.getAttribute(revertKey)
+                        if (existing) clearTimeout(Number(existing))
+                        wrap.classList.remove('is-error')
+                        input?.classList.remove('is-error')
+                      }
+                    }}
+                    placeholder="https://..."
+                    className={`t-input ${inputClass}`}
+                  />
+                </div>
               </Field>
               <Field label="标题（可选）">
                 <input
