@@ -42,11 +42,13 @@ export function Tags() {
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
+  const [showSuccess, setShowSuccess] = useState(false)
 
   const closeModal = () => {
     setOpen(false)
     setSubmitting(false)
     setModalError(null)
+    setShowSuccess(false)
   }
 
   const nameInputRef = useRef<HTMLInputElement>(null)
@@ -97,10 +99,13 @@ export function Tags() {
     setModalError(null)
     try {
       await createTag(name.trim())
-      toast(`标签「${name.trim()}」已创建`, 'success')
-      setName('')
-      setDescription('')
-      closeModal()
+      setShowSuccess(true)
+      setTimeout(() => {
+        setName('')
+        setDescription('')
+        closeModal()
+        reload()
+      }, 700)
       reload()
     } catch (err) {
       const message = toErrorMessage(err)
@@ -238,6 +243,20 @@ export function Tags() {
                 </p>
               )}
 
+              {showSuccess ? (
+                <div className="flex items-center justify-center gap-2 py-6">
+                  <span
+                    className="t-success-check text-emerald-500"
+                    data-state="in"
+                    aria-hidden="true"
+                  >
+                    <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10 25 L20 35 L38 14" />
+                    </svg>
+                  </span>
+                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">标签已创建</span>
+                </div>
+              ) : (
               <div className="flex justify-end gap-2 pt-4">
                 <button type="button" className={buttonGhostClass} onClick={closeModal}>
                   取消
@@ -250,6 +269,7 @@ export function Tags() {
                   {submitting ? '提交中…' : '创建'}
                 </button>
               </div>
+              )}
             </form>
           </Drawer.Content>
         </Drawer.Portal>
