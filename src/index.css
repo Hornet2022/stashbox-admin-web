@@ -281,3 +281,26 @@ html.dark .t-tabs-pill {
   }
   .t-skel-skeleton.is-pulsing > * { animation: none !important; }
 }
+
+/* ── emil design principle: button active scale ─────── */
+button,
+[role="button"] {
+  transition: transform 120ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+button:active,
+[role="button"]:active {
+  transform: scale(0.97);
+}
+
+/* ── emil design principle: global prefers-reduced-motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
