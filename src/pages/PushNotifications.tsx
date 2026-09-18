@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { listPushNotifications } from '../api/admin'
 import { useApi } from '../hooks/useApi'
 import {
@@ -35,11 +35,44 @@ const TABS = [
 
 export function PushNotifications() {
   const [status, setStatus] = useState('')
+  const tabsRef = useRef<HTMLDivElement>(null)
+  const pillRef = useRef<HTMLSpanElement>(null)
 
   const { data, loading, error, missing, reload } = useApi(
     () => listPushNotifications({ status: status || undefined, page: 1 }),
     status,
   )
+
+  // Tabs pill orchestration
+  const movePill = (animate: boolean) => {
+    const bar = tabsRef.current
+    const pill = pillRef.current
+    if (!bar || !pill) return
+    const tabs = [...bar.querySelectorAll<HTMLButtonElement>('.t-tab')]
+    const active = tabs.find((t) => t.getAttribute('aria-selected') === 'true') || tabs[0]
+    if (!active) return
+    if (!animate) {
+      const prev = pill.style.transition
+      pill.style.transition = 'none'
+      pill.style.transform = `translateX(${active.offsetLeft}px)`
+      pill.style.width = `${active.offsetWidth}px`
+      void pill.offsetWidth
+      pill.style.transition = prev
+    } else {
+      pill.style.transform = `translateX(${active.offsetLeft}px)`
+      pill.style.width = `${active.offsetWidth}px`
+    }
+  }
+
+  useEffect(() => {
+    movePill(false)
+  }, [])
+
+  const handleTabClick = (tab: { key: string; label: string }) => {
+    setStatus(tab.key)
+    // Move pill after state update
+    requestAnimationFrame(() => movePill(true))
+  }
 
   const rows = data?.items ?? []
 
@@ -48,27 +81,26 @@ export function PushNotifications() {
       <h1 className={pageTitleClass}>推送队列</h1>
       <p className={pageHintClass}>数据源：GET /api/v1/notifications</p>
 
-      {/* 状态 tab */}
-      <div className="mt-6 flex items-center gap-2 border-b border-gray-200 dark:border-slate-700">
-        {TABS.map((tab) => {
-          const active = status === tab.key
-          return (
-            <button
-              key={tab.key || 'all'}
-              type="button"
-              onClick={() => setStatus(tab.key)}
-              aria-pressed={active}
-              aria-label={`筛选：${tab.label}`}
-              className={`-mb-px border-b-2 px-4 py-2 text-sm transition-colors ${
-                active
-                  ? 'border-slate-800 font-medium text-slate-900 dark:border-slate-200 dark:text-slate-100'
-                  : 'border-transparent text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          )
-        })}
+      {/* 状态 tab — transitions.dev t-tabs */}
+      <div className="mt-6 flex items-center gap-2">
+        <div ref={tabsRef} className="t-tabs" role="tablist">
+          <span ref={pillRef} className="t-tabs-pill" aria-hidden="true" />
+          {TABS.map((tab) => {
+            const active = status === tab.key
+            return (
+              <button
+                key={tab.key || 'all'}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => handleTabClick(tab)}
+                className="t-tab"
+              >
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
         <button
           type="button"
           className={`ml-auto ${buttonGhostClass}`}
