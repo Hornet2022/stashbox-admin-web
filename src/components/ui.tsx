@@ -211,7 +211,7 @@ export function Badge({ value }: { value?: string | null }) {
           : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'
 
   return (
-    <span className={`inline-block rounded px-2 py-0.5 text-xs ${tone}`}>
+    <span role="status" className={`inline-block rounded px-2 py-0.5 text-xs ${tone}`}>
       {text}
     </span>
   )

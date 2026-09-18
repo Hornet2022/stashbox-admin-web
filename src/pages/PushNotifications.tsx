@@ -118,7 +118,7 @@ export function PushNotifications() {
           <thead className={theadClass}>
             <tr>
               {columns.map((col) => (
-                <th key={col} className={thClass}>
+                <th key={col} scope="col" className={thClass}>
                   {col}
                 </th>
               ))}
