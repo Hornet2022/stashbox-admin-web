@@ -7,6 +7,7 @@ import {
 } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
+import { useRole, hasPermission } from '../hooks/useRole'
 import { toast } from '../store/toast'
 import {
   Badge,
@@ -64,6 +65,8 @@ function renderTags(tags: ArticleRow['tags']): string {
 type ActionKind = 'retry' | 'invalidate'
 
 export function Articles() {
+  const role = useRole()
+  const canOperate = hasPermission(role, ['super_admin', 'operator'])
   const [status, setStatus] = useState('')
   const [tag, setTag] = useState('')
   const [appliedTag, setAppliedTag] = useState('')
@@ -257,24 +260,28 @@ export function Articles() {
                       {formatTime(article.created_at)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          className={buttonGhostClass}
-                          onClick={() => openModal('retry', article)}
-                        >
-                          强制重试
-                        </button>
-                        <button
-                          type="button"
-                          className={buttonGhostClass}
-                          disabled={!hasAudio}
-                          title={hasAudio ? '' : '该文章没有关联音频'}
-                          onClick={() => openModal('invalidate', article)}
-                        >
-                          失效音频
-                        </button>
-                      </div>
+                      {canOperate ? (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            className={buttonGhostClass}
+                            onClick={() => openModal('retry', article)}
+                          >
+                            强制重试
+                          </button>
+                          <button
+                            type="button"
+                            className={buttonGhostClass}
+                            disabled={!hasAudio}
+                            title={hasAudio ? '' : '该文章没有关联音频'}
+                            onClick={() => openModal('invalidate', article)}
+                          >
+                            失效音频
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
                     </td>
                   </tr>
                 )

@@ -1,7 +1,9 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { adjustQuota, downloadCsv, listUsers } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
+import { useRole } from '../hooks/useRole'
 import { toast } from '../store/toast'
 import {
   Badge,
@@ -49,6 +51,17 @@ const TIERS = ['', 'free', 'pro', 'max']
 const STATUSES = ['', 'active', 'suspended', 'deleted']
 
 export function Users() {
+  const role = useRole()
+  const navigate = useNavigate()
+
+  // 路由守卫：只对 super_admin 开放
+  useEffect(() => {
+    if (role !== null && role !== 'super_admin') {
+      toast('权限不足，仅 super_admin 可访问用户管理', 'error')
+      navigate('/dashboard', { replace: true })
+    }
+  }, [role, navigate])
+
   const [keyword, setKeyword] = useState('')
   const [tier, setTier] = useState('')
   const [status, setStatus] = useState('')

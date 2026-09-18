@@ -1,22 +1,35 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useRole } from '../hooks/useRole'
+import type { AdminRole } from '../types'
 
 export interface NavItem {
   path: string
   label: string
+  minRole?: AdminRole
 }
 
 /** 侧边栏导航项 —— 与 App.tsx 路由一一对应 */
 export const navItems: NavItem[] = [
   { path: '/dashboard', label: '总览' },
-  { path: '/users', label: '用户管理' },
+  { path: '/users', label: '用户管理', minRole: 'super_admin' as AdminRole },
   { path: '/tags', label: '标签管理' },
   { path: '/articles', label: '文章管理' },
   { path: '/push-notifications', label: '推送队列' },
-  { path: '/audit-log', label: '审计日志' },
+  { path: '/audit-log', label: '审计日志', minRole: 'super_admin' as AdminRole },
 ]
+
+function visibleItems(role: AdminRole | null): NavItem[] {
+  if (!role) return navItems.filter((item) => !('minRole' in item && item.minRole))
+  return navItems.filter((item) => {
+    if (!('minRole' in item)) return true
+    return item.minRole === 'super_admin' && role === 'super_admin'
+  })
+}
 
 export function Sidebar() {
   const location = useLocation()
+  const role = useRole()
+  const items = visibleItems(role)
 
   return (
     <aside className="flex w-56 shrink-0 flex-col bg-slate-800 text-white dark:border-r dark:border-slate-700 dark:bg-slate-900">
@@ -24,7 +37,7 @@ export function Sidebar() {
         stashbox-admin
       </div>
       <nav className="mt-2 flex-1">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const active = location.pathname === item.path
           return (
             <Link

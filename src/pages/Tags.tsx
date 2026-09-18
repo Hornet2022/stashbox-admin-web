@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { createTag, downloadCsv, listTags } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
+import { useRole, hasPermission } from '../hooks/useRole'
 import { toast } from '../store/toast'
 import {
   EmptyRow,
@@ -33,6 +34,8 @@ import {
 const columns = ['ID', '名称', '描述', '订阅数', '创建时间']
 
 export function Tags() {
+  const role = useRole()
+  const canOperate = hasPermission(role, ['super_admin', 'operator'])
   const { data, loading, error, missing, reload } = useApi(listTags, 'tags')
 
   const [open, setOpen] = useState(false)
@@ -99,13 +102,15 @@ export function Tags() {
           <button type="button" className={buttonGhostClass} onClick={handleExportSubscriptions}>
             导出订阅
           </button>
-          <button
-            type="button"
-            className={buttonPrimaryClass}
-            onClick={() => setOpen(true)}
-          >
-            新增标签
-          </button>
+          {canOperate && (
+            <button
+              type="button"
+              className={buttonPrimaryClass}
+              onClick={() => setOpen(true)}
+            >
+              新增标签
+            </button>
+          )}
         </div>
       </div>
 
