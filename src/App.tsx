@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { AuthGuard } from './components/AuthGuard'
@@ -6,15 +7,34 @@ import { ToastContainer } from './components/Toast'
 import { Modal } from './components/ui'
 import { SHORTCUTS, useShortcuts, useShortcutsHelp } from './hooks/useShortcuts'
 import { Login } from './pages/Login'
-import { Dashboard } from './pages/Dashboard'
-import { Users } from './pages/Users'
-import { Tags } from './pages/Tags'
-import { Articles } from './pages/Articles'
-import { PushNotifications } from './pages/PushNotifications'
-import { AuditLog } from './pages/AuditLog'
+
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Users = lazy(() => import('./pages/Users'))
+const Tags = lazy(() => import('./pages/Tags'))
+const Articles = lazy(() => import('./pages/Articles'))
+const PushNotifications = lazy(() => import('./pages/PushNotifications'))
+const AuditLog = lazy(() => import('./pages/AuditLog'))
+
+/** Route-level loading fallback */
+function PageSkeleton() {
+  return (
+    <div className="space-y-4 p-6">
+      <div className="h-8 w-48 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
+      <div className="h-4 w-72 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
+      <div className="mt-6 space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-12 animate-pulse rounded bg-gray-100 dark:bg-slate-800"
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
 
 /**
- * 快捷键层 —— 注册全局键盘监听 + 渲染 “?” 帮助弹窗。
+ * 快捷键层 —— 注册全局键盘监听 + 渲染 "?" 帮助弹窗。
  *
  * 必须在 BrowserRouter 内部（useShortcuts 依赖 useNavigate）。
  */
@@ -55,7 +75,9 @@ function App() {
               path="dashboard"
               element={
                 <AuthGuard>
-                  <Dashboard />
+                  <Suspense fallback={<PageSkeleton />}>
+                    <Dashboard />
+                  </Suspense>
                 </AuthGuard>
               }
             />
@@ -63,7 +85,9 @@ function App() {
               path="users"
               element={
                 <AuthGuard>
-                  <Users />
+                  <Suspense fallback={<PageSkeleton />}>
+                    <Users />
+                  </Suspense>
                 </AuthGuard>
               }
             />
@@ -71,7 +95,9 @@ function App() {
               path="tags"
               element={
                 <AuthGuard>
-                  <Tags />
+                  <Suspense fallback={<PageSkeleton />}>
+                    <Tags />
+                  </Suspense>
                 </AuthGuard>
               }
             />
@@ -79,7 +105,9 @@ function App() {
               path="articles"
               element={
                 <AuthGuard>
-                  <Articles />
+                  <Suspense fallback={<PageSkeleton />}>
+                    <Articles />
+                  </Suspense>
                 </AuthGuard>
               }
             />
@@ -87,7 +115,9 @@ function App() {
               path="push-notifications"
               element={
                 <AuthGuard>
-                  <PushNotifications />
+                  <Suspense fallback={<PageSkeleton />}>
+                    <PushNotifications />
+                  </Suspense>
                 </AuthGuard>
               }
             />
@@ -95,7 +125,9 @@ function App() {
               path="audit-log"
               element={
                 <AuthGuard>
-                  <AuditLog />
+                  <Suspense fallback={<PageSkeleton />}>
+                    <AuditLog />
+                  </Suspense>
                 </AuthGuard>
               }
             />
