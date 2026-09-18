@@ -91,9 +91,7 @@ export function Dashboard() {
           <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">
             近 7 天用户增长
           </h2>
-          <span className="text-xs text-gray-400 dark:text-slate-500">
-            mock 数据（趋势端点待上线）
-          </span>
+          {/* TODO (@admin): 趋势端点上生产线后替换为真实 API，移除 mock 数据 */}
         </div>
         <div className="mt-4 h-72">
           {loading ? (
