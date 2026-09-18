@@ -134,9 +134,10 @@ export async function listTags(): Promise<ListResult<TagRow>> {
 
 export async function createTag(
   name: string,
-  description?: string,
+  category: string = 'subject',
 ): Promise<void> {
-  await apiClient.post('/api/v1/tags', { name, description })
+  const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 64) || 'tag'
+  await apiClient.post('/api/v1/tags', { slug, name, category })
 }
 
 /* --------------------------------- 推送队列 ------------------------------- */

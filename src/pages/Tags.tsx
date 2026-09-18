@@ -72,7 +72,7 @@ export function Tags() {
     setSubmitting(true)
     setModalError(null)
     try {
-      await createTag(name.trim(), description.trim() || undefined)
+      await createTag(name.trim())
       toast(`标签「${name.trim()}」已创建`, 'success')
       setName('')
       setDescription('')
