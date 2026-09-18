@@ -4,12 +4,12 @@ import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
 import { useRole, hasPermission } from '../hooks/useRole'
 import { toast } from '../store/toast'
+import { Drawer } from 'vaul'
 import {
   EmptyRow,
   ErrorNotice,
   Field,
   TableSkeleton,
-  Modal,
   buttonGhostClass,
   buttonPrimaryClass,
   cellMutedClass,
@@ -157,46 +157,64 @@ export function Tags() {
         <p className={footerCountClass}>共 {data?.total ?? rows.length} 条</p>
       )}
 
-      <Modal open={open} title="新增标签" onClose={closeModal}>
-        <form className="space-y-4" onSubmit={handleCreate}>
-          <Field label="名称">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="如：machine-learning"
-              className={inputClass}
-            />
-          </Field>
-          <Field label="描述（可选）">
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className={inputClass}
-            />
-          </Field>
+      <Drawer.Root open={open} onOpenChange={(o) => !o && closeModal()}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+          <Drawer.Content className="fixed bottom-0 right-0 top-0 z-50 flex flex-col bg-white dark:bg-slate-800 outline-none">
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-slate-700">
+              <Drawer.Title className="text-base font-semibold text-gray-900 dark:text-slate-100">
+                新增标签
+              </Drawer.Title>
+              <button
+                type="button"
+                onClick={closeModal}
+                className="text-gray-400 hover:text-gray-700 dark:text-slate-500 dark:hover:text-slate-200"
+                aria-label="关闭"
+              >
+                ✕
+              </button>
+            </div>
+            <form className="flex-1 overflow-y-auto px-5 py-4 space-y-4" onSubmit={handleCreate}>
+              <Field label="名称">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="如：machine-learning"
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="描述（可选）">
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className={inputClass}
+                />
+              </Field>
 
-          {modalError && (
-            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
-              {modalError}
-            </p>
-          )}
+              {modalError && (
+                <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+                  {modalError}
+                </p>
+              )}
 
-          <div className="flex justify-end gap-2">
-            <button type="button" className={buttonGhostClass} onClick={closeModal}>
-              取消
-            </button>
-            <button
-              type="submit"
-              className={buttonPrimaryClass}
-              disabled={submitting}
-            >
-              {submitting ? '提交中…' : '创建'}
-            </button>
-          </div>
-        </form>
-      </Modal>
+              <div className="flex justify-end gap-2 pt-4">
+                <button type="button" className={buttonGhostClass} onClick={closeModal}>
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className={buttonPrimaryClass}
+                  disabled={submitting}
+                >
+                  {submitting ? '提交中…' : '创建'}
+                </button>
+              </div>
+            </form>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
     </div>
   )
 }
