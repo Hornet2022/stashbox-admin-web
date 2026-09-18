@@ -198,16 +198,17 @@ export function Articles() {
             数据源：GET /api/v1/articles ｜ 操作：force-retry / audio-invalidate
           </p>
         </div>
-        <button type="button" className={buttonGhostClass} onClick={handleExportArticles}>
+        <button type="button" className={buttonGhostClass} onClick={handleExportArticles} aria-label="导出文章 CSV">
           导出 CSV
         </button>
-        <button type="button" className={buttonGhostClass} onClick={handleExportFeedback}>
+        <button type="button" className={buttonGhostClass} onClick={handleExportFeedback} aria-label="导出用户反馈 CSV">
           导出反馈
         </button>
         <button
           type="button"
           className={buttonPrimaryClass}
           onClick={() => setCreateOpen(true)}
+          aria-label="新建文章"
         >
           + 新建文章
         </button>
@@ -246,7 +247,7 @@ export function Articles() {
             />
           </Field>
         </div>
-        <button type="submit" className={buttonPrimaryClass}>
+        <button type="submit" className={buttonPrimaryClass} aria-label="应用筛选">
           筛选
         </button>
         <button
@@ -257,10 +258,11 @@ export function Articles() {
             setTag('')
             setAppliedTag('')
           }}
+          aria-label="重置筛选条件"
         >
           重置
         </button>
-        <button type="button" className={buttonGhostClass} onClick={reload}>
+        <button type="button" className={buttonGhostClass} onClick={reload} aria-label="刷新列表">
           刷新
         </button>
       </form>
@@ -315,6 +317,7 @@ export function Articles() {
                             type="button"
                             className={buttonGhostClass}
                             onClick={() => openModal('retry', article)}
+                            aria-label={`强制重试文章 ${article.id}`}
                           >
                             强制重试
                           </button>
@@ -324,6 +327,7 @@ export function Articles() {
                             disabled={!hasAudio}
                             title={hasAudio ? '' : '该文章没有关联音频'}
                             onClick={() => openModal('invalidate', article)}
+                            aria-label={`失效文章 ${article.id} 的音频`}
                           >
                             失效音频
                           </button>
@@ -374,13 +378,14 @@ export function Articles() {
           )}
 
           <div className="flex justify-end gap-2">
-            <button type="button" className={buttonGhostClass} onClick={closeModal}>
+            <button type="button" className={buttonGhostClass} onClick={closeModal} aria-label="取消操作">
               取消
             </button>
             <button
               type="submit"
               className={buttonPrimaryClass}
               disabled={submitting}
+              aria-label="确认提交"
             >
               {submitting ? '提交中…' : '确认'}
             </button>
@@ -425,13 +430,14 @@ export function Articles() {
           )}
 
           <div className="flex justify-end gap-2">
-            <button type="button" className={buttonGhostClass} onClick={closeCreateModal}>
+            <button type="button" className={buttonGhostClass} onClick={closeCreateModal} aria-label="取消新建">
               取消
             </button>
             <button
               type="submit"
               className={buttonPrimaryClass}
               disabled={createSubmitting}
+              aria-label="确认创建文章"
             >
               {createSubmitting ? '提交中…' : '创建'}
             </button>
