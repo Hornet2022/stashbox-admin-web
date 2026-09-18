@@ -4,7 +4,11 @@ import { useAuthStore } from '../store/auth'
 import { useThemeStore } from '../store/theme'
 import { useShortcutsHelp } from '../hooks/useShortcuts'
 
-export function Header() {
+interface HeaderProps {
+  onMenuToggle?: () => void
+}
+
+export function Header({ onMenuToggle }: HeaderProps) {
   const navigate = useNavigate()
   const role = useAuthStore((s) => s.role)
   const clearAuth = useAuthStore((s) => s.clearAuth)
@@ -22,10 +26,23 @@ export function Header() {
   const isDark = theme === 'dark'
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6 dark:border-slate-700 dark:bg-slate-900">
-      <span className="text-sm text-gray-500 dark:text-slate-400">
-        运营管理后台
-      </span>
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 md:px-6 dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex items-center gap-3">
+        {/* Mobile hamburger — only visible on small screens */}
+        <button
+          type="button"
+          onClick={onMenuToggle}
+          aria-label="打开导航菜单"
+          className="md:hidden rounded p-1 text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800"
+        >
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <span className="text-sm text-gray-500 dark:text-slate-400">
+          运营管理后台
+        </span>
+      </div>
       <div className="flex items-center gap-4">
         <button
           type="button"
