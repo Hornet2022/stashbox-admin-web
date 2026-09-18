@@ -46,10 +46,11 @@ function normalizeList<T>(payload: unknown): ListResult<T> {
       items?: T[]
       list?: T[]
       records?: T[]
+      tags?: T[]
       total?: number
       count?: number
     }
-    const items = obj.items ?? obj.list ?? obj.records ?? []
+    const items = obj.items ?? obj.list ?? obj.records ?? obj.tags ?? []
     return { items, total: obj.total ?? obj.count ?? items.length }
   }
 
