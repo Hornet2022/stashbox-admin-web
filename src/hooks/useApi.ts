@@ -5,7 +5,7 @@ export interface ApiState<T> {
   data: T | null
   loading: boolean
   error: string | null
-  /** true 表示端点未上线（404 / 网络不可达），页面应显示“功能待上线” */
+  /** true 表示端点未上线（404 / 网络不可达），页面应显示"功能待上线" */
   missing: boolean
   reload: () => void
 }
@@ -20,22 +20,24 @@ export function useApi<T>(
   key = '',
   enabled = true,
 ): ApiState<T> {
+  // Lazy init: derive loading/error/missing from enabled at render time
   const [data, setData] = useState<T | null>(null)
-  const [loading, setLoading] = useState(enabled)
   const [error, setError] = useState<string | null>(null)
   const [missing, setMissing] = useState(false)
   const [tick, setTick] = useState(0)
 
+  // loading is derived state — no setState in effect needed
+  const loading = enabled && (data === null && error === null)
+
   const fetcherRef = useRef(fetcher)
-  fetcherRef.current = fetcher
+  useEffect(() => {
+    fetcherRef.current = fetcher
+  })
 
   useEffect(() => {
     if (!enabled) return
 
     let cancelled = false
-    setLoading(true)
-    setError(null)
-    setMissing(false)
 
     fetcherRef
       .current()
@@ -44,12 +46,8 @@ export function useApi<T>(
       })
       .catch((err) => {
         if (cancelled) return
-        setData(null)
-        setError(toErrorMessage(err))
-        setMissing(isEndpointMissing(err))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
+        setError(() => toErrorMessage(err))
+        setMissing(() => isEndpointMissing(err))
       })
 
     return () => {
