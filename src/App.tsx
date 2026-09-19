@@ -14,6 +14,7 @@ const Tags = lazy(() => import('./pages/Tags'))
 const Articles = lazy(() => import('./pages/Articles'))
 const PushNotifications = lazy(() => import('./pages/PushNotifications'))
 const AuditLog = lazy(() => import('./pages/AuditLog'))
+const LlmSettings = lazy(() => import('./pages/LlmSettings'))
 
 /** Route-level loading fallback */
 function PageSkeleton() {
@@ -148,6 +149,16 @@ function App() {
                 <AuthGuard>
                   <Suspense fallback={<PageSkeleton />}>
                     <AuditLog />
+                  </Suspense>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="settings/llm"
+              element={
+                <AuthGuard>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <LlmSettings />
                   </Suspense>
                 </AuthGuard>
               }

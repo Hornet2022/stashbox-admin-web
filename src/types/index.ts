@@ -99,3 +99,24 @@ export interface ListResult<T> {
   items: T[]
   total: number
 }
+
+/** GET / PUT /api/v1/admin/llm/config 响应（api_key 只吐 set/last4） */
+export interface LlmConfig {
+  provider: string
+  model: string
+  api_key_set: boolean
+  api_key_last4?: string | null
+  base_url?: string | null
+  /** db = system_config 表里配了；env = 回落环境变量/默认值 */
+  source?: string | null
+  updated_at?: string | null
+}
+
+/** GET /api/v1/admin/llm/test 响应 */
+export interface LlmTestResult {
+  provider: string
+  model?: string | null
+  text?: string | null
+  ok: boolean
+  error?: string | null
+}

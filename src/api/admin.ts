@@ -3,6 +3,8 @@ import type {
   ArticleRow,
   AuditLogRow,
   DashboardStats,
+  LlmConfig,
+  LlmTestResult,
   ListResult,
   PageParams,
   PushNotificationRow,
@@ -176,6 +178,51 @@ export async function getStats(): Promise<DashboardStats> {
     active_audio_files: stats?.active_audio_files ?? 0,
     failed_distillations_24h: stats?.failed_distillations_24h ?? 0,
   }
+}
+
+/* --------------------------------- LLM 配置 -------------------------------- */
+
+/**
+ * LLM 配置端点走同源。
+ *
+ * CP7.3 的 /api/v1/admin/llm/* 还没挂进 api-gateway 路由表（8100 会返回
+ * "no downstream route"），且 content-service 自己没装 CORS 中间件，
+ * 浏览器直连 8202 会被 CORS 拦掉。所以 dev 期间由 vite dev server 把
+ * /api/v1/admin/llm/* 代理到 content-service（见 vite.config.ts）；
+ * 生产环境由同源 nginx 代理同一组路径，可用 VITE_LLM_API_BASE_URL 覆盖。
+ *
+ * 请求仍然走同一个 apiClient —— Authorization 注入、401 跳登录、错误 toast
+ * 那些拦截器照旧生效。等网关补上路由后把这里的 baseURL 覆盖去掉即可。
+ */
+export const LLM_API_BASE_URL = import.meta.env.VITE_LLM_API_BASE_URL ?? ''
+
+/** GET /api/v1/admin/llm/config */
+export async function getLlmConfig(): Promise<LlmConfig> {
+  const { data } = await apiClient.get('/api/v1/admin/llm/config', {
+    baseURL: LLM_API_BASE_URL,
+  })
+  return unwrap<LlmConfig>(data)
+}
+
+/** PUT /api/v1/admin/llm/config —— api_key 留空表示不改动已存的那把 key */
+export async function updateLlmConfig(payload: {
+  provider: string
+  model: string
+  api_key?: string
+  base_url?: string
+}): Promise<LlmConfig> {
+  const { data } = await apiClient.put('/api/v1/admin/llm/config', payload, {
+    baseURL: LLM_API_BASE_URL,
+  })
+  return unwrap<LlmConfig>(data)
+}
+
+/** GET /api/v1/admin/llm/test —— 用当前生效的 client 发一次 chat() */
+export async function testLlm(): Promise<LlmTestResult> {
+  const { data } = await apiClient.get('/api/v1/admin/llm/test', {
+    baseURL: LLM_API_BASE_URL,
+  })
+  return unwrap<LlmTestResult>(data)
 }
 
 /* --------------------------------- CSV 导出 -------------------------------- */
