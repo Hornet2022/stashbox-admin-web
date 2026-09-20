@@ -160,6 +160,8 @@ export async function listAuditLog(
     size?: number
     actor_id?: number | string
     action_type?: string
+    from?: string
+    to?: string
   } = {},
 ): Promise<ListResult<AuditLogRow>> {
   const { data } = await apiClient.get('/api/v1/admin/audit-log', { params })
