@@ -27,11 +27,12 @@ import type { LlmTestResult } from '../types'
  * LLM 配置页（CP7.3）—— GET/PUT /api/v1/admin/llm/config + GET /admin/llm/test。
  */
 
-const PROVIDERS = ['mock', 'openai'] as const
+const PROVIDERS = ['mock', 'openai', 'qwen_vl'] as const
 
 const MODEL_PLACEHOLDER: Record<string, string> = {
   mock: 'mock（任意字符串，不真调用）',
   openai: '如 gpt-4o-mini / gpt-4o',
+  qwen_vl: '如 qwen3.6-flash',
 }
 
 /** 卡片容器 —— 复用表格卡片的边框/圆角观感 */
@@ -79,6 +80,7 @@ export function LlmSettings() {
         model: model.trim(),
         ...(apiKey ? { api_key: apiKey } : {}),
         ...(provider === 'openai' && baseUrl.trim() ? { base_url: baseUrl.trim() } : {}),
+        ...(provider === 'qwen_vl' && baseUrl.trim() ? { base_url: baseUrl.trim() } : {}),
       })
       toast('保存成功', 'success')
       setApiKey('')
@@ -221,6 +223,18 @@ export function LlmSettings() {
                   value={baseUrl}
                   onChange={(e) => setBaseUrl(e.target.value)}
                   placeholder="https://api.openai.com/v1"
+                  className={`t-input ${inputClass}`}
+                />
+              </Field>
+            )}
+
+            {provider === 'qwen_vl' && (
+              <Field label="Base URL（Token Plan 团队版）">
+                <input
+                  type="text"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                  placeholder="https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
                   className={`t-input ${inputClass}`}
                 />
               </Field>
