@@ -32,15 +32,21 @@ const columns = ['ID', '操作人 ID', '动作', '对象类型', '对象 ID', '�
 export function AuditLog() {
   const [actorDraft, setActorDraft] = useState('')
   const [actionDraft, setActionDraft] = useState('')
+  const [fromDraft, setFromDraft] = useState('')
+  const [toDraft, setToDraft] = useState('')
   const [actorId, setActorId] = useState('')
   const [actionType, setActionType] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
 
-  const queryKey = `${actorId}|${actionType}`
+  const queryKey = `${actorId}|${actionType}|${from}|${to}`
   const { data, loading, error, missing, reload } = useApi(
     () =>
       listAuditLog({
         actor_id: actorId || undefined,
         action_type: actionType || undefined,
+        from: from || undefined,
+        to: to || undefined,
         page: 1,
         size: 50,
       }),
@@ -51,6 +57,8 @@ export function AuditLog() {
     e.preventDefault()
     setActorId(actorDraft.trim())
     setActionType(actionDraft.trim())
+    setFrom(fromDraft.trim())
+    setTo(toDraft.trim())
   }
 
   /** CSV 导出：走 window.location 触发浏览器原生下载 */
@@ -96,6 +104,26 @@ export function AuditLog() {
             />
           </Field>
         </div>
+        <div className="w-52">
+          <Field label="开始时间">
+            <input
+              type="datetime-local"
+              value={fromDraft}
+              onChange={(e) => setFromDraft(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+        </div>
+        <div className="w-52">
+          <Field label="结束时间">
+            <input
+              type="datetime-local"
+              value={toDraft}
+              onChange={(e) => setToDraft(e.target.value)}
+              className={inputClass}
+            />
+          </Field>
+        </div>
         <button type="submit" className={buttonPrimaryClass}>
           过滤
         </button>
@@ -105,8 +133,12 @@ export function AuditLog() {
           onClick={() => {
             setActorDraft('')
             setActionDraft('')
+            setFromDraft('')
+            setToDraft('')
             setActorId('')
             setActionType('')
+            setFrom('')
+            setTo('')
           }}
         >
           重置
