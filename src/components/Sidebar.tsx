@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import {
+  BarChart3,
   LayoutDashboard,
   Users,
   Tags,
@@ -26,7 +27,8 @@ export const navItems: NavItem[] = [
   { path: '/articles',           label: '文章管理',      icon: <FileText size={16} /> },
   { path: '/push-notifications',  label: '推送队列',      icon: <Bell size={16} /> },
   { path: '/audit-log',           label: '审计日志',      icon: <ClipboardList size={16} />, minRole: 'super_admin' as AdminRole },
-  { path: '/settings/llm',        label: 'LLM 配置',     icon: <Settings size={16} /> },
+  { path: '/distill-metrics',     label: '蒸馏耗时',      icon: <BarChart3 size={16} /> },
+  { path: '/settings/llm',       label: 'LLM 配置',     icon: <Settings size={16} /> },
 ]
 
 function visibleItems(role: AdminRole | null): NavItem[] {

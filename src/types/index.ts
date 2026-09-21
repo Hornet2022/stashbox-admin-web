@@ -120,3 +120,17 @@ export interface LlmTestResult {
   ok: boolean
   error?: string | null
 }
+
+/** 蒸馏 P95 响应 — GET /api/v1/admin/distill-p95 */
+export interface DistillStepPercentiles {
+  p50: number | null
+  p95: number | null
+  p99: number | null
+}
+
+export interface DistillP95Response {
+  cached: boolean
+  by_step: Record<string, DistillStepPercentiles>
+  overall: DistillStepPercentiles
+  error?: string
+}

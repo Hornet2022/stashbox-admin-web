@@ -15,6 +15,7 @@ const Articles = lazy(() => import('./pages/Articles'))
 const PushNotifications = lazy(() => import('./pages/PushNotifications'))
 const AuditLog = lazy(() => import('./pages/AuditLog'))
 const LlmSettings = lazy(() => import('./pages/LlmSettings'))
+const DistillMetrics = lazy(() => import('./pages/DistillMetrics'))
 
 /** Route-level loading fallback */
 function PageSkeleton() {
@@ -149,6 +150,16 @@ function App() {
                 <AuthGuard>
                   <Suspense fallback={<PageSkeleton />}>
                     <AuditLog />
+                  </Suspense>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="distill-metrics"
+              element={
+                <AuthGuard>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <DistillMetrics />
                   </Suspense>
                 </AuthGuard>
               }

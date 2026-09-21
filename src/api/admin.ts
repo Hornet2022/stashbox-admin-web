@@ -3,6 +3,7 @@ import type {
   ArticleRow,
   AuditLogRow,
   DashboardStats,
+  DistillP95Response,
   LlmConfig,
   LlmTestResult,
   ListResult,
@@ -180,6 +181,13 @@ export async function getStats(): Promise<DashboardStats> {
     active_audio_files: stats?.active_audio_files ?? 0,
     failed_distillations_24h: stats?.failed_distillations_24h ?? 0,
   }
+}
+
+/* ----------------------------- 蒸馏耗时 P95 -------------------------------- */
+
+export async function getDistillP95(): Promise<DistillP95Response> {
+  const { data } = await apiClient.get('/api/v1/admin/distill-p95')
+  return unwrap<DistillP95Response>(data)
 }
 
 /* --------------------------------- LLM 配置 -------------------------------- */
