@@ -27,10 +27,9 @@ import type { LlmTestResult } from '../types'
  * LLM 配置页（CP7.3）—— GET/PUT /api/v1/admin/llm/config + GET /admin/llm/test。
  */
 
-const PROVIDERS = ['mock', 'openai', 'qwen_vl'] as const
+const PROVIDERS = ['openai', 'qwen_vl'] as const
 
 const MODEL_PLACEHOLDER: Record<string, string> = {
-  mock: 'mock（任意字符串，不真调用）',
   openai: '如 gpt-4o-mini / gpt-4o',
   qwen_vl: '如 qwen3.6-flash',
 }
@@ -47,7 +46,7 @@ const ddStrongClass = 'text-sm font-medium text-ink dark:text-neutral-100'
 export function LlmSettings() {
   const { data, loading, error, missing, reload } = useApi(getLlmConfig, 'llm-config')
 
-  const [provider, setProvider] = useState('mock')
+  const [provider, setProvider] = useState('openai')
   const [model, setModel] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
@@ -60,7 +59,7 @@ export function LlmSettings() {
   /** 服务端配置落地后同步进表单（刷新页面也要看到 DB 里的值） */
   useEffect(() => {
     if (!data) return
-    setProvider(data.provider || 'mock')
+    setProvider(data.provider || 'openai')
     setModel(data.model ?? '')
     setBaseUrl(data.base_url ?? '')
     setApiKey('')

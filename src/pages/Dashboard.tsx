@@ -1,12 +1,3 @@
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { getStats } from '../api/admin'
 import { useApi } from '../hooks/useApi'
 import { ErrorNotice, Skeleton, pageHintClass, pageTitleClass } from '../components/ui'
@@ -15,8 +6,8 @@ import type { DashboardStats } from '../types'
 /**
  * 总览页 —— 接 GET /api/v1/admin/stats（CP3.6-A3）。
  *
- * 5 个指标卡 + 1 条 7 天用户增长折线图。
- * 用户增长趋势端点尚未提供，先用 mock 数据占位（图表结构已就绪）。
+ * 5 个指标卡。「近 7 天用户增长」趋势端点尚未提供，暂以占位提示呈现，
+ * 待 CP 后续接入真实增长数据后再渲染折线图。
  */
 
 const statCards: { label: string; field: keyof DashboardStats; hint: string }[] = [
@@ -31,28 +22,8 @@ const statCards: { label: string; field: keyof DashboardStats; hint: string }[] 
   },
 ]
 
-/** 7 天用户增长（mock —— 趋势端点待上线） */
-const growthMock = [
-  { day: '09-11', users: 120 },
-  { day: '09-12', users: 138 },
-  { day: '09-13', users: 151 },
-  { day: '09-14', users: 149 },
-  { day: '09-15', users: 176 },
-  { day: '09-16', users: 194 },
-  { day: '09-17', users: 213 },
-]
-
-/** 图表配色随主题切换 */
-const chartColors = {
-  light: { grid: '#E8E4DD', axis: '#8C8680', line: '#1A1A1A' },
-  dark: { grid: '#353129', axis: '#8C8680', line: '#E8E4DD' },
-}
-
 export function Dashboard() {
   const { data, loading, error, missing, reload } = useApi(getStats, 'stats')
-
-  const isDark = document.documentElement.classList.contains('dark')
-  const activeColors = isDark ? chartColors.dark : chartColors.light
 
   return (
     <div>
@@ -92,41 +63,8 @@ export function Dashboard() {
             近 7 天用户增长
           </h2>
         </div>
-        <div className="mt-4 h-72">
-          {loading ? (
-            <div className="flex h-full items-end gap-3">
-              {[40, 55, 48, 62, 70, 80, 92].map((height, i) => (
-                <div
-                  key={i}
-                  className="flex-1"
-                  style={{ height: `${height}%` }}
-                >
-                  <Skeleton className="h-full w-full" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={growthMock}>
-                <CartesianGrid strokeDasharray="3 3" stroke={activeColors.grid} />
-                <XAxis
-                  dataKey="day"
-                  tick={{ fontSize: 12 }}
-                  stroke={activeColors.axis}
-                />
-                <YAxis tick={{ fontSize: 12 }} stroke={activeColors.axis} />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="users"
-                  name="用户数"
-                  stroke={activeColors.line}
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
+        <div className="mt-4 flex h-72 items-center justify-center rounded-md border border-dashed border-neutral-300 text-sm text-neutral-400 dark:border-neutral-600 dark:text-neutral-500">
+          用户增长趋势端点待上线，接入真实数据后展示
         </div>
       </div>
     </div>
