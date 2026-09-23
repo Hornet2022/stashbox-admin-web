@@ -15,6 +15,7 @@ const Articles = lazy(() => import('./pages/Articles'))
 const PushNotifications = lazy(() => import('./pages/PushNotifications'))
 const AuditLog = lazy(() => import('./pages/AuditLog'))
 const LlmSettings = lazy(() => import('./pages/LlmSettings'))
+const TtsSettings = lazy(() => import('./pages/TtsSettings'))
 const DistillMetrics = lazy(() => import('./pages/DistillMetrics'))
 
 /** Route-level loading fallback */
@@ -170,6 +171,16 @@ function App() {
                 <AuthGuard>
                   <Suspense fallback={<PageSkeleton />}>
                     <LlmSettings />
+                  </Suspense>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="settings/tts"
+              element={
+                <AuthGuard>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <TtsSettings />
                   </Suspense>
                 </AuthGuard>
               }

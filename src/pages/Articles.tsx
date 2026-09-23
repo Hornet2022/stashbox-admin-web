@@ -1,6 +1,7 @@
 import { useState, useRef, type FormEvent } from 'react'
 import {
   createArticle,
+  deleteAdminArticle,
   downloadCsv,
   forceRetryArticle,
   invalidateAudio,
@@ -53,7 +54,7 @@ const columns = [
   '操作',
 ]
 
-const STATUSES = ['', 'pending', 'processing', 'completed', 'failed']
+const STATUSES = ['', 'pending', 'distilling', 'ready', 'failed', 'listened']
 
 /** 标签字段兼容 string[] 与 {id,name}[] 两种形态 */
 function renderTags(tags: ArticleRow['tags']): string {
@@ -64,7 +65,7 @@ function renderTags(tags: ArticleRow['tags']): string {
     .join(', ')
 }
 
-type ActionKind = 'retry' | 'invalidate'
+type ActionKind = 'retry' | 'invalidate' | 'delete'
 
 export function Articles() {
   const role = useRole()
@@ -200,6 +201,12 @@ export function Articles() {
       if (action === 'retry') {
         await forceRetryArticle(target.id, reason.trim())
         toast(`已提交强制重试 · 文章 ${target.id}`, 'success')
+      } else if (action === 'delete') {
+        if (reason.trim().length < 5) {
+          throw new Error('删除原因至少 5 个字符（写入审计日志）')
+        }
+        await deleteAdminArticle(target.id, reason.trim())
+        toast(`已删除文章 ${target.id}（蒸馏结果与音频已一并清理）`, 'success')
       } else {
         if (target.audio_id === undefined || target.audio_id === null) {
           throw new Error('该文章没有关联音频，无法失效')
@@ -361,6 +368,15 @@ export function Articles() {
                           >
                             失效音频
                           </button>
+                          <button
+                            type="button"
+                            className={`${buttonGhostClass} border-error/40 text-error hover:bg-error/10 dark:text-red-300`}
+                            onClick={() => openModal('delete', article)}
+                            aria-label={`删除文章 ${article.id}`}
+                            title="硬删除：蒸馏结果 + 音频一并清理，不可恢复"
+                          >
+                            删除
+                          </button>
                         </div>
                       ) : (
                         <span className="text-neutral-400">—</span>
@@ -383,7 +399,9 @@ export function Articles() {
         title={
           action === 'retry'
             ? `强制重试 · 文章 ${target?.id ?? ''}`
-            : `失效音频 · 文章 ${target?.id ?? ''}`
+            : action === 'delete'
+              ? `删除文章 · ${target?.id ?? ''}`
+              : `失效音频 · 文章 ${target?.id ?? ''}`
         }
         onClose={closeModal}
       >
@@ -391,6 +409,12 @@ export function Articles() {
           <p className="truncate text-sm text-neutral-600 dark:text-neutral-300">
             {target?.title ?? ''}
           </p>
+          {action === 'delete' && (
+            <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+              硬删除：蒸馏结果、音频文件、收藏/稍后听/收听进度一并清除，
+              <strong>不可恢复</strong>；已消耗的生成配额不返还。
+            </p>
+          )}
           <Field label="操作原因">
             <textarea
               value={reason}
@@ -413,11 +437,19 @@ export function Articles() {
             </button>
             <button
               type="submit"
-              className={buttonPrimaryClass}
+              className={
+                action === 'delete'
+                  ? `${buttonPrimaryClass} border-error bg-error text-white hover:bg-red-700`
+                  : buttonPrimaryClass
+              }
               disabled={submitting}
               aria-label="确认提交"
             >
-              {submitting ? '提交中…' : '确认'}
+              {submitting
+                ? '提交中…'
+                : action === 'delete'
+                  ? '确认删除'
+                  : '确认'}
             </button>
           </div>
         </form>

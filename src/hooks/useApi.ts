@@ -38,6 +38,11 @@ export function useApi<T>(
     if (!enabled) return
 
     let cancelled = false
+    // CP-RELOAD-CLEAR：reload 触发（tick 变化）时清旧 data，避免 Skeleton 期间显示
+    // 过时的"当前配置"造成用户疑惑。error 也清，让 loading=true（derived）正常出现。
+    setData(null)
+    setError(null)
+    setMissing(false)
 
     fetcherRef
       .current()

@@ -1,5 +1,5 @@
 import { useState, useRef, type FormEvent } from 'react'
-import { createTag, downloadCsv, listTags } from '../api/admin'
+import { createTag, deleteAdminTag, downloadCsv, listTags } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
 import { useRole, hasPermission } from '../hooks/useRole'
@@ -25,12 +25,13 @@ import {
   theadClass,
 } from '../components/ui'
 import { formatNumber, formatTime } from '../utils'
+import type { TagRow } from '../types'
 
 /**
  * 标签管理页 —— GET /api/v1/tags + POST /api/v1/tags。
  */
 
-const columns = ['ID', '名称', '描述', '订阅数', '创建时间']
+const columns = ['ID', '名称', '描述', '订阅数', '创建时间', '操作']
 
 export function Tags() {
   const role = useRole()
@@ -43,6 +44,46 @@ export function Tags() {
   const [submitting, setSubmitting] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
+
+  // CP-DELETE：删除标签（确认弹窗 + 原因必填 ≥5 字符，与后端校验对齐）
+  const [deleteTarget, setDeleteTarget] = useState<TagRow | null>(null)
+  const [deleteReason, setDeleteReason] = useState('')
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const openDelete = (tag: TagRow) => {
+    setDeleteTarget(tag)
+    setDeleteReason('')
+    setDeleteError(null)
+  }
+
+  const closeDelete = () => {
+    setDeleteTarget(null)
+    setDeleteSubmitting(false)
+    setDeleteError(null)
+  }
+
+  const handleDelete = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!deleteTarget) return
+    if (deleteReason.trim().length < 5) {
+      setDeleteError('删除原因至少 5 个字符（会写入审计日志）')
+      return
+    }
+    setDeleteSubmitting(true)
+    setDeleteError(null)
+    try {
+      await deleteAdminTag(deleteTarget.id, deleteReason.trim())
+      toast(`已删除标签「${deleteTarget.name}」`, 'success')
+      closeDelete()
+      reload()
+    } catch (err) {
+      const message = toErrorMessage(err)
+      console.warn('[CP-DELETE] deleteTag failed:', message)
+      setDeleteError(message)
+      setDeleteSubmitting(false)
+    }
+  }
 
   const closeModal = () => {
     setOpen(false)
@@ -167,14 +208,41 @@ export function Tags() {
             ) : (
               rows.map((tag) => (
                 <tr key={tag.id} className={rowClass}>
-                  <td className={cellMutedClass}>{tag.id}</td>
-                  <td className={`${cellStrongClass} font-medium`}>{tag.name}</td>
+                  <td className={cellMutedClass}>{tag.slug ?? tag.id}</td>
+                  <td className={`${cellStrongClass} font-medium`}>
+                    {tag.name}
+                    {tag.is_system && (
+                      <span className="ml-2 rounded bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400">
+                        系统
+                      </span>
+                    )}
+                  </td>
                   <td className={cellTextClass}>{tag.description ?? '—'}</td>
                   <td className={cellTextClass}>
                     {formatNumber(tag.subscriber_count)}
                   </td>
                   <td className={`${cellMutedClass} whitespace-nowrap`}>
                     {formatTime(tag.created_at)}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {canOperate ? (
+                      <button
+                        type="button"
+                        className={`${buttonGhostClass} border-error/40 text-error hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-red-300`}
+                        disabled={tag.is_system}
+                        title={
+                          tag.is_system
+                            ? '系统标签不可删除（蒸馏标签体系依赖）'
+                            : '删除标签（订阅关系级联清理）'
+                        }
+                        onClick={() => openDelete(tag)}
+                        aria-label={`删除标签 ${tag.name}`}
+                      >
+                        删除
+                      </button>
+                    ) : (
+                      <span className="text-neutral-400">—</span>
+                    )}
                   </td>
                 </tr>
               ))
@@ -254,6 +322,46 @@ export function Tags() {
               </button>
             </div>
           )}
+        </form>
+      </Modal>
+
+      <Modal
+        open={deleteTarget !== null}
+        title={`删除标签 · ${deleteTarget?.name ?? ''}`}
+        onClose={closeDelete}
+      >
+        <form className="space-y-4" onSubmit={handleDelete}>
+          <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+            删除后该标签的订阅关系一并清除；已蒸馏文章上的历史标签文本不受影响。
+          </p>
+          <Field label="删除原因">
+            <textarea
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              rows={3}
+              placeholder="至少 5 个字符，会写入审计日志"
+              className={inputClass}
+            />
+          </Field>
+
+          {deleteError && (
+            <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+              {deleteError}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <button type="button" className={buttonGhostClass} onClick={closeDelete}>
+              取消
+            </button>
+            <button
+              type="submit"
+              className={`${buttonPrimaryClass} border-error bg-error text-white hover:bg-red-700`}
+              disabled={deleteSubmitting}
+            >
+              {deleteSubmitting ? '删除中…' : '确认删除'}
+            </button>
+          </div>
         </form>
       </Modal>
     </div>

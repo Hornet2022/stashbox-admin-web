@@ -68,6 +68,10 @@ export interface ArticleRow {
 /** GET /api/v1/tags 行 */
 export interface TagRow {
   id: number
+  /** CP-DELETE：admin 端点（/api/v1/admin/tags）返回 slug/category/is_system */
+  slug?: string
+  category?: string
+  is_system?: boolean
   name: string
   description?: string
   subscriber_count?: number
@@ -117,6 +121,42 @@ export interface LlmTestResult {
   provider: string
   model?: string | null
   text?: string | null
+  ok: boolean
+  error?: string | null
+}
+
+/** GET / PUT /api/v1/admin/tts/config 响应（api_key 只吐 set/last4）—— CP TTS-Config */
+export interface TtsConfig {
+  provider: string
+  // edge
+  edge_voice?: string | null
+  // openai 协议
+  openai_base_url?: string | null
+  openai_model?: string | null
+  openai_voice?: string | null
+  // doubao
+  doubao_voice?: string | null
+  doubao_resource_id?: string | null
+  // local
+  local_voice?: string | null
+  ffmpeg_bin?: string | null
+  // indextts（oMLX /v1/audio/speech 零样本克隆）
+  indextts_base_url?: string | null
+  indextts_model?: string | null
+  indextts_ref_audio?: string | null
+  indextts_ref_text?: string | null
+  api_key_set: boolean
+  api_key_last4?: string | null
+  /** db = system_config 表里配了；env = 回落环境变量/默认值 */
+  source?: string | null
+  updated_at?: string | null
+}
+
+/** GET /api/v1/admin/tts/test 响应 —— 用当前 factory client 真合成一次 */
+export interface TtsTestResult {
+  provider: string
+  voice?: string | null
+  bytes_len?: number | null
   ok: boolean
   error?: string | null
 }

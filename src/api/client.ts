@@ -18,7 +18,9 @@ const AUTH_STORAGE_KEY = 'stashbox_admin_token'
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  // CP-TIMEOUT：TTS /test 在第三方服务卡顿时可达 12-15s，10s 太紧会误杀。
+  // 其他端点（GET /config 等）正常 < 1s，不影响。
+  timeout: 15000,
   // 后端登录走 set_cookie，跨端口请求必须带上凭证
   withCredentials: true,
   headers: {
@@ -99,30 +101,44 @@ apiClient.interceptors.response.use(
   },
 )
 
-/** 端点不存在 / 网关未上线时的判定（404 / 501 / 网络不可达） */
+/** 端点不存在判定（404 / 501 —— "功能待上线"占位）。
+ *
+ * CP-ERROR-MSG-v2：不再把"无 response"判为 missing —— 网络断开是临时故障，
+ * 显示成"功能待上线"会让运维误判。toErrorMessage 已经区分超时 vs 网关不可达，
+ * 这里只看 404 / 501（后端真没这个路由）。
+ */
 export function isEndpointMissing(error: unknown): boolean {
   const status = (error as { response?: { status?: number } })?.response?.status
-  if (status === 404 || status === 501) return true
-  // 没有 response 说明请求根本没到后端（dev server 未起 / 网关未启）
-  return status === undefined
+  return status === 404 || status === 501
 }
 
-/** 把任意异常压成一句可展示的中文 */
+/** 把任意异常压成一句可展示的中文。
+ *
+ * CP-ERROR-MSG-v2：把"无 response"分两类显示——
+ *   - ECONNABORTED（axios.timeout 触发）→ "请求超时（10s）— 第三方服务（IndexTTS / 阿里云 maas）可能卡死"
+ *   - 其他网络断开（gateway 未启 / 跨域）→ "无法连接 api-gateway（localhost:8100），请检查网关是否启动"
+ * 不再回落到笼统的"功能待上线"，避免运维误判。
+ */
 export function toErrorMessage(error: unknown): string {
   const err = error as {
     response?: { status?: number; data?: { message?: string; detail?: string } }
+    code?: string
     message?: string
   }
   const status = err?.response?.status
   const detail = err?.response?.data?.message ?? err?.response?.data?.detail
   if (detail) return detail
-  if (status === 404 || status === 501) return '功能待上线'
+  if (status === 404 || status === 501) return '端点不存在（404 / 501）'
   if (status === 401) return '登录已失效，请重新登录'
   if (status === 403) return '无权限访问该资源'
   if (status === 429) return '请求过于频繁，请稍后再试'
   if (status && status >= 500) return `服务端错误（${status}）`
   if (status) return `请求失败（${status}）`
-  return '无法连接后端服务（功能待上线）'
+  // 无 status → 没拿到 response，区分超时 vs 网关不可达
+  if (err?.code === 'ECONNABORTED') {
+    return '请求超时（10s）—— 第三方服务（IndexTTS / 阿里云 maas）可能卡死或未启动'
+  }
+  return '无法连接 api-gateway（http://localhost:8100），请检查网关是否启动'
 }
 
 export default apiClient

@@ -2,25 +2,17 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 /**
- * CP7.3 临时代理：/api/v1/admin/llm/* 还没挂进 api-gateway 路由表
- * （8100 会返回 "no downstream route"），而 content-service 自己没装
- * CORS 中间件，浏览器直连 8102 会被 CORS 拦掉。所以 dev server 把这组
- * 路径代理到 content-service（run_dev.sh 的标准 content-service 槽位）。
- * 等网关补上路由后整段删掉即可。
+ * 历史说明（CP TTS-Config）：CP7.3 时代 admin/llm/* 未进 gateway，
+ * 曾在 vite.config.ts 里加过一段 proxy 直转 content-service（8102）。
  *
- * 目标地址可用 CONTENT_SERVICE_URL 覆盖，默认 http://localhost:8102。
+ * 当前：所有 /api/v1/* 路由都已挂进 api-gateway（8100），且 gateway
+ * 已带 CORS middleware（access-control-allow-origin 在响应头里），
+ * dev 模式浏览器直接跨域请求 8100 也能成功，不需要 vite 代理。
+ *
+ * vite 8 的 proxy 实现有变（Connection refused 等诡异错误），不引
+ * 代理让 dev 体验更稳。
  */
-const CONTENT_SERVICE_URL = process.env.CONTENT_SERVICE_URL ?? 'http://localhost:8102'
-
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  server: {
-    proxy: {
-      '/api/v1/admin/llm': {
-        target: CONTENT_SERVICE_URL,
-        changeOrigin: true,
-      },
-    },
-  },
 })

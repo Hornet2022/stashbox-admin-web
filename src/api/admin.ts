@@ -10,6 +10,8 @@ import type {
   PageParams,
   PushNotificationRow,
   TagRow,
+  TtsConfig,
+  TtsTestResult,
   UserRow,
 } from '../types'
 
@@ -89,7 +91,9 @@ export async function adjustQuota(
 
 /* ---------------------------------- 文章 --------------------------------- */
 
-/** 复用用户端文章列表 API */
+/** CP9.x：admin 用全局端点 /api/v1/admin/articles（不按 JWT sub 过滤）
+ * 旧版错调 /api/v1/articles（per-user 端点），admin 看不到其他用户文章
+ */
 export async function listArticles(
   params: {
     page?: number
@@ -98,7 +102,7 @@ export async function listArticles(
     tag?: string
   } = {},
 ): Promise<ListResult<ArticleRow>> {
-  const { data } = await apiClient.get('/api/v1/articles', { params })
+  const { data } = await apiClient.get('/api/v1/admin/articles', { params })
   return normalizeList<ArticleRow>(data)
 }
 
@@ -129,10 +133,27 @@ export async function invalidateAudio(
   await apiClient.post(`/api/v1/admin/audio/${audioId}/invalidate`, { reason })
 }
 
+/**
+ * CP-DELETE：DELETE /api/v1/admin/articles/{id}
+ *
+ * 硬删除：蒸馏结果 + 音频文件 + 收藏/稍后听/进度级联清理，配额不返还。
+ * reason ≥5 字符（后端校验，写入审计日志）。axios delete 的 body 走 { data }。
+ */
+export async function deleteAdminArticle(
+  articleId: string | number,
+  reason: string,
+): Promise<void> {
+  await apiClient.delete(`/api/v1/admin/articles/${articleId}`, {
+    data: { reason },
+  })
+}
+
 /* ---------------------------------- 标签 --------------------------------- */
 
 export async function listTags(): Promise<ListResult<TagRow>> {
-  const { data } = await apiClient.get('/api/v1/tags')
+  // CP-DELETE：改用 admin 专用端点（用户端 /api/v1/tags 的 id 是 slug、且无
+  // is_system，无法驱动删除按钮与系统标签保护）。
+  const { data } = await apiClient.get('/api/v1/admin/tags')
   return normalizeList<TagRow>(data)
 }
 
@@ -142,6 +163,17 @@ export async function createTag(
 ): Promise<void> {
   const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 64) || 'tag'
   await apiClient.post('/api/v1/tags', { slug, name, category })
+}
+
+/**
+ * CP-DELETE：DELETE /api/v1/admin/tags/{tagId}
+ *
+ * 系统标签（is_system）后端返 403；reason ≥5 字符必填，写审计日志。
+ */
+export async function deleteAdminTag(tagId: number, reason: string): Promise<void> {
+  await apiClient.delete(`/api/v1/admin/tags/${tagId}`, {
+    data: { reason },
+  })
 }
 
 /* --------------------------------- 推送队列 ------------------------------- */
@@ -193,24 +225,19 @@ export async function getDistillP95(): Promise<DistillP95Response> {
 /* --------------------------------- LLM 配置 -------------------------------- */
 
 /**
- * LLM 配置端点走同源。
+ * LLM 配置端点 —— CP-PROXY-CONSOLIDATE：
  *
- * CP7.3 的 /api/v1/admin/llm/* 还没挂进 api-gateway 路由表（8100 会返回
- * "no downstream route"），且 content-service 自己没装 CORS 中间件，
- * 浏览器直连 8202 会被 CORS 拦掉。所以 dev 期间由 vite dev server 把
- * /api/v1/admin/llm/* 代理到 content-service（见 vite.config.ts）；
- * 生产环境由同源 nginx 代理同一组路径，可用 VITE_LLM_API_BASE_URL 覆盖。
+ * 历史注释（CP7.3）说 "/api/v1/admin/llm/* 还没挂进 api-gateway 路由表"，但实际
+ * gateway config.py 已经注册了这 6 个端点（LLM/TTS × GET/PUT/TEST）。让 LLM 与
+ * TTS 一样走默认 apiClient（gateway 8100），避免额外 baseURL 校验踩坑（axios 1.x
+ * 对 baseURL='' 的处理在某些版本会抛 InvalidURL）。
  *
- * 请求仍然走同一个 apiClient —— Authorization 注入、401 跳登录、错误 toast
- * 那些拦截器照旧生效。等网关补上路由后把这里的 baseURL 覆盖去掉即可。
+ * CP-TIMEOUT：LLM /test 走真 LLM API（阿里云 maas），平均 2-5s，15s 超时足够。
  */
-export const LLM_API_BASE_URL = import.meta.env.VITE_LLM_API_BASE_URL ?? ''
 
 /** GET /api/v1/admin/llm/config */
 export async function getLlmConfig(): Promise<LlmConfig> {
-  const { data } = await apiClient.get('/api/v1/admin/llm/config', {
-    baseURL: LLM_API_BASE_URL,
-  })
+  const { data } = await apiClient.get('/api/v1/admin/llm/config')
   return unwrap<LlmConfig>(data)
 }
 
@@ -221,18 +248,64 @@ export async function updateLlmConfig(payload: {
   api_key?: string
   base_url?: string
 }): Promise<LlmConfig> {
-  const { data } = await apiClient.put('/api/v1/admin/llm/config', payload, {
-    baseURL: LLM_API_BASE_URL,
-  })
+  const { data } = await apiClient.put('/api/v1/admin/llm/config', payload)
   return unwrap<LlmConfig>(data)
 }
 
 /** GET /api/v1/admin/llm/test —— 用当前生效的 client 发一次 chat() */
 export async function testLlm(): Promise<LlmTestResult> {
-  const { data } = await apiClient.get('/api/v1/admin/llm/test', {
-    baseURL: LLM_API_BASE_URL,
-  })
+  const { data } = await apiClient.get('/api/v1/admin/llm/test')
   return unwrap<LlmTestResult>(data)
+}
+
+/* ---------------------------------- TTS --------------------------------- */
+/* CP TTS-Config：admin TTS 配置。
+   端点已挂进 api-gateway 路由表（content-service /api/v1/admin/tts/*），
+   所以走默认 apiClient（gateway 8100），不需要单独的 baseURL。 */
+
+/** PUT /api/v1/admin/tts/config 请求体。
+ * 留空/不传的字段视作「不动」；显式传 null/"" 显式清空回落到 env（api_key/token 例外）。 */
+export interface TtsConfigUpdatePayload {
+  provider: string
+  // edge
+  edge_voice?: string | null
+  // openai 协议
+  openai_api_key?: string
+  openai_base_url?: string | null
+  openai_model?: string | null
+  openai_voice?: string | null
+  // doubao
+  doubao_api_key?: string
+  doubao_token?: string
+  doubao_app_id?: string | null
+  doubao_voice?: string | null
+  doubao_resource_id?: string | null
+  // local
+  local_voice?: string | null
+  ffmpeg_bin?: string | null
+  // indextts
+  indextts_base_url?: string | null
+  indextts_model?: string | null
+  indextts_ref_audio?: string | null
+  indextts_ref_text?: string | null
+}
+
+/** GET /api/v1/admin/tts/config */
+export async function getTtsConfig(): Promise<TtsConfig> {
+  const { data } = await apiClient.get('/api/v1/admin/tts/config')
+  return unwrap<TtsConfig>(data)
+}
+
+/** PUT /api/v1/admin/tts/config —— 热生效（落 system_config + reload factory） */
+export async function updateTtsConfig(payload: TtsConfigUpdatePayload): Promise<TtsConfig> {
+  const { data } = await apiClient.put('/api/v1/admin/tts/config', payload)
+  return unwrap<TtsConfig>(data)
+}
+
+/** GET /api/v1/admin/tts/test —— 用当前 factory client 真合成一次 */
+export async function testTts(): Promise<TtsTestResult> {
+  const { data } = await apiClient.get('/api/v1/admin/tts/test')
+  return unwrap<TtsTestResult>(data)
 }
 
 /* --------------------------------- CSV 导出 -------------------------------- */

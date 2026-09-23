@@ -29,6 +29,7 @@ export const navItems: NavItem[] = [
   { path: '/audit-log',           label: '审计日志',      icon: <ClipboardList size={16} />, minRole: 'super_admin' as AdminRole },
   { path: '/distill-metrics',     label: '蒸馏耗时',      icon: <BarChart3 size={16} /> },
   { path: '/settings/llm',       label: 'LLM 配置',     icon: <Settings size={16} /> },
+  { path: '/settings/tts',       label: 'TTS 配置',     icon: <Settings size={16} /> },
 ]
 
 function visibleItems(role: AdminRole | null): NavItem[] {

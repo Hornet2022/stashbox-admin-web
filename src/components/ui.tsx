@@ -91,7 +91,7 @@ export function ErrorNotice({
       }`}
     >
       <span>
-        {missing ? '功能待上线：' : ''}
+        {missing ? '端点未上线：' : ''}
         {message}
       </span>
       {onRetry && (
