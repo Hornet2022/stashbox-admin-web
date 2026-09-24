@@ -6,60 +6,39 @@ on:
   pull_request:
     branches: [main]
 
+# 默认禁止被 fork PR 触发 secret 暴露，但这里没有 secret，正常
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  lint:
+  # 单 job 串行跑 lint + typecheck + build，共享同一份 pnpm cache
+  # 比起三 job 并行（每个独立 install），节省 ~80s（runner 启动 + 重复 install）
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
 
       - name: Install pnpm
-        run: corepack enable && corepack prepare pnpm@latest --activate
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: 'pnpm'
 
-      - name: Install
-        run: pnpm install
+      - name: Install (cache hit 后 ~5s)
+        run: pnpm install --frozen-lockfile
 
       - name: Lint (oxlint)
         run: pnpm run lint
 
-  typecheck:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install pnpm
-        run: corepack enable && corepack prepare pnpm@latest --activate
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
-      - name: Install
-        run: pnpm install
-
-      - name: Typecheck (tsc)
+      - name: Typecheck (tsc -b --force)
         run: pnpm run typecheck
 
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install pnpm
-        run: corepack enable && corepack prepare pnpm@latest --activate
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
-      - name: Install
-        run: pnpm install
-
-      - name: Build (tsc + vite)
+      - name: Build (tsc -b + vite)
         run: pnpm run build

@@ -76,18 +76,66 @@ function ShortcutsLayer() {
               </button>
             </div>
           </div>
-          <ul className="mx-auto w-full max-w-sm divide-y divide-gray-100 px-5 py-2 dark:divide-slate-700">
-            {SHORTCUTS.map((item) => (
-              <li key={item.keys} className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-600 dark:text-slate-300">
-                  {item.label}
-                </span>
-                <kbd className="rounded border border-gray-300 bg-gray-50 px-2 py-0.5 font-mono text-xs text-gray-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200">
-                  {item.keys}
-                </kbd>
-              </li>
-            ))}
-          </ul>
+          <div className="mx-auto w-full max-w-sm divide-y divide-neutral-100 px-5 py-2 dark:divide-slate-700">
+            {(() => {
+              // 按 group 聚合，未分组的（"?" / "Esc"）放在最末尾
+              const grouped = SHORTCUTS.reduce(
+                (acc, item) => {
+                  const g = item.group ?? '\0'
+                  if (!acc[g]) acc[g] = []
+                  acc[g].push(item)
+                  return acc
+                },
+                {} as Record<string, typeof SHORTCUTS>,
+              )
+              const groupKeys = Object.keys(grouped).filter((k) => k !== '\0')
+              const ungrouped = grouped['\0'] ?? []
+
+              return (
+                <>
+                  {groupKeys.map((g) => (
+                    <div key={g} className="py-2 first:pt-0">
+                      <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                        {g}
+                      </div>
+                      <ul>
+                        {grouped[g].map((item) => (
+                          <li
+                            key={item.keys}
+                            className="flex items-center justify-between py-1.5"
+                          >
+                            <span className="text-sm text-neutral-600 dark:text-slate-300">
+                              {item.label}
+                            </span>
+                            <kbd className="rounded border border-neutral-200 bg-neutral-50 px-2 py-0.5 font-mono text-xs text-neutral-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200">
+                              {item.keys}
+                            </kbd>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                  {ungrouped.length > 0 && (
+                    <ul className="pt-2">
+                      {ungrouped.map((item) => (
+                        <li
+                          key={item.keys}
+                          className="flex items-center justify-between py-1.5"
+                        >
+                          <span className="text-sm text-neutral-600 dark:text-slate-300">
+                            {item.label}
+                          </span>
+                          <kbd className="rounded border border-neutral-200 bg-neutral-50 px-2 py-0.5 font-mono text-xs text-neutral-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200">
+                            {item.keys}
+                          </kbd>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )
+            })()}
+          </div>
         </Drawer.Content>
       </Drawer.Portal>
     </Drawer.Root>
