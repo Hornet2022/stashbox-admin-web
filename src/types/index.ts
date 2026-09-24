@@ -33,10 +33,20 @@ export interface PageResult<T> {
 export type AdminRole = 'admin' | 'super_admin' | 'operator' | 'viewer'
 
 /** GET /api/v1/admin/stats */
+/** GET /api/v1/admin/stats 响应 —— 与 content-service/admin_router.py 实际返回对齐
+ *
+ * ⚠️ 2026-09-24 契约修正：旧类型里的 total_distilled 后端从未返回过，
+ * 真实字段是 pending / listened / revenue（Dashboard 曾因此渲染崩溃）。
+ */
 export interface DashboardStats {
   total_users: number
   total_articles: number
-  total_distilled: number
+  /** 蒸馏队列中（pending） */
+  pending: number
+  /** 已收听 */
+  listened: number
+  /** 本月已支付营收（orders 表缺失时为 0） */
+  revenue: number
   active_audio_files: number
   failed_distillations_24h: number
 }

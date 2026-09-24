@@ -6,20 +6,25 @@ import type { DashboardStats } from '../types'
 /**
  * 总览页 —— 接 GET /api/v1/admin/stats（CP3.6-A3）。
  *
- * 5 个指标卡。「近 7 天用户增长」趋势端点尚未提供，暂以占位提示呈现，
+ * 7 个指标卡，字段与 content-service 实际返回对齐（见 DashboardStats 类型注释）。
+ * 渲染防御化：字段缺失显示 "—" 而不是崩溃（后端加字段/改名时前端不白屏）。
+ *
+ * 「近 7 天用户增长」趋势端点尚未提供，暂以占位提示呈现，
  * 待 CP 后续接入真实增长数据后再渲染折线图。
  */
 
 const statCards: { label: string; field: keyof DashboardStats; hint: string }[] = [
   { label: '用户总数', field: 'total_users', hint: 'GET /admin/stats' },
   { label: '文章总数', field: 'total_articles', hint: 'GET /admin/stats' },
-  { label: '蒸馏完成', field: 'total_distilled', hint: 'GET /admin/stats' },
+  { label: '蒸馏队列中', field: 'pending', hint: 'GET /admin/stats' },
+  { label: '已收听', field: 'listened', hint: 'GET /admin/stats' },
   { label: '活跃音频', field: 'active_audio_files', hint: 'GET /admin/stats' },
   {
     label: '24h 失败蒸馏',
     field: 'failed_distillations_24h',
     hint: 'GET /admin/stats',
   },
+  { label: '本月营收', field: 'revenue', hint: 'GET /admin/stats（orders 表缺失时为 0）' },
 ]
 
 export function Dashboard() {
@@ -47,7 +52,7 @@ export function Dashboard() {
               </div>
             ) : (
               <div className="mt-2 font-serif text-2xl font-semibold text-ink dark:text-neutral-100">
-                {data ? data[card.field].toLocaleString('zh-CN') : '—'}
+                {data?.[card.field]?.toLocaleString('zh-CN') ?? '—'}
               </div>
             )}
             <div className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">

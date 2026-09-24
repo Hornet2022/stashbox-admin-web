@@ -28,10 +28,13 @@ function renderDashboard() {
   )
 }
 
+// 与 content-service/admin_router.py 真实返回形态一致（2026-09-24 契约修正）
 const sampleStats = {
   total_users: 1234,
   total_articles: 5678,
-  total_distilled: 4321,
+  pending: 12,
+  listened: 890,
+  revenue: 0,
   active_audio_files: 3800,
   failed_distillations_24h: 12,
 }
@@ -41,7 +44,7 @@ beforeEach(() => {
 })
 
 describe('Dashboard', () => {
-  it('渲染标题 + 5 个 stats 卡片标签', async () => {
+  it('渲染标题 + 7 个 stats 卡片标签', async () => {
     mockedGetStats.mockResolvedValue(sampleStats)
     renderDashboard()
     await waitFor(() => {
@@ -49,9 +52,11 @@ describe('Dashboard', () => {
     })
     expect(screen.getByText('用户总数')).toBeInTheDocument()
     expect(screen.getByText('文章总数')).toBeInTheDocument()
-    expect(screen.getByText('蒸馏完成')).toBeInTheDocument()
+    expect(screen.getByText('蒸馏队列中')).toBeInTheDocument()
+    expect(screen.getByText('已收听')).toBeInTheDocument()
     expect(screen.getByText('活跃音频')).toBeInTheDocument()
     expect(screen.getByText('24h 失败蒸馏')).toBeInTheDocument()
+    expect(screen.getByText('本月营收')).toBeInTheDocument()
   })
 
   it('stats 数值带千分位', async () => {
@@ -61,8 +66,23 @@ describe('Dashboard', () => {
       expect(screen.getByText('1,234')).toBeInTheDocument()
     })
     expect(screen.getByText('5,678')).toBeInTheDocument()
-    expect(screen.getByText('4,321')).toBeInTheDocument()
+    expect(screen.getByText('890')).toBeInTheDocument()
     expect(screen.getByText('3,800')).toBeInTheDocument()
+  })
+
+  // 回归用例（2026-09-24）：后端真实响应缺字段时显示 "—" 而不是崩溃
+  // 旧 bug：total_distilled 后端从未返回，data[field].toLocaleString() 直接 TypeError
+  it('后端响应缺字段 → 该卡显示 "—" 不崩溃', async () => {
+    mockedGetStats.mockResolvedValue({
+      total_users: 5,
+      total_articles: 6,
+      // pending / listened / revenue / active_audio_files / failed_distillations_24h 全缺
+    } as never)
+    renderDashboard()
+    await waitFor(() => {
+      expect(screen.getByText('5')).toBeInTheDocument()
+    })
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(5)
   })
 
   it('loading 状态显示 skeleton', async () => {

@@ -172,7 +172,7 @@ describe('audit-log 端点', () => {
 describe('dashboard 端点', () => {
   it('getStats → GET /admin/stats', async () => {
     mockedGet.mockResolvedValue({
-      data: { total_users: 100, total_articles: 200, total_distilled: 150, active_audio_files: 140 },
+      data: { total_users: 100, total_articles: 200, pending: 5, listened: 60, revenue: 0, active_audio_files: 140, failed_distillations_24h: 2 },
     })
     const stats = await getStats()
     expect(mockedGet).toHaveBeenCalledWith('/api/v1/admin/stats')
