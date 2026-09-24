@@ -79,7 +79,10 @@ export function PushNotifications() {
   return (
     <div>
       <h1 className={pageTitleClass}>推送队列</h1>
-      <p className={pageHintClass}>数据源：GET /api/v1/notifications</p>
+      <p className={pageHintClass}>
+        数据源：GET /api/v1/notifications —— 注意：后端当前为用户侧端点，
+        仅返回<b>当前登录账号自己</b>的推送；跨用户全量队列需后端新增 admin 端点
+      </p>
 
       {/* 状态 tab — transitions.dev t-tabs */}
       <div className="mt-6 flex items-center gap-2">

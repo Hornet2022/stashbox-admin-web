@@ -152,11 +152,24 @@ describe('tags 端点', () => {
 })
 
 describe('push 端点', () => {
-  it('listPushNotifications → GET /admin/push-notifications', async () => {
-    await listPushNotifications({ page: 1, size: 50, status: 'sent' })
-    expect(mockedGet).toHaveBeenCalledWith('/api/v1/admin/push-notifications', {
+  it('listPushNotifications → GET /api/v1/notifications（回归：拆分时曾误写 admin 路径）', async () => {
+    mockedGet.mockResolvedValue({
+      data: { notifications: [{ id: 1, title: 't', body: 'b', read: false, created_at: '2024-01-01T00:00:00Z' }], unread_count: 1 },
+    })
+    const r = await listPushNotifications({ page: 1, size: 50, status: 'sent' })
+    expect(mockedGet).toHaveBeenCalledWith('/api/v1/notifications', {
       params: { page: 1, size: 50, status: 'sent' },
     })
+    // {notifications} 形态归一化
+    expect(r.items).toHaveLength(1)
+    expect(r.total).toBe(1)
+  })
+
+  it('listPushNotifications 空响应 → items=[] total=0', async () => {
+    mockedGet.mockResolvedValue({ data: { notifications: [], unread_count: 0 } })
+    const r = await listPushNotifications()
+    expect(r.items).toEqual([])
+    expect(r.total).toBe(0)
   })
 })
 
