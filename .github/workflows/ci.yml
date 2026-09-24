@@ -40,8 +40,11 @@ jobs:
       - name: Typecheck (tsc -b --force)
         run: pnpm run typecheck
 
-      - name: Test (vitest run, 75 cases)
+      - name: Test (vitest run)
         run: pnpm run test
+
+      - name: Endpoint contract check（本地双仓有效；CI 单仓检出时自动跳过）
+        run: pnpm run contract
 
       - name: Build (tsc -b + vite)
         run: pnpm run build

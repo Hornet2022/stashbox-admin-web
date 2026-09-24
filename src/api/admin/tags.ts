@@ -20,7 +20,8 @@ export async function createTag(
   name: string,
   description?: string,
 ): Promise<{ id: number; name: string }> {
-  const { data } = await apiClient.post('/api/v1/admin/tags', { name, description })
+  // 网关注册的是 POST /api/v1/tags（CP3.6-A2，admin-web 复用用户侧创建入口）
+  const { data } = await apiClient.post('/api/v1/tags', { name, description })
   return data as { id: number; name: string }
 }
 

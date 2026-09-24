@@ -87,14 +87,14 @@ describe('users 端点', () => {
 })
 
 describe('articles 端点', () => {
-  it('listArticles → GET /articles', async () => {
+  it('listArticles → GET /admin/articles（回归：拆分时曾丢 /admin 段）', async () => {
     await listArticles({ status: 'failed', tag: 'tech', page: 1, size: 50 })
-    expect(mockedGet).toHaveBeenCalledWith('/api/v1/articles', {
+    expect(mockedGet).toHaveBeenCalledWith('/api/v1/admin/articles', {
       params: { status: 'failed', tag: 'tech', page: 1, size: 50 },
     })
   })
 
-  it('createArticle → POST /articles', async () => {
+  it('createArticle → POST /articles（用户侧创建入口，网关注册如此）', async () => {
     await createArticle('https://example.com/a', 'url', 'Title A')
     expect(mockedPost).toHaveBeenCalledWith('/api/v1/articles', {
       url: 'https://example.com/a',
@@ -103,25 +103,25 @@ describe('articles 端点', () => {
     })
   })
 
-  it('forceRetryArticle → POST /articles/{id}/force-retry', async () => {
+  it('forceRetryArticle → POST /admin/articles/{id}/force-retry', async () => {
     await forceRetryArticle(42, 'manual retry')
     expect(mockedPost).toHaveBeenCalledWith(
-      '/api/v1/articles/42/force-retry',
+      '/api/v1/admin/articles/42/force-retry',
       { reason: 'manual retry' },
     )
   })
 
-  it('invalidateAudio → POST /audios/{id}/invalidate', async () => {
+  it('invalidateAudio → POST /admin/audio/{id}/invalidate（单数 audio）', async () => {
     await invalidateAudio(99, 'audio broken')
     expect(mockedPost).toHaveBeenCalledWith(
-      '/api/v1/audios/99/invalidate',
+      '/api/v1/admin/audio/99/invalidate',
       { reason: 'audio broken' },
     )
   })
 
-  it('deleteAdminArticle → DELETE /articles/{id} 带 reason', async () => {
+  it('deleteAdminArticle → DELETE /admin/articles/{id} 带 reason', async () => {
     await deleteAdminArticle(7, 'spam cleanup')
-    expect(mockedDelete).toHaveBeenCalledWith('/api/v1/articles/7', {
+    expect(mockedDelete).toHaveBeenCalledWith('/api/v1/admin/articles/7', {
       data: { reason: 'spam cleanup' },
     })
   })
@@ -135,9 +135,9 @@ describe('tags 端点', () => {
     })
   })
 
-  it('createTag → POST /admin/tags', async () => {
+  it('createTag → POST /tags（用户侧入口，网关注册如此，非 /admin/tags）', async () => {
     await createTag('machine-learning', 'AI/ML 相关')
-    expect(mockedPost).toHaveBeenCalledWith('/api/v1/admin/tags', {
+    expect(mockedPost).toHaveBeenCalledWith('/api/v1/tags', {
       name: 'machine-learning',
       description: 'AI/ML 相关',
     })
@@ -219,9 +219,9 @@ describe('LLM 端点', () => {
     })
   })
 
-  it('testLlm → POST /admin/llm/test', async () => {
+  it('testLlm → GET /admin/llm/test（回归：拆分时曾误用 POST）', async () => {
     await testLlm()
-    expect(mockedPost).toHaveBeenCalledWith('/api/v1/admin/llm/test')
+    expect(mockedGet).toHaveBeenCalledWith('/api/v1/admin/llm/test')
   })
 })
 
@@ -245,9 +245,9 @@ describe('TTS 端点', () => {
     expect(mockedPut).toHaveBeenCalledWith('/api/v1/admin/tts/config', payload)
   })
 
-  it('testTts → POST /admin/tts/test', async () => {
+  it('testTts → GET /admin/tts/test（回归：拆分时曾误用 POST）', async () => {
     await testTts()
-    expect(mockedPost).toHaveBeenCalledWith('/api/v1/admin/tts/test')
+    expect(mockedGet).toHaveBeenCalledWith('/api/v1/admin/tts/test')
   })
 })
 

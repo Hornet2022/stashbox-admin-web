@@ -25,6 +25,7 @@ export async function updateLlmConfig(payload: {
 }
 
 export async function testLlm(): Promise<LlmTestResult> {
-  const { data } = await apiClient.post('/api/v1/admin/llm/test')
+  // 网关注册的是 GET /api/v1/admin/llm/test（非 POST，2026-09-24 回归修正）
+  const { data } = await apiClient.get('/api/v1/admin/llm/test')
   return (data as { data?: LlmTestResult }).data ?? (data as LlmTestResult)
 }

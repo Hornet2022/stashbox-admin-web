@@ -23,6 +23,7 @@ export async function updateTtsConfig(
 }
 
 export async function testTts(): Promise<TtsTestResult> {
-  const { data } = await apiClient.post('/api/v1/admin/tts/test')
+  // 网关注册的是 GET /api/v1/admin/tts/test（非 POST，2026-09-24 回归修正）
+  const { data } = await apiClient.get('/api/v1/admin/tts/test')
   return (data as { data?: TtsTestResult }).data ?? (data as TtsTestResult)
 }
