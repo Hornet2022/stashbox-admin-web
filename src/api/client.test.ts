@@ -1,0 +1,117 @@
+import { describe, it, expect, beforeEach } from 'vitest'
+import { toErrorMessage, isEndpointMissing, getAuthToken, setAuthToken, clearAuthToken, API_BASE_URL, ADMIN_API_PREFIX } from './client'
+
+/**
+ * api/client.ts 工具函数单测 —— CP-NEW.12。
+ *
+ * 覆盖：toErrorMessage / isEndpointMissing / getAuthToken /
+ * setAuthToken / clearAuthToken / 常量导出。
+ */
+
+describe('toErrorMessage', () => {
+  it('优先使用后端 detail / message', () => {
+    const e = { response: { data: { message: '业务校验失败：URL 已存在' } } }
+    expect(toErrorMessage(e)).toBe('业务校验失败：URL 已存在')
+  })
+
+  it('业务 404/501 → "端点不存在"', () => {
+    expect(toErrorMessage({ response: { status: 404 } })).toBe('端点不存在（404 / 501）')
+    expect(toErrorMessage({ response: { status: 501 } })).toBe('端点不存在（404 / 501）')
+  })
+
+  it('401 → "登录已失效"', () => {
+    expect(toErrorMessage({ response: { status: 401 } })).toBe('登录已失效，请重新登录')
+  })
+
+  it('403 → "无权限"', () => {
+    expect(toErrorMessage({ response: { status: 403 } })).toBe('无权限访问该资源')
+  })
+
+  it('429 → "请求过于频繁"', () => {
+    expect(toErrorMessage({ response: { status: 429 } })).toBe('请求过于频繁，请稍后再试')
+  })
+
+  it('500+ → "服务端错误（xxx）"', () => {
+    expect(toErrorMessage({ response: { status: 500 } })).toBe('服务端错误（500）')
+    expect(toErrorMessage({ response: { status: 503 } })).toBe('服务端错误（503）')
+  })
+
+  it('其他 status → "请求失败（xxx）"', () => {
+    expect(toErrorMessage({ response: { status: 418 } })).toBe('请求失败（418）')
+  })
+
+  it('ECONNABORTED → "请求超时"', () => {
+    expect(toErrorMessage({ code: 'ECONNABORTED' })).toMatch(/请求超时/)
+  })
+
+  it('其他无 response → "无法连接 api-gateway"', () => {
+    expect(toErrorMessage({ code: 'ERR_NETWORK' })).toMatch(/无法连接 api-gateway/)
+    expect(toErrorMessage({})).toMatch(/无法连接 api-gateway/)
+  })
+})
+
+describe('isEndpointMissing', () => {
+  it('404 → missing=true', () => {
+    expect(isEndpointMissing({ response: { status: 404 } })).toBe(true)
+  })
+
+  it('501 → missing=true', () => {
+    expect(isEndpointMissing({ response: { status: 501 } })).toBe(true)
+  })
+
+  it('400/500/网络断开 → missing=false', () => {
+    expect(isEndpointMissing({ response: { status: 400 } })).toBe(false)
+    expect(isEndpointMissing({ response: { status: 500 } })).toBe(false)
+    expect(isEndpointMissing({ code: 'ERR_NETWORK' })).toBe(false)
+    expect(isEndpointMissing({ code: 'ECONNABORTED' })).toBe(false)
+    expect(isEndpointMissing({})).toBe(false)
+  })
+})
+
+describe('getAuthToken / setAuthToken / clearAuthToken', () => {
+  beforeEach(() => {
+    document.cookie = 'admin_token=; Max-Age=0; path=/'
+    document.cookie = 'stashbox_admin_token=; Max-Age=0; path=/'
+    localStorage.clear()
+  })
+
+  it('cookie 优先：cookie 有值时返回 cookie', () => {
+    document.cookie = 'admin_token=cookie-jwt; path=/'
+    expect(getAuthToken()).toBe('cookie-jwt')
+  })
+
+  it('cookie 是 httpOnly（document.cookie 读不到）时退回 localStorage', () => {
+    localStorage.setItem('stashbox_admin_token', 'local-jwt')
+    expect(getAuthToken()).toBe('local-jwt')
+  })
+
+  it('两个 cookie 名都试：admin_token / stashbox_admin_token', () => {
+    document.cookie = 'stashbox_admin_token=other-jwt; path=/'
+    expect(getAuthToken()).toBe('other-jwt')
+  })
+
+  it('setAuthToken 写到 localStorage', () => {
+    setAuthToken('my-jwt')
+    expect(localStorage.getItem('stashbox_admin_token')).toBe('my-jwt')
+  })
+
+  it('clearAuthToken 清 localStorage + 删两个 cookie', () => {
+    localStorage.setItem('stashbox_admin_token', 'to-clear')
+    document.cookie = 'admin_token=cookie-to-clear; path=/'
+    clearAuthToken()
+    expect(localStorage.getItem('stashbox_admin_token')).toBe(null)
+    // cookie 清除通过设置 Max-Age=0
+    expect(document.cookie.includes('admin_token=cookie-to-clear')).toBe(false)
+  })
+})
+
+describe('常量', () => {
+  it('API_BASE_URL 默认 localhost:8100', () => {
+    // vitest 默认无 VITE_API_BASE_URL，应回落到默认
+    expect(API_BASE_URL).toBe('http://localhost:8100')
+  })
+
+  it('ADMIN_API_PREFIX 是 /api/v1/admin', () => {
+    expect(ADMIN_API_PREFIX).toBe('/api/v1/admin')
+  })
+})
