@@ -40,6 +40,7 @@ import {
   createTag,
   deleteAdminTag,
   listPushNotifications,
+  retryPushNotification,
   listAuditLog,
   getStats,
   getDistillP95,
@@ -151,25 +152,36 @@ describe('tags 端点', () => {
   })
 })
 
-describe('push 端点', () => {
-  it('listPushNotifications → GET /api/v1/notifications（回归：拆分时曾误写 admin 路径）', async () => {
+describe('push 端点（v1 需求文档落地版）', () => {
+  it('listPushNotifications → GET /admin/push-notifications 标准分页形态', async () => {
     mockedGet.mockResolvedValue({
-      data: { notifications: [{ id: 1, title: 't', body: 'b', read: false, created_at: '2024-01-01T00:00:00Z' }], unread_count: 1 },
+      data: {
+        total: 120,
+        limit: 50,
+        offset: 50,
+        items: [
+          { id: 1, user_id: 42, title: 't', body: 'b', status: 'failed', error: 'apns timeout', created_at: '2026-09-24T09:00:00Z', sent_at: null, read_at: null },
+        ],
+      },
     })
-    const r = await listPushNotifications({ page: 1, size: 50, status: 'sent' })
-    expect(mockedGet).toHaveBeenCalledWith('/api/v1/notifications', {
-      params: { page: 1, size: 50, status: 'sent' },
+    const r = await listPushNotifications({ status: 'failed', user_id: 42, limit: 50, offset: 50 })
+    expect(mockedGet).toHaveBeenCalledWith('/api/v1/admin/push-notifications', {
+      params: { status: 'failed', user_id: 42, limit: 50, offset: 50 },
     })
-    // {notifications} 形态归一化
-    expect(r.items).toHaveLength(1)
-    expect(r.total).toBe(1)
+    expect(r.total).toBe(120)
+    expect(r.items[0].error).toBe('apns timeout')
   })
 
-  it('listPushNotifications 空响应 → items=[] total=0', async () => {
-    mockedGet.mockResolvedValue({ data: { notifications: [], unread_count: 0 } })
-    const r = await listPushNotifications()
-    expect(r.items).toEqual([])
-    expect(r.total).toBe(0)
+  it('retryPushNotification → POST /admin/push-notifications/{id}/retry 带 reason', async () => {
+    mockedPost.mockResolvedValue({
+      data: { id: 1, user_id: 42, status: 'sent', error: null, sent_at: '2026-09-24T10:00:00Z', retried_at: '2026-09-24T10:00:00Z' },
+    })
+    const r = await retryPushNotification(1, '通道恢复后重推')
+    expect(mockedPost).toHaveBeenCalledWith('/api/v1/admin/push-notifications/1/retry', {
+      reason: '通道恢复后重推',
+    })
+    expect(r.status).toBe('sent')
+    expect(r.retried_at).toBeTruthy()
   })
 })
 

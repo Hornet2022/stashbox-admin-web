@@ -30,7 +30,7 @@
 | `POST /api/v1/admin/audio/{id}/invalidate` | `invalidateAudio` | `Articles.tsx` |
 | `GET /api/v1/tags` | `listTags` | `Tags.tsx` |
 | `POST /api/v1/tags` | `createTag` | `Tags.tsx` |
-| `GET /api/v1/notifications` | `listPushNotifications` | `PushNotifications.tsx` |
+| `GET /api/v1/admin/push-notifications` | `listPushNotifications` | `PushNotifications.tsx` |（2026-09-24 更新:后端已按 §端点需求_admin推送队列_v1.md 落地 admin 端点 + retry,迁移 0031;原借道的用户侧 /api/v1/notifications 已弃用）
 | `GET /api/v1/admin/audit-log` | `listAuditLog` | `AuditLog.tsx` |
 | `GET /api/v1/admin/stats` | `getStats` | `Dashboard.tsx` |
 

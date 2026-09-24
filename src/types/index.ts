@@ -89,13 +89,35 @@ export interface TagRow {
 }
 
 /** GET /api/v1/notifications 行 */
+/** GET /api/v1/admin/push-notifications 行
+ *  （对齐 user-service AdminPushNotificationItem，v1 需求文档 §2.1） */
 export interface PushNotificationRow {
   id: number
-  user_id?: number
-  title?: string
-  body?: string
-  status?: string
-  created_at?: string
+  user_id: number
+  article_id: string | null
+  tag_slug: string | null
+  title: string
+  body: string
+  deeplink: string | null
+  /** pending | sent | failed */
+  status: string
+  /** 失败原因（仅 failed 行有值） */
+  error: string | null
+  created_at: string | null
+  sent_at: string | null
+  read_at: string | null
+}
+
+/** POST /api/v1/admin/push-notifications/{id}/retry 响应
+ *  （对齐 AdminPushNotificationRetryResponse；retry 仅 status=failed 可用） */
+export interface PushNotificationRetryResult {
+  id: number
+  user_id: number
+  status: string
+  error: string | null
+  sent_at: string | null
+  /** 服务侧 retry 处理时间 */
+  retried_at: string
 }
 
 /** GET /api/v1/admin/audit-log 行 */
