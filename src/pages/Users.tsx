@@ -1,54 +1,23 @@
-import { useState, useEffect, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { adjustQuota, downloadCsv, listUsers } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
 import { useRole } from '../hooks/useRole'
 import { toast } from '../store/toast'
-import {
-  Badge,
-  EmptyRow,
-  ErrorNotice,
-  Field,
-  TableSkeleton,
-  Modal,
-  buttonGhostClass,
-  buttonPrimaryClass,
-  cellMutedClass,
-  cellStrongClass,
-  cellTextClass,
-  footerCountClass,
-  inputClass,
-  pageHintClass,
-  pageTitleClass,
-  rowClass,
-  tableWrapClass,
-  thClass,
-  theadClass,
-} from '../components/ui'
-import { formatNumber, formatTime } from '../utils'
+import { ErrorNotice } from '../components/ui'
+import { UsersToolbar } from './users/UsersToolbar'
+import { UsersTable } from './users/UsersTable'
+import { QuotaAdjustModal } from './users/QuotaAdjustModal'
 import type { UserRow } from '../types'
 
 /**
  * 用户管理页 —— GET /api/v1/admin/users + POST /admin/users/{id}/quota-adjust。
+ *
+ * 路由守卫：只对 super_admin 开放（与 Sidebar minRole 一致 —— 本页内置二次跳转兜底）。
+ *
+ * CP-NEW.8：原 337 行单文件 → 拆分后 ~130 行主控 + 4 子文件。
  */
-
-const columns = [
-  'ID',
-  '邮箱',
-  '昵称',
-  '角色',
-  '套餐',
-  '状态',
-  '月配额',
-  '已用',
-  '注册时间',
-  '操作',
-]
-
-const TIERS = ['', 'free', 'pro', 'max']
-const STATUSES = ['', 'active', 'suspended', 'deleted']
-
 export function Users() {
   const role = useRole()
   const navigate = useNavigate()
@@ -61,10 +30,10 @@ export function Users() {
     }
   }, [role, navigate])
 
+  // —— 筛选 ——
   const [keyword, setKeyword] = useState('')
   const [tier, setTier] = useState('')
   const [status, setStatus] = useState('')
-  // 已提交的搜索词（点“搜索”才生效）
   const [appliedKeyword, setAppliedKeyword] = useState('')
 
   const queryKey = `${appliedKeyword}|${tier}|${status}`
@@ -80,7 +49,7 @@ export function Users() {
     queryKey,
   )
 
-  // 配额调整弹窗
+  // —— 配额调整 Modal ——
   const [target, setTarget] = useState<UserRow | null>(null)
   const [quota, setQuota] = useState('')
   const [reason, setReason] = useState('')
@@ -93,19 +62,27 @@ export function Users() {
     setReason('')
     setModalError(null)
   }
-
   const closeQuotaModal = () => {
     setTarget(null)
     setSubmitting(false)
     setModalError(null)
   }
 
-  /** CSV 导出：走 window.location 触发浏览器原生下载 */
+  // —— 行为处理 ——
+  const handleSearch = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setAppliedKeyword(keyword.trim())
+  }
+  const handleReset = () => {
+    setKeyword('')
+    setAppliedKeyword('')
+    setTier('')
+    setStatus('')
+  }
   const handleExport = () => {
     toast('正在导出用户 CSV…', 'info')
     downloadCsv('users')
   }
-
   const handleQuotaSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!target) return
@@ -129,7 +106,7 @@ export function Users() {
       reload()
     } catch (err) {
       const message = toErrorMessage(err)
-      console.warn('[CP-ADMIN-3] adjustQuota failed:', message)
+      console.warn('[CP-NEW.8] adjustQuota failed:', message)
       setModalError(message)
       setSubmitting(false)
     }
@@ -139,197 +116,40 @@ export function Users() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className={pageTitleClass}>用户管理</h1>
-          <p className={pageHintClass}>数据源：GET /api/v1/admin/users</p>
-        </div>
-        <button type="button" className={buttonGhostClass} onClick={handleExport}>
-          导出 CSV
-        </button>
-      </div>
-
-      {/* 过滤条 */}
-      <form
-        className="mt-6 flex flex-wrap items-end gap-3"
-        onSubmit={(e) => {
-          e.preventDefault()
-          setAppliedKeyword(keyword.trim())
-        }}
-      >
-        <div className="w-64">
-          <Field label="关键词">
-            <input
-              type="text"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder="邮箱 / 昵称"
-              className={inputClass}
-            />
-          </Field>
-        </div>
-        <div className="w-36">
-          <Field label="套餐">
-            <select
-              value={tier}
-              onChange={(e) => setTier(e.target.value)}
-              className={inputClass}
-            >
-              {TIERS.map((t) => (
-                <option key={t || 'all'} value={t}>
-                  {t || '全部'}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-        <div className="w-36">
-          <Field label="状态">
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className={inputClass}
-            >
-              {STATUSES.map((s) => (
-                <option key={s || 'all'} value={s}>
-                  {s || '全部'}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-        <button type="submit" className={buttonPrimaryClass}>
-          搜索
-        </button>
-        <button
-          type="button"
-          className={buttonGhostClass}
-          onClick={() => {
-            setKeyword('')
-            setAppliedKeyword('')
-            setTier('')
-            setStatus('')
-          }}
-        >
-          重置
-        </button>
-        <button type="button" className={buttonGhostClass} onClick={reload}>
-          刷新
-        </button>
-      </form>
+      <UsersToolbar
+        keyword={keyword}
+        tier={tier}
+        status={status}
+        onKeywordChange={setKeyword}
+        onTierChange={setTier}
+        onStatusChange={setStatus}
+        onSearch={handleSearch}
+        onReset={handleReset}
+        onReload={reload}
+        onExport={handleExport}
+      />
 
       {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
 
-      <div className={tableWrapClass}>
-        <table className="w-full text-left text-sm">
-          <thead className={theadClass}>
-            <tr>
-              {columns.map((col) => (
-                <th key={col} scope="col" className={thClass}>
-                  {col}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <TableSkeleton colSpan={columns.length} rows={5} />
-            ) : rows.length === 0 ? (
-              <EmptyRow
-                colSpan={columns.length}
-                text={error ? '数据不可用' : '暂无用户数据'}
-              />
-            ) : (
-              rows.map((user) => (
-                <tr key={user.id} className={rowClass}>
-                  <td className={cellMutedClass}>{user.id}</td>
-                  <td className={cellStrongClass}>{user.email}</td>
-                  <td className={cellTextClass}>{user.display_name ?? '—'}</td>
-                  <td className={cellTextClass}>{user.role ?? '—'}</td>
-                  <td className={cellTextClass}>{user.tier ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <Badge value={user.status} />
-                  </td>
-                  <td className={cellTextClass}>
-                    {formatNumber(user.monthly_quota)}
-                  </td>
-                  <td className={cellTextClass}>
-                    {formatNumber(user.used_quota)}
-                  </td>
-                  <td className={`${cellMutedClass} whitespace-nowrap`}>
-                    {formatTime(user.created_at)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => openQuotaModal(user)}
-                      className={buttonGhostClass}
-                    >
-                      调整配额
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <UsersTable
+        rows={rows}
+        total={data?.total}
+        loading={loading}
+        hasError={!!error}
+        onAdjust={openQuotaModal}
+      />
 
-      {!loading && rows.length > 0 && (
-        <p className={footerCountClass}>
-          共 {formatNumber(data?.total)} 条
-        </p>
-      )}
-
-      <Modal
-        open={target !== null}
-        title={`调整配额 · ${target?.email ?? ''}`}
+      <QuotaAdjustModal
+        target={target}
+        quota={quota}
+        reason={reason}
+        submitting={submitting}
+        error={modalError}
         onClose={closeQuotaModal}
-      >
-        <form className="space-y-4" onSubmit={handleQuotaSubmit}>
-          <Field label="月配额（次）">
-            <input
-              type="number"
-              min={0}
-              value={quota}
-              onChange={(e) => setQuota(e.target.value)}
-              className={inputClass}
-            />
-          </Field>
-          <Field label="调整原因">
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={3}
-              placeholder="会写入审计日志"
-              className={inputClass}
-            />
-          </Field>
-
-          {modalError && (
-            <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
-              {modalError}
-            </p>
-          )}
-
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              className={buttonGhostClass}
-              onClick={closeQuotaModal}
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              className={buttonPrimaryClass}
-              disabled={submitting}
-            >
-              {submitting ? '提交中…' : '确认调整'}
-            </button>
-          </div>
-        </form>
-      </Modal>
+        onQuotaChange={setQuota}
+        onReasonChange={setReason}
+        onSubmit={handleQuotaSubmit}
+      />
     </div>
   )
 }
