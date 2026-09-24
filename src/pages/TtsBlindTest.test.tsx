@@ -3,6 +3,12 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { TtsBlindTest } from './TtsBlindTest'
+import { useAuthStore } from '../store/auth'
+
+/** TtsBlindTest 的盲测打分受 useCanAnnotate 限制（CP-NEW.17）
+ *  · operator + super_admin 可打分
+ *  · admin / viewer 只读
+ *  这里全局 mock 成 super_admin，让打分相关用例正常。 */
 
 /**
  * TtsBlindTest 页单测 —— CP-NEW.16。
@@ -24,6 +30,8 @@ const mockedResults = vi.mocked(btModule.getBlindTestResults)
 
 beforeEach(() => {
   sessionStorage.clear()
+  // mock 鉴权：super_admin 可打分
+  useAuthStore.setState({ isAuthenticated: true, role: 'super_admin', userId: 1 })
   vi.clearAllMocks()
 })
 

@@ -36,11 +36,17 @@ export interface NavItem {
   path: string
   label: string
   group: SidebarGroupKey
+  /** 仅该角色可见（CP-NEW.17 留作窄门标记，绝大多数页面留空） */
   minRole?: AdminRole
   icon: React.ReactNode
 }
 
-/** 导航项顺序：按 group 内出现顺序 */
+/** 导航项顺序：按 group 内出现顺序
+ *
+ * CP-NEW.17：去掉所有 minRole 锁，operator 角色可以"读为主"访问全部后台。
+ * 写动作（retry/delete/update/quota-adjust/cleanup）的权限在页面内通过
+ * `hasPermission(role, ['super_admin'])` 单独判断，与 sidebar 可见性解耦。
+ */
 export const navItems: NavItem[] = [
   // —— 总览 ——
   { path: '/dashboard',         label: '总览',     group: '总览',     icon: <LayoutDashboard size={16} /> },
@@ -52,29 +58,35 @@ export const navItems: NavItem[] = [
   { path: '/push-notifications', label: '推送队列', group: '内容运营', icon: <Bell size={16} /> },
 
   // —— 用户与系统 ——
-  { path: '/users',             label: '用户管理', group: '用户与系统', icon: <Users size={16} />,         minRole: 'super_admin' },
-  { path: '/settings/llm',      label: 'LLM 配置', group: '用户与系统', icon: <Settings size={16} />,     minRole: 'super_admin' },
-  { path: '/settings/tts',      label: 'TTS 配置', group: '用户与系统', icon: <Settings size={16} />,     minRole: 'super_admin' },
-  { path: '/audit-log',         label: '审计日志', group: '用户与系统', icon: <ClipboardList size={16} />, minRole: 'super_admin' },
+  { path: '/users',             label: '用户管理', group: '用户与系统', icon: <Users size={16} /> },
+  { path: '/settings/llm',      label: 'LLM 配置', group: '用户与系统', icon: <Settings size={16} /> },
+  { path: '/settings/tts',      label: 'TTS 配置', group: '用户与系统', icon: <Settings size={16} /> },
+  { path: '/audit-log',         label: '审计日志', group: '用户与系统', icon: <ClipboardList size={16} /> },
 
-  // —— 听感运营（CP-NEW.1 新增）——
-  { path: '/few-shot-pool',     label: '听感池',     group: '听感运营', icon: <Sparkles size={16} />,    minRole: 'super_admin' },
-  { path: '/evaluations',       label: '评测标注',   group: '听感运营', icon: <Star size={16} />,        minRole: 'super_admin' },
-  { path: '/model-routing',     label: '模型路由',   group: '听感运营', icon: <RouteIcon size={16} />,   minRole: 'super_admin' },
-  { path: '/tts-blind-test',    label: 'TTS 盲测',   group: '听感运营', icon: <Ear size={16} />,         minRole: 'super_admin' },
-  { path: '/audio-variants',    label: '多码率统计', group: '听感运营', icon: <Layers size={16} />,      minRole: 'super_admin' },
-  { path: '/consents',          label: 'GDPR 同意',  group: '听感运营', icon: <ShieldCheck size={16} />, minRole: 'super_admin' },
+  // —— 听感运营（CP-NEW.1 新增，CP-NEW.17 全员可见）——
+  { path: '/few-shot-pool',     label: '听感池',     group: '听感运营', icon: <Sparkles size={16} /> },
+  { path: '/evaluations',       label: '评测标注',   group: '听感运营', icon: <Star size={16} /> },
+  { path: '/model-routing',     label: '模型路由',   group: '听感运营', icon: <RouteIcon size={16} /> },
+  { path: '/tts-blind-test',    label: 'TTS 盲测',   group: '听感运营', icon: <Ear size={16} /> },
+  { path: '/audio-variants',    label: '多码率统计', group: '听感运营', icon: <Layers size={16} /> },
+  { path: '/consents',          label: 'GDPR 同意',  group: '听感运营', icon: <ShieldCheck size={16} /> },
   { path: '/ab-report',         label: 'A/B 报表',   group: '听感运营', icon: <GitCompare size={16} /> },
 ]
 
 /** group 渲染顺序 */
 const GROUP_ORDER: SidebarGroupKey[] = ['总览', '内容运营', '用户与系统', '听感运营']
 
-/** 角色过滤：super_admin 锁 + 角色断言 */
+/** 角色过滤：CP-NEW.17 全后台可见（读为主），仅 minRole 单独判定
+ *
+ * - 未登录 → 不显示任何项
+ * - admin / super_admin / operator → 全可见
+ * - viewer → 仅看得到没有 minRole 锁的页面（理论上不应该出现）
+ */
 function visibleItems(role: AdminRole | null): NavItem[] {
+  if (!role) return []
   return navItems.filter((item) => {
     if (!item.minRole) return true
-    return item.minRole === 'super_admin' && role === 'super_admin'
+    return role === item.minRole
   })
 }
 

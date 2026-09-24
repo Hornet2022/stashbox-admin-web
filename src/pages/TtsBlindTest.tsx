@@ -6,6 +6,7 @@ import {
   submitBlindTest,
 } from '../api/admin/tts-blind-test'
 import { useStepper } from '../hooks/useStepper'
+import { useCanAnnotate } from '../hooks/useRole'
 import { toast } from '../store/toast'
 import { CaveatBanner, Stepper, buttonGhostClass, buttonPrimaryClass, cellTextClass, inputClass, pageHintClass, pageTitleClass } from '../components/ui'
 import type { BlindTestResults, BlindTestSetup } from '../types'
@@ -58,6 +59,9 @@ function savePersisted(s: PersistedState | null) {
 export function TtsBlindTest() {
   const persisted = loadPersisted()
   const stepper = useStepper(persisted ? 1 : 0, STEPS.length)
+
+  // CP-NEW.17：operator + super_admin 可打分；admin/viewer 只读
+  const canAnnotate = useCanAnnotate()
 
   // 步骤 1：发起
   const [text, setText] = useState('')
@@ -284,6 +288,7 @@ export function TtsBlindTest() {
                   audioUrl={sample.audio_url}
                   score={scores[sample.key]}
                   onScore={(s) => setScores((prev) => ({ ...prev, [sample.key]: s }))}
+                  canScore={canAnnotate}
                 />
               ))}
             </div>
@@ -300,7 +305,8 @@ export function TtsBlindTest() {
               type="button"
               className={buttonPrimaryClass}
               onClick={handleSubmitScores}
-              disabled={!allScored || submitting}
+              disabled={!allScored || submitting || !canAnnotate}
+              title={canAnnotate ? '提交评测员盲测打分' : '权限不足：仅 super_admin / operator 可打分'}
             >
               {submitting ? '提交中…' : '提交评分'}
             </button>
@@ -359,11 +365,13 @@ function SampleRow({
   audioUrl,
   score,
   onScore,
+  canScore,
 }: {
   sampleKey: string
   audioUrl: string
   score?: number
   onScore: (s: number) => void
+  canScore: boolean
 }) {
   const [audioError, setAudioError] = useState(false)
 
@@ -396,6 +404,8 @@ function SampleRow({
             max={5}
             step={0.5}
             value={score ?? ''}
+            disabled={!canScore}
+            title={canScore ? '1-5 分' : '权限不足：仅 super_admin / operator 可打分'}
             onChange={(e) => {
               const v = Number(e.target.value)
               if (Number.isFinite(v) && v >= 1 && v <= 5) onScore(v)

@@ -6,6 +6,7 @@ import {
   listEvaluations,
 } from '../api/admin/evaluations'
 import { useApi } from '../hooks/useApi'
+import { useCanAnnotate } from '../hooks/useRole'
 import { toast } from '../store/toast'
 import {
   Badge,
@@ -52,6 +53,9 @@ export function Evaluations() {
   const [taskIdFilter, setTaskIdFilter] = useState('')
   const [page, setPage] = useState(0)
   const [annotateTarget, setAnnotateTarget] = useState<Evaluation | null>(null)
+
+  // CP-NEW.17：operator + super_admin 可标注，其他角色只读
+  const canAnnotate = useCanAnnotate()
 
   const filterKey = useMemo(
     () => `${autoFlagFilter}|${minScore}|${taskIdFilter}|${page}`,
@@ -208,6 +212,7 @@ export function Evaluations() {
                   <EvaluationRow
                     key={item.id}
                     item={item}
+                    canAnnotate={canAnnotate}
                     onAnnotate={() => setAnnotateTarget(item)}
                   />
                 ))
@@ -307,9 +312,11 @@ function AgreementCard({
 
 function EvaluationRow({
   item,
+  canAnnotate,
   onAnnotate,
 }: {
   item: Evaluation
+  canAnnotate: boolean
   onAnnotate: () => void
 }) {
   return (
@@ -351,8 +358,10 @@ function EvaluationRow({
           type="button"
           className={buttonGhostClass}
           onClick={onAnnotate}
+          disabled={!canAnnotate}
+          title={canAnnotate ? '提交评测员标注' : '权限不足：仅 super_admin / operator 可标注'}
         >
-          标注
+          {canAnnotate ? '标注' : '—'}
         </button>
       </td>
     </tr>
