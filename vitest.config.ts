@@ -25,12 +25,11 @@ export default defineConfig({
       include: [
         'src/utils.ts',
         'src/hooks/**/*.ts',
-        'src/components/pool/**/*.tsx',
-        'src/components/ui.tsx',
+        'src/components/**/*.tsx',
         'src/store/**/*.ts',
-        'src/api/admin/_shared.ts',
+        'src/api/**/*.ts',
       ],
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/**/index.ts'],
     },
   },
 })

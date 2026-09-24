@@ -306,6 +306,7 @@ function Pagination({
           className={buttonGhostClass}
           onClick={() => onChange(Math.max(0, page - 1))}
           disabled={page === 0}
+          aria-label="上一页"
         >
           <ChevronLeft size={12} />
         </button>
@@ -314,6 +315,7 @@ function Pagination({
           className={buttonGhostClass}
           onClick={() => onChange(Math.min(totalPages - 1, page + 1))}
           disabled={page >= totalPages - 1}
+          aria-label="下一页"
         >
           <ChevronRight size={12} />
         </button>

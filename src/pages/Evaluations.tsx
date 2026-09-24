@@ -193,7 +193,9 @@ export function Evaluations() {
                 <th className={thClass}>skip</th>
                 <th className={thClass}>auto</th>
                 <th className={thClass}>created</th>
-                <th className={thClass}></th>
+                <th className={thClass}>
+                  <span className="sr-only">操作</span>
+                </th>
               </tr>
             </thead>
             <tbody>
