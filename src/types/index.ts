@@ -125,6 +125,16 @@ export interface LlmTestResult {
   error?: string | null
 }
 
+/** PUT /api/v1/admin/llm/config 请求体 —— 留空/不传的字段视作「不动」 */
+export interface LlmConfigUpdatePayload {
+  provider?: string
+  model?: string
+  api_key?: string
+  base_url?: string | null
+  temperature?: number | null
+  max_tokens?: number | null
+}
+
 /** GET / PUT /api/v1/admin/tts/config 响应（api_key 只吐 set/last4）—— CP TTS-Config */
 export interface TtsConfig {
   provider: string
@@ -159,6 +169,32 @@ export interface TtsTestResult {
   bytes_len?: number | null
   ok: boolean
   error?: string | null
+}
+
+/** PUT /api/v1/admin/tts/config 请求体 —— 留空/不传的字段视作「不动」 */
+export interface TtsConfigUpdatePayload {
+  provider: string
+  // edge
+  edge_voice?: string | null
+  // openai 协议
+  openai_api_key?: string
+  openai_base_url?: string | null
+  openai_model?: string | null
+  openai_voice?: string | null
+  // doubao
+  doubao_api_key?: string
+  doubao_token?: string
+  doubao_app_id?: string | null
+  doubao_voice?: string | null
+  doubao_resource_id?: string | null
+  // local
+  local_voice?: string | null
+  ffmpeg_bin?: string | null
+  // indextts
+  indextts_base_url?: string | null
+  indextts_model?: string | null
+  indextts_ref_audio?: string | null
+  indextts_ref_text?: string | null
 }
 
 /** 蒸馏 P95 响应 — GET /api/v1/admin/distill-p95 */
