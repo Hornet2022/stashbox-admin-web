@@ -12,7 +12,6 @@ import {
   cellTextClass,
   cellStrongClass,
   footerCountClass,
-  inputClass,
   pageHintClass,
   pageTitleClass,
   rowClass,
@@ -93,16 +92,6 @@ export function Consents() {
             </button>
           ))}
         </div>
-
-        <label className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
-          （输入框预留，不实现搜索）
-          <input
-            type="text"
-            placeholder="user_id 搜索（暂未实现）"
-            disabled
-            className={`${inputClass} w-48 py-1 text-xs opacity-50`}
-          />
-        </label>
 
         <button type="button" className={buttonGhostClass + ' ml-auto'} onClick={state.reload}>
           刷新

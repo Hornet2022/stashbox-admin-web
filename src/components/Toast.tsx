@@ -36,7 +36,7 @@ export function ToastContainer() {
         <div
           key={item.id}
           role="status"
-          className={`pointer-events-auto flex items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg ${
+          className={`pointer-events-auto flex items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-sm ${
             toneClass[item.kind]
           }`}
         >

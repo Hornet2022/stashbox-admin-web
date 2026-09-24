@@ -508,13 +508,16 @@ export function MetricCard({
   metrics,
   loading,
 }: {
-  label: string
+  /** 可选 —— 调用方已有自己的 h2/h3 标题时传 null 或留空，避免双层标题 */
+  label?: string | null
   metrics: MetricItem[]
   loading?: boolean
 }) {
   return (
     <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-700 dark:bg-neutral-800/50">
-      <div className="text-sm text-neutral-500 dark:text-neutral-400">{label}</div>
+      {label ? (
+        <div className="text-sm text-neutral-500 dark:text-neutral-400">{label}</div>
+      ) : null}
       {loading ? (
         <div className="mt-3 space-y-2">
           {metrics.map((m) => (
