@@ -334,3 +334,18 @@ export function downloadCsv(kind: ExportKind): string {
 }
 
 export type { PageParams }
+
+/**
+ * CP-NEW.1 —— 把新端点（A1-A8）拆到 `api/admin/*` 子模块。
+ *
+ * 通过 `export *` 把 barrel 全部 re-export，老 `import { ... } from '../api/admin'`
+ * 调用方零修改即可拿到新端点封装。
+ *
+ * 老 entry 的旧逻辑（listUsers / listArticles / adjustQuota / listTags / createTag /
+ * forceRetryArticle / invalidateAudio / deleteAdminArticle / deleteAdminTag /
+ * listPushNotifications / listAuditLog / getStats / getDistillP95 /
+ * getLlmConfig / updateLlmConfig / testLlm /
+ * getTtsConfig / updateTtsConfig / testTts /
+ * exportCsvUrl / downloadCsv）保留不动。
+ */
+export * from './admin'

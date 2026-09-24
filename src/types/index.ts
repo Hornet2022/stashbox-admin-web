@@ -174,3 +174,270 @@ export interface DistillP95Response {
   overall: DistillStepPercentiles
   error?: string
 }
+
+/* ====================================================================
+ * CP-NEW.1 听感运营重构 —— 接口文档 §2.2（A1-A8）11 个新端点
+ * 全部挂在 ai-service（8103），鉴权统一 require_admin_or_operator
+ * 上线硬前提：alembic 0029 已在 PG 环境执行（evaluator_id / ab_group 列）
+ * ==================================================================== */
+
+/* ── A2 · few-shot 池 ─────────────────────────────────────────── */
+
+/** 健康度告警档位（空池/低量时由后端填） */
+export type PoolHealthWarning =
+  | 'insufficient'        // 总量过低
+  | 'low_high_score'      // 高分条目不足
+  | 'stale'               // 陈旧条目过多
+  | null
+
+/** GET /api/v1/admin/few-shot-pool/health */
+export interface PoolHealthReport {
+  total_count: number
+  high_score_count: number
+  medium_score_count: number
+  low_score_count: number
+  active_count: number
+  stale_count: number
+  /** 0-100 健康分；前端按 <60 / 60-80 / ≥80 三档染色 */
+  health_score: number
+  warning: PoolHealthWarning
+}
+
+/** kind 字段——池条目类型 */
+export type FewShotKind = 'hook' | 'section' | 'outro' | 'rhythm' | string
+
+/** GET /api/v1/admin/few-shot-pool 行 */
+export interface PoolExample {
+  id: string
+  /** null = 全局池；非空 = 私有池 */
+  user_id: number | null
+  kind: FewShotKind
+  /** source_pattern 是 hash 摘要（不可读） */
+  source_pattern: string
+  /** 后端已截断到 120 字符 */
+  rewrite_text: string
+  score_avg: number
+  usage_count: number
+  last_used_at: string | null
+  active: boolean
+  created_at: string
+}
+
+/** GET /api/v1/admin/few-shot-pool/audit-sample 行 */
+export interface PoolAuditSampleItem {
+  id: string
+  kind: FewShotKind
+  source_pattern: string
+  /** 后端已截断到 200 字符 */
+  rewrite_text: string
+  score_avg: number
+  usage_count: number
+}
+
+/** POST /api/v1/admin/few-shot-pool/cleanup 响应 */
+export interface PoolCleanupResult {
+  stale: number
+  low_quality: number
+  duplicates: number
+  total: number
+}
+
+/** POST /api/v1/admin/few-shot-pool/audit-result 响应 */
+export interface PoolAuditResult {
+  example_id: string
+  audit_score: number
+  updated: boolean
+}
+
+/* ── A3 · 评分 + 评测员标注 ──────────────────────────────────── */
+
+/** GET /api/v1/admin/evaluations 行
+ *  注意：响应不含 comment / evaluator_id（接口文档 §2.2 契约） */
+export interface Evaluation {
+  id: string
+  task_id: string
+  user_id: number | null
+  hook_score: number | null
+  section_score: number | null
+  outro_score: number | null
+  rhythm_score: number | null
+  overall_score: number | null
+  skip_reason: string | null
+  /** false = 用户提交 / 评测员标注；true = 系统自动重蒸追踪行 */
+  auto_flag: boolean
+  retried_task_id: string | null
+  created_at: string
+}
+
+/** POST /api/v1/admin/evaluations/{id}/annotate 请求体
+ *  4 维可 null（给了必须 1-5 整数），overall 必填 */
+export interface EvaluationAnnotationPayload {
+  hook_score?: number | null
+  section_score?: number | null
+  outro_score?: number | null
+  rhythm_score?: number | null
+  overall_score: number
+  comment?: string
+}
+
+/** POST .../annotate 响应 */
+export interface EvaluationAnnotation {
+  id: string
+  annotates: string
+  task_id: string
+  evaluator_id: number
+  overall_score: number
+}
+
+/** GET /api/v1/admin/evaluations/agreement */
+export interface EvaluatorAgreement {
+  /** 0-1 简化一致性系数；校准目标 ≥ 0.8 */
+  agreement: number
+  evaluator_count: number
+  annotated_count: number
+  task_filter: string | null
+}
+
+/* ── A1 · tier-config 模型路由 ────────────────────────────────── */
+
+/** provider 名白名单（与 llm/factory 实际实现对齐）
+ *  未实现 client 的 provider 配置进 system_config 也不会生效，
+ *  GET 响应的 warnings 字段会列出 */
+export type TierProvider =
+  | 'openai'
+  | 'qwen_vl'
+  | 'claude'
+  | 'deepseek'
+  | 'glm'
+  | string
+
+/** tier 档位（蒸馏任务侧 ctx.target_tier） */
+export type TierName = 'simple' | 'full'
+
+/** tier → provider → model 嵌套映射 */
+export type TierModelMap = Record<TierName, Record<TierProvider, string>>
+
+/** GET /api/v1/admin/tier-config 响应（响应永不含密钥） */
+export interface TierConfig {
+  tier_model_map: TierModelMap
+  /** "db" = system_config 表里配了；"default" = 回落代码默认 */
+  source: 'db' | 'default'
+  /** 代码默认（给 UI 做「恢复默认」对照） */
+  default_map: TierModelMap
+  /** llm/factory 实际实现 client 的 provider 列表 */
+  supported_providers: TierProvider[]
+  /** 已配置但未实现 client 的 provider 警告 */
+  warnings: string[]
+  updated_at?: string | null
+}
+
+/** PUT /api/v1/admin/tier-config 请求体（允许部分覆盖） */
+export interface TierConfigUpdatePayload {
+  tier_model_map: Partial<Record<TierName, Partial<Record<TierProvider, string>>>>
+}
+
+/* ── A4 · A/B 实验报表 ───────────────────────────────────────── */
+
+/** ab_group 分组口径（intention-to-treat）
+ *  user_id % 100 < 30 → personalized；其余 general
+ *  0029 上线前数据 ab_group=NULL → pre_experiment */
+export type ABGroupName = 'personalized' | 'general' | 'pre_experiment'
+
+/** 报表单组数据 */
+export interface ABGroup {
+  group: ABGroupName
+  tasks: number
+  /** null = 分母为 0 时不硬算 0 */
+  avg_overall_score: number | null
+  eval_count: number
+  play_count: number
+  complete_count: number
+  completion_rate: number | null
+  rewatch_pairs: number
+  play_pairs: number
+  rewatch_rate: number | null
+  skip_count: number
+  skip_rate: number | null
+}
+
+/** GET /api/v1/admin/ab-report 响应
+ *  caveats 是必须展示给运营的硬约束（接口文档 §2.2 契约） */
+export interface ABReport {
+  groups: ABGroup[]
+  caveats: string[]
+}
+
+/* ── A5 · 多码率变体统计 ─────────────────────────────────────── */
+
+/** by_bitrate 单条 */
+export interface AudioVariantBitrateStat {
+  bitrate: number
+  count: number
+  avg_file_size_bytes: number
+  avg_duration_sec: number
+}
+
+/** GET /api/v1/admin/audio-variants/stats */
+export interface AudioVariantsStats {
+  by_bitrate: AudioVariantBitrateStat[]
+  /** 有 ≥1 变体的 distinct 蒸馏数 */
+  covered_articles: number
+  /** done 且有 audio_url 总数（分母） */
+  done_articles: number
+  /** covered/done，给 CP7.4 预加载调优用 */
+  coverage_ratio: number
+}
+
+/* ── A7 · GDPR 同意抽查 ──────────────────────────────────────── */
+
+/** GET /api/v1/admin/consents 行
+ *  隐私端点仅回显结构化字段，**无 comment 类自由文本** */
+export interface ConsentRow {
+  user_id: number
+  personalization_enabled: boolean
+  cross_user_share_enabled: boolean
+  consent_version: string
+  consent_at: string
+  created_at: string
+}
+
+/* ── A8 · TTS 盲测 ───────────────────────────────────────────── */
+
+/** POST /api/v1/admin/tts/blind-test 请求 */
+export interface BlindTestSetupPayload {
+  /** 1-500 字符 */
+  text: string
+  /** 2-6 个 provider 标识串 */
+  providers: string[]
+}
+
+/** POST .../blind-test 响应
+ *  samples 的 key 是匿名化标识（sample_1 / sample_2...），provider 顺序已随机隐藏 */
+export interface BlindTestSetup {
+  blind_test_id: string
+  samples: Array<{ key: string; audio_url: string }>
+  note: string
+}
+
+/** POST /api/v1/admin/tts/blind-test/{id}/submit 请求 */
+export interface BlindTestSubmitPayload {
+  evaluator_id: string
+  scores: Array<{ sample_key: string; score: number }>
+}
+
+/** POST .../submit 响应 */
+export interface BlindTestSubmit {
+  blind_test_id: string
+  evaluator_id: string
+  accepted: boolean
+}
+
+/** GET /api/v1/admin/tts/blind-test/{id}/results 响应
+ *  revealed_mapping 仅在评测全部完成后展示给运营 */
+export interface BlindTestResults {
+  blind_test_id: string
+  evaluator_count: number
+  /** provider 维度的中位分 */
+  provider_median: Record<string, number>
+  revealed_mapping: Record<string, string>
+}

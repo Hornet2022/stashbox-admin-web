@@ -8,64 +8,129 @@ import {
   Bell,
   ClipboardList,
   Settings,
+  Sparkles,
+  Star,
+  Route as RouteIcon,
+  Ear,
+  GitCompare,
+  Layers,
+  ShieldCheck,
 } from 'lucide-react'
 import { useRole } from '../hooks/useRole'
 import type { AdminRole } from '../types'
 
+/**
+ * 侧边栏导航 —— CP-NEW.1 起按 group 分组渲染。
+ *
+ * 听匣 Design System：安静 / 留白 / 工具感。分组标题小字大写，间距宽松。
+ *
+ * 权限矩阵（CP-NEW.1 拍板）：
+ * - 听感运营整区 super_admin（A3 标注 / A6 抽查 / A8 盲测打分等写动作也一并锁）
+ * - A/B 报表（/ab-report）全员可见（实验进展要让运营知会），caveats 强提示
+ * - 其他沿用现状
+ */
+
+export type SidebarGroupKey = '总览' | '内容运营' | '用户与系统' | '听感运营'
+
 export interface NavItem {
   path: string
   label: string
+  group: SidebarGroupKey
   minRole?: AdminRole
   icon: React.ReactNode
 }
 
-/** 侧边栏导航项 —— 与 App.tsx 路由一一对应 */
+/** 导航项顺序：按 group 内出现顺序 */
 export const navItems: NavItem[] = [
-  { path: '/dashboard',           label: '总览',        icon: <LayoutDashboard size={16} /> },
-  { path: '/users',               label: '用户管理',     icon: <Users size={16} />,       minRole: 'super_admin' as AdminRole },
-  { path: '/tags',                label: '标签管理',      icon: <Tags size={16} /> },
-  { path: '/articles',           label: '文章管理',      icon: <FileText size={16} /> },
-  { path: '/push-notifications',  label: '推送队列',      icon: <Bell size={16} /> },
-  { path: '/audit-log',           label: '审计日志',      icon: <ClipboardList size={16} />, minRole: 'super_admin' as AdminRole },
-  { path: '/distill-metrics',     label: '蒸馏耗时',      icon: <BarChart3 size={16} /> },
-  { path: '/settings/llm',       label: 'LLM 配置',     icon: <Settings size={16} /> },
-  { path: '/settings/tts',       label: 'TTS 配置',     icon: <Settings size={16} /> },
+  // —— 总览 ——
+  { path: '/dashboard',         label: '总览',     group: '总览',     icon: <LayoutDashboard size={16} /> },
+  { path: '/distill-metrics',   label: '蒸馏耗时', group: '总览',     icon: <BarChart3 size={16} /> },
+
+  // —— 内容运营 ——
+  { path: '/articles',          label: '文章管理', group: '内容运营', icon: <FileText size={16} /> },
+  { path: '/tags',              label: '标签管理', group: '内容运营', icon: <Tags size={16} /> },
+  { path: '/push-notifications', label: '推送队列', group: '内容运营', icon: <Bell size={16} /> },
+
+  // —— 用户与系统 ——
+  { path: '/users',             label: '用户管理', group: '用户与系统', icon: <Users size={16} />,         minRole: 'super_admin' },
+  { path: '/settings/llm',      label: 'LLM 配置', group: '用户与系统', icon: <Settings size={16} />,     minRole: 'super_admin' },
+  { path: '/settings/tts',      label: 'TTS 配置', group: '用户与系统', icon: <Settings size={16} />,     minRole: 'super_admin' },
+  { path: '/audit-log',         label: '审计日志', group: '用户与系统', icon: <ClipboardList size={16} />, minRole: 'super_admin' },
+
+  // —— 听感运营（CP-NEW.1 新增）——
+  { path: '/few-shot-pool',     label: '听感池',     group: '听感运营', icon: <Sparkles size={16} />,    minRole: 'super_admin' },
+  { path: '/evaluations',       label: '评测标注',   group: '听感运营', icon: <Star size={16} />,        minRole: 'super_admin' },
+  { path: '/model-routing',     label: '模型路由',   group: '听感运营', icon: <RouteIcon size={16} />,   minRole: 'super_admin' },
+  { path: '/tts-blind-test',    label: 'TTS 盲测',   group: '听感运营', icon: <Ear size={16} />,         minRole: 'super_admin' },
+  { path: '/audio-variants',    label: '多码率统计', group: '听感运营', icon: <Layers size={16} />,      minRole: 'super_admin' },
+  { path: '/consents',          label: 'GDPR 同意',  group: '听感运营', icon: <ShieldCheck size={16} />, minRole: 'super_admin' },
+  { path: '/ab-report',         label: 'A/B 报表',   group: '听感运营', icon: <GitCompare size={16} /> },
 ]
 
+/** group 渲染顺序 */
+const GROUP_ORDER: SidebarGroupKey[] = ['总览', '内容运营', '用户与系统', '听感运营']
+
+/** 角色过滤：super_admin 锁 + 角色断言 */
 function visibleItems(role: AdminRole | null): NavItem[] {
-  if (!role) return navItems.filter((item) => !('minRole' in item && item.minRole))
   return navItems.filter((item) => {
-    if (!('minRole' in item)) return true
+    if (!item.minRole) return true
     return item.minRole === 'super_admin' && role === 'super_admin'
   })
+}
+
+/** 把可见项按 group 聚合 */
+function groupItems(items: NavItem[]): Record<SidebarGroupKey, NavItem[]> {
+  const grouped = Object.fromEntries(GROUP_ORDER.map((g) => [g, [] as NavItem[]])) as Record<
+    SidebarGroupKey,
+    NavItem[]
+  >
+  for (const item of items) grouped[item.group].push(item)
+  return grouped
 }
 
 /** 可复用的导航渲染 —— 用于 Desktop Sidebar 和 Mobile Drawer */
 export function SidebarNav() {
   const location = useLocation()
   const role = useRole()
-  const items = visibleItems(role)
+  const grouped = groupItems(visibleItems(role))
 
   return (
-    <nav className="mt-2 flex-1">
-      {items.map((item) => {
-        const active = location.pathname === item.path
+    <nav className="mt-2 flex-1 overflow-y-auto pb-2">
+      {GROUP_ORDER.map((groupKey, groupIdx) => {
+        const items = grouped[groupKey]
+        if (items.length === 0) return null
         return (
-          <Link
-            key={item.path}
-            to={item.path}
-            aria-current={active ? 'page' : undefined}
-            className={`mx-2 my-0.5 flex items-center gap-2.5 rounded px-3 py-2 text-sm transition-colors ${
-              active
-                ? 'bg-neutral-200 font-medium text-ink dark:bg-neutral-700 dark:text-neutral-100'
-                : 'text-neutral-500 hover:bg-neutral-100 hover:text-ink dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100'
-            }`}
-          >
-            <span className={active ? 'text-warm-ochre' : 'text-neutral-400 dark:text-neutral-500'}>
-              {item.icon}
-            </span>
-            {item.label}
-          </Link>
+          <div key={groupKey} className={groupIdx === 0 ? '' : 'mt-4'}>
+            <div className="mx-3 mb-1 px-1 text-[10px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+              {groupKey}
+            </div>
+            {items.map((item) => {
+              const active = location.pathname === item.path
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  aria-current={active ? 'page' : undefined}
+                  className={`mx-2 my-0.5 flex items-center gap-2.5 rounded px-3 py-2 text-sm transition-colors ${
+                    active
+                      ? 'bg-neutral-200 font-medium text-ink dark:bg-neutral-700 dark:text-neutral-100'
+                      : 'text-neutral-500 hover:bg-neutral-100 hover:text-ink dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100'
+                  }`}
+                >
+                  <span
+                    className={
+                      active
+                        ? 'text-warm-ochre'
+                        : 'text-neutral-400 dark:text-neutral-500'
+                    }
+                  >
+                    {item.icon}
+                  </span>
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
         )
       })}
     </nav>
@@ -80,7 +145,7 @@ export function Sidebar() {
       </div>
       <SidebarNav />
       <div className="border-t border-neutral-200 p-4 text-xs text-neutral-400 dark:border-neutral-700 dark:text-neutral-500">
-        CP-ADMIN-3 v0.6
+        CP-NEW.1 v0.7
       </div>
     </aside>
   )

@@ -18,6 +18,15 @@ const LlmSettings = lazy(() => import('./pages/LlmSettings'))
 const TtsSettings = lazy(() => import('./pages/TtsSettings'))
 const DistillMetrics = lazy(() => import('./pages/DistillMetrics'))
 
+// CP-NEW.1：听感运营 7 个 stub 路由（CP-NEW.2~5 承接业务实现）
+const FewShotPool = lazy(() => import('./pages/FewShotPool'))
+const Evaluations = lazy(() => import('./pages/Evaluations'))
+const ModelRouting = lazy(() => import('./pages/ModelRouting'))
+const TtsBlindTest = lazy(() => import('./pages/TtsBlindTest'))
+const AbReport = lazy(() => import('./pages/AbReport'))
+const AudioVariants = lazy(() => import('./pages/AudioVariants'))
+const Consents = lazy(() => import('./pages/Consents'))
+
 /** Route-level loading fallback */
 function PageSkeleton() {
   return (
@@ -181,6 +190,77 @@ function App() {
                 <AuthGuard>
                   <Suspense fallback={<PageSkeleton />}>
                     <TtsSettings />
+                  </Suspense>
+                </AuthGuard>
+              }
+            />
+            {/* CP-NEW.1：听感运营 7 个 stub 路由，CP-NEW.2~5 承接业务实现 */}
+            <Route
+              path="few-shot-pool"
+              element={
+                <AuthGuard>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <FewShotPool />
+                  </Suspense>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="evaluations"
+              element={
+                <AuthGuard>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <Evaluations />
+                  </Suspense>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="model-routing"
+              element={
+                <AuthGuard>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <ModelRouting />
+                  </Suspense>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="tts-blind-test"
+              element={
+                <AuthGuard>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <TtsBlindTest />
+                  </Suspense>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="ab-report"
+              element={
+                <AuthGuard>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <AbReport />
+                  </Suspense>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="audio-variants"
+              element={
+                <AuthGuard>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <AudioVariants />
+                  </Suspense>
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="consents"
+              element={
+                <AuthGuard>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <Consents />
                   </Suspense>
                 </AuthGuard>
               }
