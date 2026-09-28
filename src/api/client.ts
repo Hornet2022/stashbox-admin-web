@@ -1,5 +1,22 @@
 import axios from 'axios'
+import type { AxiosRequestConfig } from 'axios'
 import { toast } from '../store/toast'
+
+/**
+ * 请求级 retry 配置（自定义字段，axios 不识别，仅本仓库拦截器使用）。
+ *
+ * - `__retryOn5xx`：true 时，5xx 响应自动重试 1 次（不等用户重试）
+ * - `__retried`：拦截器内部标记，防止重试再失败后无限循环
+ *
+ * 默认行为：5xx 直接弹「服务端错误」toast，由用户重试。
+ * 只对幂等且 cold-start 易 5xx 的请求（典型：admin/auth/login）
+ * 显式开启 __retryOn5xx，避免 quota-adjust / force-retry 这类
+ * 有副作用的 POST 被悄悄重试造成重复扣量。
+ */
+export type RetryableRequestConfig = AxiosRequestConfig & {
+  __retryOn5xx?: boolean
+  __retried?: boolean
+}
 
 /**
  * Axios 实例 —— 所有 admin 端点的统一入口。
@@ -81,7 +98,21 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    const config = (error as { config?: RetryableRequestConfig })?.config
     const status = (error as { response?: { status?: number } })?.response?.status
+
+    // Cold-start race 兜底：5xx + 显式开启 __retryOn5xx → 重试 1 次。
+    // 只对幂等请求有效；其他 5xx 仍然走 toast，不静默吞掉真错误。
+    if (
+      config &&
+      config.__retryOn5xx &&
+      !config.__retried &&
+      typeof status === 'number' &&
+      status >= 500
+    ) {
+      config.__retried = true
+      return apiClient.request(config)
+    }
 
     if (status === 401) {
       clearAuthToken()

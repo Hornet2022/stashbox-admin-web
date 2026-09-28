@@ -43,7 +43,7 @@ describe('login', () => {
     expect(mockedPost).toHaveBeenCalledWith('/api/v1/admin/auth/login', {
       email: 'a@b.com',
       password: 'pw',
-    })
+    }, { __retryOn5xx: true })
     expect(r).toEqual({ role: 'super_admin', userId: 7, email: undefined })
     expect(mockedSetAuthToken).toHaveBeenCalledWith('jwt-1')
   })

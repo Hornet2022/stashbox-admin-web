@@ -1,4 +1,4 @@
-import apiClient, { clearAuthToken, setAuthToken } from './client'
+import apiClient, { clearAuthToken, setAuthToken, type RetryableRequestConfig } from './client'
 
 /** POST /api/v1/admin/auth/login 的响应（字段做了宽松处理） */
 export interface AdminLoginResponse {
@@ -26,9 +26,13 @@ export interface LoginResult {
  * role / user_id 落到 sessionStorage，供 AuthGuard 做前端守卫。
  */
 export async function login(email: string, password: string): Promise<LoginResult> {
+  // __retryOn5xx: true —— admin login 是幂等请求，cold-start 偶发 5xx
+  // 时由 apiClient 拦截器自动重试 1 次，避开「首次到达 → 路由未 warm → 500」
+  // 的 race。quota-adjust / force-retry 这类有副作用的 POST 不开。
   const { data } = await apiClient.post<AdminLoginResponse>(
     '/api/v1/admin/auth/login',
     { email, password },
+    { __retryOn5xx: true } as RetryableRequestConfig,
   )
 
   // 后端可能把结果包在 data.data 里，两种形态都兜住
