@@ -38,6 +38,11 @@ lerna-debug.log*
 coverage/
 *.lcov
 
+# Playwright artifacts
+playwright-report/
+test-results/
+.playwright/
+
 # WorkBuddy 私域
 .workbuddy/
 
