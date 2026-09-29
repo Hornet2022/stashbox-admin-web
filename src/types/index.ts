@@ -39,6 +39,7 @@ export type AdminRole = 'admin' | 'super_admin' | 'operator' | 'viewer'
  * 真实字段是 pending / listened / revenue（Dashboard 曾因此渲染崩溃）。
  */
 export interface DashboardStats {
+  // 总量（v1 字段不破坏）
   total_users: number
   total_articles: number
   /** 蒸馏队列中（pending） */
@@ -47,8 +48,33 @@ export interface DashboardStats {
   listened: number
   /** 本月已支付营收（orders 表缺失时为 0） */
   revenue: number
+  /** revenue_available=false → orders 表缺失，不要把 0 当真实没营收。CP-STATS-REWORK #3 */
+  revenue_available?: boolean
   active_audio_files: number
+  /** 蒸馏失败近 24h（来自 DistilledArticle.status='failed'）CP-STATS-REWORK #2 修口径 */
   failed_distillations_24h: number
+  /** 文章侧失败近 24h（Article.status='failed'，与蒸馏失败分开统计） */
+  failed_articles_24h?: number
+  /** 蒸馏成功率（done / (done + failed)，全量） */
+  distill_success_rate?: number
+  /** 按 articles.source 聚合 */
+  by_source?: Record<string, number>
+  /** 最近 7 天按 day 分桶的趋势 */
+  trends?: {
+    articles_created_7d: Array<{ date: string; count: number }>
+    users_created_7d: Array<{ date: string; count: number }>
+    distill_completed_7d: Array<{ date: string; count: number }>
+  }
+  /** 环比：today vs yesterday */
+  comparison?: {
+    new_articles_24h: { today: number; yesterday: number; delta_pct: number | null }
+    new_users_24h: { today: number; yesterday: number; delta_pct: number | null }
+    distill_completed_24h: { today: number; yesterday: number; delta_pct: number | null }
+  }
+  /** 异常告警（None 或带 code/message） */
+  warning?: { code: string; message: string; threshold: number; actual: number } | null
+  /** 缓存生成时间（ISO8601），前端可显示"X 秒前更新" */
+  generated_at?: string
 }
 
 /** GET /api/v1/admin/users 行 */
@@ -154,7 +180,37 @@ export interface LlmTestResult {
   model?: string | null
   text?: string | null
   ok: boolean
+  /** 兼容字段：成功时为 null，失败时直接展示这一行 hint 文案 */
   error?: string | null
+  /**
+   * 错误分类（CP-LLM-TEST-ERR）。前端按 kind 渲染不同的 toast / 引导文案：
+   *   - auth       401   API key 无效
+   *   - forbidden  403   账号受限（欠费 / 模型权限 / 区域）
+   *   - notfound   404   模型不存在或 Base URL 路径错
+   *   - badreq     400/422 参数非法
+   *   - ratelimit  429   触发限流
+   *   - timeout    httpx.TimeoutException
+   *   - connect    httpx.ConnectError（DNS / 端口不通）
+   *   - network    httpx.NetworkError 兜底
+   *   - internal   服务端 5xx 或 KeyError/JSONDecode 等内部异常
+   */
+  error_kind?:
+    | 'auth'
+    | 'forbidden'
+    | 'notfound'
+    | 'badreq'
+    | 'ratelimit'
+    | 'timeout'
+    | 'connect'
+    | 'network'
+    | 'internal'
+    | null
+  /** 第三方服务实际返回的 HTTP 状态码；非 HTTP 类错误为 null */
+  status_code?: number | null
+  /** 给操作员的「下一步干啥」中文提示 */
+  hint?: string | null
+  /** 原始异常字符串（已脱敏），技术排查用 */
+  detail?: string | null
 }
 
 /** PUT /api/v1/admin/llm/config 请求体 —— 留空/不传的字段视作「不动」 */
@@ -200,7 +256,45 @@ export interface TtsTestResult {
   voice?: string | null
   bytes_len?: number | null
   ok: boolean
+  /** 兼容字段：成功时为 null，失败时直接展示这一行 hint 文案 */
   error?: string | null
+  /**
+   * 错误分类（CP-TTS-TEST-ERR）。前端按 kind 渲染不同 toast / 引导：
+   *   - auth       401 / 缺凭证（provider 抛"需要 api_key"）
+   *   - forbidden  403
+   *   - notfound   404 / indextts 参考音频路径错
+   *   - badreq     400/422 参数错
+   *   - ratelimit  429
+   *   - timeout    httpx.TimeoutException
+   *   - connect    httpx.ConnectError
+   *   - network    httpx.NetworkError 子类（Read/Write/Close...）
+   *   - empty      200 但 audio bytes 为空（4 个 provider 共用此 kind）
+   *   - missing_dep  缺 Python 包（如 edge-tts 没装）
+   *   - subprocess    本地子进程失败（say / ffmpeg）
+   *   - business_code 火山引擎业务错误码（HTTP 200 但 code=4xxxxxxx）
+   *   - internal    5xx 或 KeyError/JSONDecode 等内部异常
+   */
+  error_kind?:
+    | 'auth'
+    | 'forbidden'
+    | 'notfound'
+    | 'badreq'
+    | 'ratelimit'
+    | 'timeout'
+    | 'connect'
+    | 'network'
+    | 'empty'
+    | 'missing_dep'
+    | 'subprocess'
+    | 'business_code'
+    | 'internal'
+    | null
+  /** 第三方服务实际返回的 HTTP 状态码；非 HTTP 类错误为 null */
+  status_code?: number | null
+  /** 给操作员的「下一步干啥」中文提示 */
+  hint?: string | null
+  /** 原始异常字符串（已脱敏），技术排查用 */
+  detail?: string | null
 }
 
 /** PUT /api/v1/admin/tts/config 请求体 —— 留空/不传的字段视作「不动」 */
@@ -237,7 +331,7 @@ export interface DistillStepPercentiles {
 }
 
 export interface DistillP95Response {
-  cached: boolean
+  cached?: boolean
   by_step: Record<string, DistillStepPercentiles>
   overall: DistillStepPercentiles
   error?: string

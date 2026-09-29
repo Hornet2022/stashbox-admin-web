@@ -40,8 +40,29 @@ describe('toErrorMessage', () => {
     expect(toErrorMessage({ response: { status: 418 } })).toBe('请求失败（418）')
   })
 
-  it('ECONNABORTED → "请求超时"', () => {
+  it('ECONNABORTED → "请求超时"（默认描述）', () => {
     expect(toErrorMessage({ code: 'ECONNABORTED' })).toMatch(/请求超时/)
+    expect(toErrorMessage({ code: 'ECONNABORTED' })).toMatch(/第三方服务/)
+    // v3 修复：不再硬编码 "IndexTTS / 阿里云 maas"（这俩是 TTS provider 名，
+    // 套到 LLM 测试上下文里会误导）。文案应使用通用 "第三方服务"。
+    expect(toErrorMessage({ code: 'ECONNABORTED' })).not.toMatch(/IndexTTS/)
+    expect(toErrorMessage({ code: 'ECONNABORTED' })).not.toMatch(/阿里云 maas/)
+  })
+
+  it('ECONNABORTED + context → 文案用调用方传入的描述（CP-ERROR-MSG-v3）', () => {
+    // LLM 测试场景
+    const llmMsg = toErrorMessage({ code: 'ECONNABORTED' }, 'OpenAI 兼容端点（OpenAI / 火山方舟 / qwen_vl）')
+    expect(llmMsg).toMatch(/OpenAI 兼容端点/)
+    expect(llmMsg).toMatch(/请求超时/)
+    expect(llmMsg).not.toMatch(/IndexTTS/)
+    // TTS 测试场景
+    const ttsMsg = toErrorMessage({ code: 'ECONNABORTED' }, 'TTS 服务（OpenAI / 豆包 / edge-tts / IndexTTS）')
+    expect(ttsMsg).toMatch(/IndexTTS/)
+  })
+
+  it('ECONNABORTED + 空 context → 回落到默认 "第三方服务"', () => {
+    expect(toErrorMessage({ code: 'ECONNABORTED' }, '')).toMatch(/第三方服务/)
+    expect(toErrorMessage({ code: 'ECONNABORTED' }, '   ')).toMatch(/第三方服务/)
   })
 
   it('其他无 response → "无法连接 api-gateway"', () => {

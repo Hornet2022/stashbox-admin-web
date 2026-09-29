@@ -7,6 +7,7 @@ import { ErrorNotice, pageHintClass, pageTitleClass } from '../components/ui'
 import { CurrentConfigCard } from './tts/CurrentConfigCard'
 import { TtsConfigForm, type TtsConfigFields } from './tts/TtsConfigForm'
 import { TtsTestPanel } from './tts/TtsTestPanel'
+import { toastForTtsTestResult } from './tts/ttsTestMessages'
 import { DEFAULT_VALUES, type TtsProvider } from './tts/constants'
 import type { TtsTestResult } from '../types'
 
@@ -130,10 +131,13 @@ export function TtsSettings() {
     try {
       const result = await testTts()
       setTestResult(result)
-      toast(result.ok ? '测试调用成功' : '测试调用失败', result.ok ? 'success' : 'error')
+      // CP-TTS-TEST-ERR：按 error_kind 给具体引导 toast（不再只说"失败"两字）
+      const t = toastForTtsTestResult(result)
+      toast(t.message, t.kind)
     } catch (err) {
-      console.warn('[CP TTS-Config] testTts failed:', toErrorMessage(err))
-      toast(`测试调用失败：${toErrorMessage(err)}`, 'error')
+      // 网络层错误（4xx/5xx/无 response 等）；按业务上下文给准确描述
+      console.warn('[CP TTS-Config] testTts failed:', toErrorMessage(err, 'TTS 服务（OpenAI 协议 / 豆包 / edge-tts / IndexTTS）'))
+      toast(`测试调用失败：${toErrorMessage(err, 'TTS 服务（OpenAI 协议 / 豆包 / edge-tts / IndexTTS）')}`, 'error')
     } finally {
       setTesting(false)
     }

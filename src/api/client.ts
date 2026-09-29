@@ -145,12 +145,21 @@ export function isEndpointMissing(error: unknown): boolean {
 
 /** 把任意异常压成一句可展示的中文。
  *
- * CP-ERROR-MSG-v2：把"无 response"分两类显示——
- *   - ECONNABORTED（axios.timeout 触发）→ "请求超时（10s）— 第三方服务（IndexTTS / 阿里云 maas）可能卡死"
+ * CP-ERROR-MSG-v3：
+ *   - ECONNABORTED（axios.timeout 触发）→ "请求超时（Xs）— <context> 可能卡死 或 未启动"
  *   - 其他网络断开（gateway 未启 / 跨域）→ "无法连接 api-gateway（localhost:8100），请检查网关是否启动"
  * 不再回落到笼统的"功能待上线"，避免运维误判。
+ *
+ * 注意：v2 在文案里硬编码 "IndexTTS / 阿里云 maas"（TTS provider 名），
+ * 但 toErrorMessage 被 LLM/TTS/Articles/Tags/Users/Login 6 个页面共享
+ * —— LLM 测试触发的 timeout 被告知"IndexTTS 卡死"很误导。
+ * 修复：调用方传 `context` 说明"这次调用的第三方是谁"，没传时默认 "第三方服务"。
+ *
+ * @param error      axios 抛的 Error（或类似的 {response,code,message} 对象）
+ * @param context    可选：本次调用的服务描述（如 'OpenAI 兼容端点（OpenAI/火山方舟）'），
+ *                   用于 timeout 文案。不传默认 "第三方服务"。
  */
-export function toErrorMessage(error: unknown): string {
+export function toErrorMessage(error: unknown, context?: string): string {
   const err = error as {
     response?: { status?: number; data?: { message?: string; detail?: string } }
     code?: string
@@ -166,10 +175,26 @@ export function toErrorMessage(error: unknown): string {
   if (status && status >= 500) return `服务端错误（${status}）`
   if (status) return `请求失败（${status}）`
   // 无 status → 没拿到 response，区分超时 vs 网关不可达
+  const target = context?.trim() || '第三方服务'
   if (err?.code === 'ECONNABORTED') {
-    return '请求超时（10s）—— 第三方服务（IndexTTS / 阿里云 maas）可能卡死或未启动'
+    // v2 写"10s"但 axios.timeout 实际是 15000（15s），v3 改用 API_TIMEOUT_SEC
+    return `请求超时（${API_TIMEOUT_SEC}s）—— ${target}可能卡死或未启动，请检查后重试`
   }
   return '无法连接 api-gateway（http://localhost:8100），请检查网关是否启动'
 }
+
+/**
+ * axios 超时秒数（client.ts:apiClient.timeout = 15000）。
+ * toErrorMessage 用它拼 timeout 文案，单点维护避免再次漂移。
+ *
+ * 可被 VITE_API_TIMEOUT_MS 环境变量覆盖（毫秒）；admin-web 是纯浏览器代码，没有 node 的
+ * process 全局，所以走 `globalThis as any`。
+ */
+export const API_TIMEOUT_SEC = Math.round(
+  Number(
+    (globalThis as { process?: { env?: Record<string, string> } }).process?.env
+      ?.VITE_API_TIMEOUT_MS,
+  ) || 15000,
+) / 1000
 
 export default apiClient

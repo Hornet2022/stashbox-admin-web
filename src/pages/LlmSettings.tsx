@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { AlertTriangle, Eye, EyeOff } from 'lucide-react'
 import { getLlmConfig, testLlm, updateLlmConfig } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
@@ -42,6 +42,60 @@ const cardBodyClass = 'px-4 py-4'
 const dtClass = 'text-sm text-neutral-400 dark:text-neutral-500'
 const ddClass = 'text-sm text-neutral-600 dark:text-neutral-300'
 const ddStrongClass = 'text-sm font-medium text-ink dark:text-neutral-100'
+
+/**
+ * CP-LLM-TEST-ERR：错误分类 → 视觉色调
+ *
+ * 后端 /admin/llm/test 已经把异常归到 error_kind，前端只用它决定颜色/图标，
+ * 文案优先用后端下发的 hint（保持单一真源）；没有 hint 时才用前端兜底。
+ *
+ * 调色规则（与 TtsTestPanel 已有的 Badge 风格对齐，不引入新色板）：
+ *   - 鉴权类（auth/forbidden/notfound/badreq）  → 红
+ *   - 限流类（ratelimit）                       → 橙
+ *   - 网络类（timeout/connect/network）          → 蓝
+ *   - 内部类（internal）                        → 中性灰
+ */
+const ERROR_KIND_TONE: Record<string, { badge: string; banner: string; label: string }> = {
+  auth: { badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200', banner: 'bg-rose-50 text-rose-900 border-rose-200 dark:bg-rose-900/20 dark:text-rose-100 dark:border-rose-800', label: '鉴权失败' },
+  forbidden: { badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200', banner: 'bg-rose-50 text-rose-900 border-rose-200 dark:bg-rose-900/20 dark:text-rose-100 dark:border-rose-800', label: '权限受限' },
+  notfound: { badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200', banner: 'bg-rose-50 text-rose-900 border-rose-200 dark:bg-rose-900/20 dark:text-rose-100 dark:border-rose-800', label: '资源不存在' },
+  badreq: { badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200', banner: 'bg-rose-50 text-rose-900 border-rose-200 dark:bg-rose-900/20 dark:text-rose-100 dark:border-rose-800', label: '参数错误' },
+  ratelimit: { badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200', banner: 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-900/20 dark:text-amber-100 dark:border-amber-800', label: '触发限流' },
+  timeout: { badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200', banner: 'bg-sky-50 text-sky-900 border-sky-200 dark:bg-sky-900/20 dark:text-sky-100 dark:border-sky-800', label: '调用超时' },
+  connect: { badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200', banner: 'bg-sky-50 text-sky-900 border-sky-200 dark:bg-sky-900/20 dark:text-sky-100 dark:border-sky-800', label: '无法连接' },
+  network: { badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200', banner: 'bg-sky-50 text-sky-900 border-sky-200 dark:bg-sky-900/20 dark:text-sky-100 dark:border-sky-800', label: '网络异常' },
+  internal: { badge: 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200', banner: 'bg-neutral-100 text-neutral-800 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700', label: '内部异常' },
+}
+
+/** 前端兜底文案（后端 hint 缺失时用，比如部署了老版本后端） */
+const ERROR_KIND_FALLBACK_HINT: Record<string, string> = {
+  auth: 'API key 无效或已过期，请检查后重新保存配置',
+  forbidden: '账号被限制使用该模型（可能欠费、无模型权限或区域受限），请到供应商后台核查',
+  notfound: '模型不存在或 Base URL 路径错误，请核对「模型名」和「Base URL」',
+  badreq: '请求参数不合法，请检查配置',
+  ratelimit: '请求过于频繁，请稍后再试',
+  timeout: '第三方服务未在 timeout 内响应，请稍后重试',
+  connect: '无法连接到 LLM 服务端，请检查 Base URL 是否可访问',
+  network: '网络传输异常，请检查网络环境或代理设置',
+  internal: '服务端处理异常（响应格式非预期），请联系开发排查',
+}
+
+/**
+ * toast 文案：成功 / 失败 各分类一句。让用户一眼看出**下一步干啥**，
+ * 而不是只看到「失败」两字。
+ */
+function toastForTestResult(result: LlmTestResult): { message: string; kind: 'success' | 'error' | 'info' } {
+  if (result.ok) {
+    const preview = (result.text ?? '').replace(/\s+/g, ' ').slice(0, 60)
+    return {
+      message: preview ? `测试调用成功：${preview}` : '测试调用成功',
+      kind: 'success',
+    }
+  }
+  const k = result.error_kind ?? ''
+  const hint = result.hint ?? ERROR_KIND_FALLBACK_HINT[k] ?? `测试调用失败（${result.error ?? '未知错误'}）`
+  return { message: hint, kind: 'error' }
+}
 
 export function LlmSettings() {
   const { data, loading, error, missing, reload } = useApi(getLlmConfig, 'llm-config')
@@ -99,10 +153,12 @@ export function LlmSettings() {
     try {
       const result = await testLlm()
       setTestResult(result)
-      toast(result.ok ? '测试调用成功' : '测试调用失败', result.ok ? 'success' : 'error')
+      const t = toastForTestResult(result)
+      toast(t.message, t.kind)
     } catch (err) {
-      console.warn('[CP7.3] testLlm failed:', toErrorMessage(err))
-      toast(`测试调用失败：${toErrorMessage(err)}`, 'error')
+      // 网络层错误（4xx/5xx/无 response 等）；按业务上下文给准确描述，避免和 TTS 串台
+      console.warn('[CP7.3] testLlm failed:', toErrorMessage(err, 'OpenAI 兼容端点（OpenAI / 火山方舟 / qwen_vl）'))
+      toast(`测试调用失败：${toErrorMessage(err, 'OpenAI 兼容端点（OpenAI / 火山方舟 / qwen_vl）')}`, 'error')
     } finally {
       setTesting(false)
     }
@@ -260,33 +316,89 @@ export function LlmSettings() {
           </form>
 
           {testResult && (
-            <div className="mt-6 overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-700">
-              <table className="w-full text-left text-sm">
-                <tbody>
-                  <tr className={rowClass}>
-                    <th className={`${cellMutedClass} font-normal`}>结果</th>
-                    <td className={cellStrongClass}>
-                      <Badge value={testResult.ok ? 'ok' : 'failed'} />
-                    </td>
-                  </tr>
-                  <tr className={rowClass}>
-                    <th className={`${cellMutedClass} font-normal`}>Provider</th>
-                    <td className={cellTextClass}>{testResult.provider}</td>
-                  </tr>
-                  <tr className={rowClass}>
-                    <th className={`${cellMutedClass} font-normal`}>Model</th>
-                    <td className={cellTextClass}>{testResult.model || '—'}</td>
-                  </tr>
-                  <tr className={rowClass}>
-                    <th className={`${cellMutedClass} font-normal`}>
-                      {testResult.ok ? '返回文本' : '错误'}
-                    </th>
-                    <td className={`${cellTextClass} whitespace-pre-wrap break-all`}>
-                      {testResult.ok ? testResult.text : testResult.error}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="mt-6 space-y-3">
+              {/* 失败时用醒目 banner 给出可执行引导（CP-LLM-TEST-ERR） */}
+              {!testResult.ok && testResult.hint && (
+                <div
+                  role="alert"
+                  className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${
+                    ERROR_KIND_TONE[testResult.error_kind ?? 'internal']?.banner ??
+                    ERROR_KIND_TONE.internal.banner
+                  }`}
+                >
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+                  <div className="flex-1">
+                    <div className="font-medium">
+                      {ERROR_KIND_TONE[testResult.error_kind ?? 'internal']?.label ?? '调用失败'}
+                      {testResult.status_code != null && (
+                        <span className="ml-2 text-xs opacity-80">HTTP {testResult.status_code}</span>
+                      )}
+                    </div>
+                    <div className="mt-0.5">{testResult.hint}</div>
+                  </div>
+                </div>
+              )}
+
+              <div className="overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-700">
+                <table className="w-full text-left text-sm">
+                  <tbody>
+                    <tr className={rowClass}>
+                      <th className={`${cellMutedClass} font-normal`}>结果</th>
+                      <td className={cellStrongClass}>
+                        <Badge value={testResult.ok ? 'ok' : 'failed'} />
+                      </td>
+                    </tr>
+                    <tr className={rowClass}>
+                      <th className={`${cellMutedClass} font-normal`}>Provider</th>
+                      <td className={cellTextClass}>{testResult.provider}</td>
+                    </tr>
+                    <tr className={rowClass}>
+                      <th className={`${cellMutedClass} font-normal`}>Model</th>
+                      <td className={cellTextClass}>{testResult.model || '—'}</td>
+                    </tr>
+                    {testResult.ok ? (
+                      <tr className={rowClass}>
+                        <th className={`${cellMutedClass} font-normal`}>返回文本</th>
+                        <td className={`${cellTextClass} whitespace-pre-wrap break-all`}>
+                          {testResult.text || '（空响应）'}
+                        </td>
+                      </tr>
+                    ) : (
+                      <>
+                        <tr className={rowClass}>
+                          <th className={`${cellMutedClass} font-normal`}>错误分类</th>
+                          <td className={cellTextClass}>
+                            {testResult.error_kind ? (
+                              <span
+                                className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${
+                                  ERROR_KIND_TONE[testResult.error_kind]?.badge ??
+                                  ERROR_KIND_TONE.internal.badge
+                                }`}
+                              >
+                                {ERROR_KIND_TONE[testResult.error_kind]?.label ?? testResult.error_kind}
+                              </span>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                        </tr>
+                        <tr className={rowClass}>
+                          <th className={`${cellMutedClass} font-normal`}>状态码</th>
+                          <td className={cellTextClass}>
+                            {testResult.status_code != null ? testResult.status_code : '—'}
+                          </td>
+                        </tr>
+                        <tr className={rowClass}>
+                          <th className={`${cellMutedClass} font-normal`}>原始异常</th>
+                          <td className={`${cellTextClass} whitespace-pre-wrap break-all text-xs opacity-80`}>
+                            {testResult.detail || testResult.error || '—'}
+                          </td>
+                        </tr>
+                      </>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
