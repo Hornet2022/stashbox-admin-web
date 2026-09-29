@@ -15,7 +15,10 @@ const baseUser: UserRow = {
   email: 'alice@example.com',
   display_name: 'Alice',
   role: 'user',
-  tier: 'pro',
+  // CP-USERS-REALITY：原来这里写 'pro'，但系统里从来没有 pro 这个 tier 值
+  // （users.tier 实际只有 free / admin / operator）。用真实值，
+  // 免得测试里自造一个不存在的套餐、把「下拉能选到 pro」这种错觉固化下来。
+  tier: 'free',
   status: 'active',
   monthly_quota: 1000,
   used_quota: 250,
@@ -29,7 +32,9 @@ describe('UsersTable', () => {
     expect(screen.getByText('邮箱')).toBeInTheDocument()
     expect(screen.getByText('昵称')).toBeInTheDocument()
     expect(screen.getByText('角色')).toBeInTheDocument()
-    expect(screen.getByText('套餐')).toBeInTheDocument()
+    // CP-USERS-REALITY：列头由「套餐」改为「等级」——系统里没有套餐分级，
+    // users.tier 就是等级；「套餐」二字会让人以为有 free/pro/max 那套东西。
+    expect(screen.getByText('等级')).toBeInTheDocument()
     expect(screen.getByText('状态')).toBeInTheDocument()
     expect(screen.getByText('月配额')).toBeInTheDocument()
     expect(screen.getByText('已用')).toBeInTheDocument()
@@ -37,7 +42,7 @@ describe('UsersTable', () => {
     expect(screen.getByText('操作')).toBeInTheDocument()
   })
 
-  it('row 渲染邮箱 / 昵称 / 角色 / 配额', () => {
+  it('row 渲染邮箱 / 昵称 / 角色 / 等级 / 配额', () => {
     render(
       <UsersTable
         rows={[baseUser]}
@@ -50,9 +55,29 @@ describe('UsersTable', () => {
     expect(screen.getByText('alice@example.com')).toBeInTheDocument()
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('user')).toBeInTheDocument()
-    expect(screen.getByText('pro')).toBeInTheDocument()
+    expect(screen.getByText('free')).toBeInTheDocument()
     expect(screen.getByText('1,000')).toBeInTheDocument()
     expect(screen.getByText('250')).toBeInTheDocument()
+  })
+
+  /**
+   * CP-USERS-REALITY 回归：后端过去对所有用户恒返 `email: null`，而这里原来是
+   * 裸渲染 `{user.email}` —— React 把 null 渲染成空单元格，整列看着像坏了。
+   * 现在必须有 "—" 兜底。
+   */
+  it('email 为 null → 邮箱列显示 "—" 而不是空白', () => {
+    const { container } = render(
+      <UsersTable
+        rows={[{ ...baseUser, email: null }]}
+        total={1}
+        loading={false}
+        hasError={false}
+        onAdjust={() => {}}
+      />,
+    )
+    const cells = container.querySelectorAll('tbody td')
+    // 第 2 列是邮箱
+    expect(cells[1].textContent).toBe('—')
   })
 
   it('配额数字走千分位（≥1000）', () => {

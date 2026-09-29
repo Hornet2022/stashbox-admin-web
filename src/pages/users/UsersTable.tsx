@@ -40,7 +40,9 @@ export function UsersTable({ rows, total, loading, hasError, onAdjust }: UsersTa
               rows.map((user) => (
                 <tr key={user.id} className={rowClass}>
                   <td className={cellMutedClass}>{user.id}</td>
-                  <td className={cellStrongClass}>{user.email}</td>
+                  {/* CP-USERS-REALITY：后端过去恒返 email=null，这里裸渲染
+                      React 会渲染成空白单元格，整列看着像坏了。给个 "—" 兜底。 */}
+                  <td className={cellStrongClass}>{user.email ?? '—'}</td>
                   <td className={cellTextClass}>{user.display_name ?? '—'}</td>
                   <td className={cellTextClass}>{user.role ?? '—'}</td>
                   <td className={cellTextClass}>{user.tier ?? '—'}</td>

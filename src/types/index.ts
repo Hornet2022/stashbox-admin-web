@@ -77,11 +77,18 @@ export interface DashboardStats {
   generated_at?: string
 }
 
-/** GET /api/v1/admin/users 行 */
+/** GET /api/v1/admin/users 行
+ *
+ * CP-USERS-REALITY：email / display_name / last_active_at 声明成可选，
+ * 但后端在**没有值时返的是 null 而不是省略该字段**
+ * （`AdminUserItem.email: str | None = None`）。两者不等价：
+ * 写成 `email?: string` 的话 TS 认为它一定是 string，模板里裸渲染
+ * 不会有任何提示，实际却会渲染出空单元格。这里显式带上 null。
+ */
 export interface UserRow {
   id: number
-  email: string
-  display_name?: string
+  email?: string | null
+  display_name?: string | null
   role?: string
   tier?: string
   status?: string
