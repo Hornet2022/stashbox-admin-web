@@ -44,6 +44,8 @@ deviceTest.describe('跨端：配额', () => {
 
   test.afterEach(async () => {
     await resetQuota()
+    // 兜底清掉这组用例可能造出来的文章（挂在真机账号下，不清会污染 App 列表）
+    await purgeByUrl('crossquota_')
   })
 
   test('后台把配额设为 0（停用）→ App 端立刻读到新值', async () => {
@@ -259,4 +261,36 @@ with httpx.Client(base_url='${gateway}', timeout=30, headers=h) as c:
     assert r.status_code == 200, (r.status_code, r.text[:200])
     print('quota_adjust ->', r.status_code)
 `, 9018)
+}
+
+/**
+ * 清掉本套件造出来的文章（连同蒸馏行与关联数据）。
+ *
+ * 挂在**真机在用的账号**（user ${DEVICE_USER_ID}）名下，不清就会直接出现在
+ * 真机 App 的文章列表里。本轮跑完留了 33 篇 `crossquota_*`，排在列表最前，
+ * 把 backend/tests/e2e 的「首页能看到已蒸馏文章」顶掉了。
+ *
+ * 走 SQL 而不是 `DELETE /api/v1/articles/{id}`：后者是业务端点，删除会顺带
+ * 清音频文件，而这里造的 URL 都是假链接，本来就没有音频。
+ * 顺序有讲究：先子表后父表，直接删 articles 会撞
+ * `distilled_articles_article_id_fkey` 外键约束。
+ */
+async function purgeByUrl(marker: string): Promise<void> {
+  const repo = process.env.STASHBOX_REPO ?? '/Users/hornet/work/stashbox'
+  execFileSync(
+    'psql',
+    [
+      '-h', 'localhost', '-U', 'stashbox', '-d', 'stashbox', '-tAc',
+      `delete from distilled_articles where article_id in
+         (select id from articles where url like '%${marker}%');
+       delete from feedback where article_id in
+         (select id from articles where url like '%${marker}%');
+       delete from listening_statuses where article_id in
+         (select id from articles where url like '%${marker}%');
+       delete from later_listens where article_id in
+         (select id from articles where url like '%${marker}%');
+       delete from articles where url like '%${marker}%';`,
+    ],
+    { env: { ...process.env, PGPASSWORD: 'stashbox_dev' }, stdio: 'ignore' },
+  )
 }
