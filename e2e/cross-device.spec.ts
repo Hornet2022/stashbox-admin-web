@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 
 import { test, expect } from './fixtures'
+import { GATEWAY } from './gateway'
 import {
   DEVICE_USER_ID,
   adb,
@@ -122,7 +123,7 @@ deviceTest.describe('跨端：文章', () => {
  * 详见 backend/tests/e2e/README.md 踩坑清单第 4 条。
  */
 async function exhaustQuotaViaApi(userId: number, target: number): Promise<void> {
-  const gateway = process.env.STASHBOX_GATEWAY ?? 'http://127.0.0.1:8100'
+  const gateway = GATEWAY
   runBackendPy(`
 with httpx.Client(base_url='${gateway}', timeout=30, headers=h) as c:
     for i in range(60):
@@ -173,7 +174,7 @@ ${body}
 
 /** 造一篇文章（走 D9 回调 = App 剪藏用的同一个后端入口），返回 article_id */
 async function createArticleViaD9(userId: number, marker: string): Promise<string> {
-  const gateway = process.env.STASHBOX_GATEWAY ?? 'http://127.0.0.1:8100'
+  const gateway = GATEWAY
   const out = runBackendPy(`
 with httpx.Client(base_url='${gateway}', timeout=30, headers=h) as c:
     r = c.post('/api/v1/callback/d9-add-article',
@@ -212,7 +213,7 @@ async function resetQuota(monthlyQuota = 50): Promise<void> {
     { env: { ...process.env, PGPASSWORD: 'stashbox_dev' }, stdio: 'ignore' },
   )
 
-  const gateway = process.env.STASHBOX_GATEWAY ?? 'http://127.0.0.1:8100'
+  const gateway = GATEWAY
   runBackendPy(`
 with httpx.Client(base_url='${gateway}', timeout=30, headers=h) as c:
     r = c.post('/api/v1/admin/users/${DEVICE_USER_ID}/quota-adjust',
@@ -231,7 +232,7 @@ function readQuotaAsUser(userId: number): {
   remaining: number
   cached: boolean
 } {
-  const gateway = process.env.STASHBOX_GATEWAY ?? 'http://127.0.0.1:8100'
+  const gateway = GATEWAY
   const out = runBackendPy(`
 with httpx.Client(base_url='${gateway}', timeout=30, headers=h) as c:
     r = c.get('/api/v1/users/me/quota')
@@ -253,7 +254,7 @@ with httpx.Client(base_url='${gateway}', timeout=30, headers=h) as c:
  * 想在 UI 上定位它只能靠翻页，不是 `fill('1')` 能解决的。）
  */
 async function setQuotaViaAdminApi(userId: number, monthlyQuota: number): Promise<void> {
-  const gateway = process.env.STASHBOX_GATEWAY ?? 'http://127.0.0.1:8100'
+  const gateway = GATEWAY
   runBackendPy(`
 with httpx.Client(base_url='${gateway}', timeout=30, headers=h) as c:
     r = c.post('/api/v1/admin/users/${userId}/quota-adjust',

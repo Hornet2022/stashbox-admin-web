@@ -1,18 +1,22 @@
 import { test, expect } from './fixtures'
+import { GATEWAY } from './gateway'
 
 /**
  * API 直调有两个坑，都踩过：
  *
  * 1. **必须打网关绝对地址**。`page.request` 继承 Playwright 的 baseURL
- *    （vite preview 4173），打过去被 SPA fallback 返回 index.html，
+ *    （vite preview），打过去被 SPA fallback 返回 index.html，
  *    `res.json()` 报 "Unexpected token '<'"。
  *
  * 2. **必须手动带 Authorization**。admin-web 的 token 由 apiClient 拦截器写进
  *    **localStorage**（`stashbox_admin_token`），而 `page.request` 只与页面共享
  *    **cookie**、不共享 localStorage —— 不手动带就 401。
  *    （页面自身的请求没事，是因为走浏览器 axios，拦截器能读到 localStorage。）
+ *
+ * ⚠️ 这里的 GATEWAY 来自 ./gateway（隔离后端 :18100），**不是**页面 axios 用的
+ * VITE_API_BASE_URL。`page.request` 完全绕开前端，所以这两条路必须各自指对，
+ * 否则会一半写进 e2e 库、一半写进生产库。详见 ./gateway.ts 的注释。
  */
-const GATEWAY = process.env.STASHBOX_GATEWAY ?? 'http://127.0.0.1:8100'
 
 async function authHeaders(page: import('@playwright/test').Page) {
   const token = await page.evaluate(() =>
