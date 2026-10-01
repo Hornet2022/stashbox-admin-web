@@ -14,6 +14,7 @@ import {
   Ear,
   GitCompare,
   Layers,
+  Mic,
   ShieldCheck,
 } from 'lucide-react'
 import { useRole } from '../hooks/useRole'
@@ -61,6 +62,10 @@ export const navItems: NavItem[] = [
   { path: '/users',             label: '用户管理', group: '用户与系统', icon: <Users size={16} /> },
   { path: '/settings/llm',      label: 'LLM 配置', group: '用户与系统', icon: <Settings size={16} /> },
   { path: '/settings/tts',      label: 'TTS 配置', group: '用户与系统', icon: <Settings size={16} /> },
+  // CP-TTS-VOICE：音色库。刻意**不加 minRole** —— 侧边栏 minRole 目前是死字段，
+  // Sidebar.operator.test.tsx 有静态测试强制 navItems 保持不设该字段；
+  // 写操作权限在页面内用 hasPermission 判断（与 Tags 页同口径）。
+  { path: '/settings/voices',   label: '音色库',   group: '用户与系统', icon: <Mic size={16} /> },
   { path: '/audit-log',         label: '审计日志', group: '用户与系统', icon: <ClipboardList size={16} /> },
 
   // —— 听感运营（CP-NEW.1 新增，CP-NEW.17 全员可见）——

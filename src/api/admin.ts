@@ -26,6 +26,7 @@ export * from './admin/audit-log'
 export * from './admin/dashboard'
 export * from './admin/llm'
 export * from './admin/tts'
+export * from './admin/voice-library'
 export * from './admin/csv'
 
 // 兼容类型 alias —— 老 admin.ts 末尾的 PageParams re-export

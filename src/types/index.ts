@@ -330,6 +330,70 @@ export interface TtsConfigUpdatePayload {
   indextts_ref_text?: string | null
 }
 
+// ---------------------------------------------------------------------------
+// CP-TTS-VOICE：音色库
+//
+// IndexTTS 是零样本克隆，音色 = (参考音频, 参考文本) 对，**不是** provider 那种
+// 填个 voice 名字就行的字符串。ref_text 必须与 ref_audio 的内容一致，
+// 否则克隆出的音色会念错 —— 这是这个模块最容易配错、也最难在界面上看出来的点。
+// ---------------------------------------------------------------------------
+
+/** 音色库一行（管理端视图，比用户端多吐参考音频/文本/上下架状态） */
+export interface VoiceRow {
+  id: string
+  slug: string
+  display_name: string
+  description: string | null
+  is_default: boolean
+  ref_audio_url: string
+  ref_text: string
+  is_active: boolean
+  sort_order: number
+  updated_at: string | null
+}
+
+export interface VoiceListResult {
+  items: VoiceRow[]
+}
+
+/** 参考音频二选一：直接给路径/URL，或浏览器读文件转 base64 */
+export interface VoiceCreatePayload {
+  slug: string
+  display_name: string
+  ref_audio_url?: string | null
+  ref_audio_b64?: string | null
+  ref_text: string
+  description?: string | null
+  is_default?: boolean
+  is_active?: boolean
+  sort_order?: number
+}
+
+/** 不传的字段保持不变（后端按 model_fields_set 判定） */
+export interface VoiceUpdatePayload {
+  display_name?: string | null
+  ref_audio_url?: string | null
+  ref_audio_b64?: string | null
+  ref_text?: string | null
+  description?: string | null
+  is_active?: boolean | null
+  is_default?: boolean | null
+  sort_order?: number | null
+}
+
+export interface VoicePreviewResult {
+  audio_url: string
+  bytes_len: number
+  duration_sec: number
+  voice_id: string
+}
+
+export interface ImportVoiceResult {
+  voice: VoiceRow
+  /** false = 之前已导入过，后端幂等返回，没有造重复行 */
+  created: boolean
+}
+
 /** 蒸馏 P95 响应 — GET /api/v1/admin/distill-p95 */
 export interface DistillStepPercentiles {
   p50: number | null

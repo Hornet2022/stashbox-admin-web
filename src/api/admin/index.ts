@@ -20,6 +20,7 @@
  * - dashboard      GET /stats + /distill-p95
  * - llm            GET/PUT /llm/config + /test
  * - tts            GET/PUT /tts/config + /test
+ * - voice-library  音色库 CRUD + 试听 + 从配置导入（CP-TTS-VOICE）
  * - csv            exportCsvUrl + downloadCsv（4 种 kind）
  */
 
@@ -41,4 +42,5 @@ export * from './audit-log'
 export * from './dashboard'
 export * from './llm'
 export * from './tts'
+export * from './voice-library'
 export * from './csv'

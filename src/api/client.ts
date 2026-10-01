@@ -164,6 +164,7 @@ export function toErrorMessage(error: unknown, context?: string): string {
     response?: { status?: number; data?: { message?: string; detail?: string } }
     code?: string
     message?: string
+    config?: { timeout?: number }
   }
   const status = err?.response?.status
   const detail = err?.response?.data?.message ?? err?.response?.data?.detail
@@ -177,8 +178,14 @@ export function toErrorMessage(error: unknown, context?: string): string {
   // 无 status → 没拿到 response，区分超时 vs 网关不可达
   const target = context?.trim() || '第三方服务'
   if (err?.code === 'ECONNABORTED') {
-    // v2 写"10s"但 axios.timeout 实际是 15000（15s），v3 改用 API_TIMEOUT_SEC
-    return `请求超时（${API_TIMEOUT_SEC}s）—— ${target}可能卡死或未启动，请检查后重试`
+    // 超时秒数取**这次请求实际的** timeout，而不是全局常量 ——
+    // 有些端点会单独放宽（比如音色试听要真跑 oMLX 合成，实测 ~120s，
+    // 见 src/api/admin/voice-library.ts 的 PREVIEW_TIMEOUT_MS）。
+    // 照抄 API_TIMEOUT_SEC 会让「等了 180 秒后超时」显示成「请求超时（15s）」，
+    // 自相矛盾且会把排查方向带偏。
+    const actual = (err as { config?: { timeout?: number } })?.config?.timeout
+    const sec = Math.round((typeof actual === 'number' && actual > 0 ? actual : API_TIMEOUT_SEC * 1000) / 1000)
+    return `请求超时（${sec}s）—— ${target}可能卡死或未启动，请检查后重试`
   }
   return '无法连接 api-gateway（http://localhost:8100），请检查网关是否启动'
 }

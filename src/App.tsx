@@ -16,6 +16,7 @@ const PushNotifications = lazy(() => import('./pages/PushNotifications'))
 const AuditLog = lazy(() => import('./pages/AuditLog'))
 const LlmSettings = lazy(() => import('./pages/LlmSettings'))
 const TtsSettings = lazy(() => import('./pages/TtsSettings'))
+const VoiceLibrary = lazy(() => import('./pages/VoiceLibrary')) // CP-TTS-VOICE 音色库
 const DistillMetrics = lazy(() => import('./pages/DistillMetrics'))
 
 // CP-NEW.1：听感运营 7 个 stub 路由（CP-NEW.2~5 承接业务实现）
@@ -238,6 +239,18 @@ function App() {
                 <AuthGuard>
                   <Suspense fallback={<PageSkeleton />}>
                     <TtsSettings />
+                  </Suspense>
+                </AuthGuard>
+              }
+            />
+            {/* CP-TTS-VOICE：音色库。与 TTS 配置页分开 —— 后者配 provider 凭证，
+                前者管「有哪些音色可选」，用户侧的音色选择器读的就是这张表。 */}
+            <Route
+              path="settings/voices"
+              element={
+                <AuthGuard>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <VoiceLibrary />
                   </Suspense>
                 </AuthGuard>
               }

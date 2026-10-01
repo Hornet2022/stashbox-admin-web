@@ -49,6 +49,20 @@ describe('toErrorMessage', () => {
     expect(toErrorMessage({ code: 'ECONNABORTED' })).not.toMatch(/阿里云 maas/)
   })
 
+  it('ECONNABORTED + config.timeout → 文案报**这次请求实际**的秒数（BUG#11）', () => {
+    // 音色试听把 timeout 单独放宽到 180s（真跑 oMLX 合成，实测 ~120s）。
+    // 照抄全局 API_TIMEOUT_SEC 会显示成「请求超时（15s）」，自相矛盾且带偏排查。
+    const msg = toErrorMessage({ code: 'ECONNABORTED', config: { timeout: 180_000 } })
+    expect(msg).toMatch(/请求超时（180s）/)
+    expect(msg).not.toMatch(/15s/)
+  })
+
+  it('ECONNABORTED 但 config.timeout 缺失/异常 → 回落到全局默认值', () => {
+    for (const config of [undefined, {}, { timeout: 0 }, { timeout: -1 }]) {
+      expect(toErrorMessage({ code: 'ECONNABORTED', config })).toMatch(/请求超时（15s）/)
+    }
+  })
+
   it('ECONNABORTED + context → 文案用调用方传入的描述（CP-ERROR-MSG-v3）', () => {
     // LLM 测试场景
     const llmMsg = toErrorMessage({ code: 'ECONNABORTED' }, 'OpenAI 兼容端点（OpenAI / 火山方舟 / qwen_vl）')
