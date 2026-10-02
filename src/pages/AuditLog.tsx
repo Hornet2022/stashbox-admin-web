@@ -74,7 +74,9 @@ export function AuditLog() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className={pageTitleClass}>审计日志</h1>
-          <p className={pageHintClass}>数据源：GET /api/v1/admin/audit-log</p>
+          <p className={pageHintClass}>
+            后台所有写操作都会留痕，可按操作人和动作类型回溯
+          </p>
         </div>
         <button type="button" className={buttonGhostClass} onClick={handleExport}>
           导出 CSV
@@ -151,7 +153,7 @@ export function AuditLog() {
       {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
 
       <div className={tableWrapClass}>
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-max text-left text-sm">
           <thead className={theadClass}>
             <tr>
               {columns.map((col) => (

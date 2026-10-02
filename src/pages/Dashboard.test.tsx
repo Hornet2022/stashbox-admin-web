@@ -54,19 +54,17 @@ const sampleStats = {
     d9: 78,
   },
   trends: {
+    // 相对「今天」生成：趋势面板只渲染最近 7 天，写死日期会随时间自动烂掉
     articles_created_7d: [
-      { date: '2026-09-22', count: 5 },
-      { date: '2026-09-23', count: 12 },
-      { date: '2026-09-24', count: 9 },
+      { date: daysAgo(6), count: 5 },
+      { date: daysAgo(5), count: 12 },
+      { date: daysAgo(4), count: 9 },
     ],
     users_created_7d: [
-      { date: '2026-09-22', count: 3 },
-      { date: '2026-09-23', count: 7 },
+      { date: daysAgo(6), count: 3 },
+      { date: daysAgo(5), count: 7 },
     ],
-    distill_completed_7d: [
-      { date: '2026-09-23', count: 4 },
-      { date: '2026-09-24', count: 6 },
-    ],
+    distill_completed_7d: [{ date: daysAgo(5), count: 4 }],
   },
   comparison: {
     new_articles_24h: { today: 10, yesterday: 5, delta_pct: 1.0 },
@@ -77,12 +75,19 @@ const sampleStats = {
   generated_at: '2026-09-24T10:00:00+00:00',
 }
 
+/** n 天前的 ISO 日期（UTC），与 Dashboard 的 fillLast7Days 同一口径 */
+function daysAgo(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toISOString().slice(0, 10)
+}
+
 const sampleP95 = {
   by_step: {
-    step1_structure: { p50: 1.2, p95: 2.5, p99: 3.8 },
-    step3_ttsing: { p50: 5.4, p95: 9.1, p99: 11.2 },
+    step1_structure: { p50: 1.2, p95: 2.5, p99: 3.8, count: 120, mean: 1.4, upper_bound: 5 },
+    step3_ttsing: { p50: 5.4, p95: 9.1, p99: 11.2, count: 120, mean: 5.9, upper_bound: 30 },
   },
-  overall: { p50: 8.3, p95: 15.0, p99: 18.4 },
+  overall: { p50: 8.3, p95: 15.0, p99: 18.4, count: 120, mean: 8.9, upper_bound: 60 },
 }
 
 beforeEach(() => {
@@ -92,16 +97,16 @@ beforeEach(() => {
 })
 
 describe('Dashboard', () => {
-  it('渲染标题 + 8 个 stats 卡片标签（含新增「蒸馏成功率」）', async () => {
+  it('渲染标题 + 需要关注/规模存量两组指标卡', async () => {
     renderDashboard()
     await waitFor(() => {
       expect(screen.getByText('总览')).toBeInTheDocument()
     })
     expect(screen.getByText('用户总数')).toBeInTheDocument()
     expect(screen.getByText('文章总数')).toBeInTheDocument()
-    expect(screen.getByText('蒸馏队列中')).toBeInTheDocument()
+    expect(screen.getByText('等待蒸馏')).toBeInTheDocument()
     expect(screen.getByText('已收听')).toBeInTheDocument()
-    expect(screen.getByText('活跃音频')).toBeInTheDocument()
+    expect(screen.getByText('可用音频')).toBeInTheDocument()
     expect(screen.getByText('24h 蒸馏失败')).toBeInTheDocument()
     expect(screen.getByText('本月营收')).toBeInTheDocument()
     expect(screen.getByText('蒸馏成功率')).toBeInTheDocument()
@@ -172,8 +177,8 @@ describe('Dashboard', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
     // banner 包含阈值 + 实际数
-    expect(screen.getByText(/阈值：5 条/)).toBeInTheDocument()
-    expect(screen.getByText(/实际：20 条/)).toBeInTheDocument()
+    expect(screen.getByText(/阈值 5 条/)).toBeInTheDocument()
+    expect(screen.getByText(/实际 20 条/)).toBeInTheDocument()
   })
 
   // CP-STATS-REWORK #3：revenue_available=false 提示"orders 表缺失"
@@ -185,7 +190,7 @@ describe('Dashboard', () => {
     })
     renderDashboard()
     await waitFor(() => {
-      expect(screen.getByText(/orders 表缺失/)).toBeInTheDocument()
+      expect(screen.getByText(/未接入支付/)).toBeInTheDocument()
     })
   })
 
@@ -200,15 +205,31 @@ describe('Dashboard', () => {
     expect(screen.getByText('蒸馏完成')).toBeInTheDocument()
   })
 
+  it('三条趋势全为 0 时给空态，不画一排空灰槽', async () => {
+    mockedGetStats.mockResolvedValue({
+      ...sampleStats,
+      trends: {
+        articles_created_7d: [],
+        users_created_7d: [],
+        distill_completed_7d: [],
+      },
+    })
+    renderDashboard()
+    await waitFor(() => {
+      expect(screen.getByText('近 7 天趋势')).toBeInTheDocument()
+    })
+    expect(screen.getByText('近 7 天没有新增数据')).toBeInTheDocument()
+  })
+
   // CP-STATS-REWORK #5：by_source 条形图
   it('by_source 条形图按数量降序显示', async () => {
     renderDashboard()
     await waitFor(() => {
       expect(screen.getByText('文章来源分布')).toBeInTheDocument()
     })
-    // wechat 3200 最大 → 第一个出现
-    const wechatRow = screen.getByText('wechat')
-    expect(wechatRow).toBeInTheDocument()
+    // 内部 slug 不再直接暴露；wechat 3200 最大 → 第一个出现
+    expect(screen.getByText('微信公众号')).toBeInTheDocument()
+    // 映射表里没有的枚举退回原值，但不会消失
     expect(screen.getByText('douyin')).toBeInTheDocument()
     expect(screen.getByText('pdf')).toBeInTheDocument()
   })
@@ -217,21 +238,24 @@ describe('Dashboard', () => {
   it('distill-p95 卡片渲染 overall + by_step 表格', async () => {
     renderDashboard()
     await waitFor(() => {
-      expect(screen.getByText('蒸馏耗时 P50/P95/P99')).toBeInTheDocument()
+      expect(screen.getByText('蒸馏耗时')).toBeInTheDocument()
     })
-    expect(screen.getByText('overall')).toBeInTheDocument()
-    expect(screen.getByText('step1_structure')).toBeInTheDocument()
+    // 步骤显示中文名，不暴露 step1_structure 这类内部 key
+    expect(screen.getByText('端到端')).toBeInTheDocument()
+    expect(screen.getByText('结构提取')).toBeInTheDocument()
     expect(screen.getByText('step3_ttsing')).toBeInTheDocument()
+    // 样本数必须露出来：3 个样本的 P95 没有可信度
+    expect(screen.getAllByText('120').length).toBeGreaterThan(0)
   })
 
   it('distill-p95 没数据时显示「暂无数据」占位', async () => {
     mockedGetDistillP95.mockResolvedValue({
       by_step: {},
-      overall: { p50: null, p95: null, p99: null },
+      overall: { p50: null, p95: null, p99: null, count: 0, mean: null, upper_bound: null },
     })
     renderDashboard()
     await waitFor(() => {
-      expect(screen.getByText(/ai-service 未上报 metrics/)).toBeInTheDocument()
+      expect(screen.getByText('还没有耗时样本')).toBeInTheDocument()
     })
   })
 
@@ -256,9 +280,11 @@ describe('Dashboard', () => {
     await waitFor(() => {
       expect(screen.getByText('总览')).toBeInTheDocument()
     })
-    // 文章总数卡片下方 +100%（new_articles_24h.today=10 / yesterday=5 → +100%）
+    // 环比必须带基线说明：new_articles_24h.today=10 / yesterday=5 → +100%
+    expect(screen.getByText('新增文章 今日较昨日')).toBeInTheDocument()
     expect(screen.getByText('+100%')).toBeInTheDocument()
     // 新增用户 +50%（3/2 = +50%）
+    expect(screen.getByText('新增用户 今日较昨日')).toBeInTheDocument()
     expect(screen.getByText('+50%')).toBeInTheDocument()
   })
 })

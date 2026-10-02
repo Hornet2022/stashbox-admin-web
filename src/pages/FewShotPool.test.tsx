@@ -97,7 +97,7 @@ describe('FewShotPool', () => {
       expect(screen.getByText('池健康度')).toBeInTheDocument()
     })
     // 6 个统计 tile（注意 "10" 同时是陈旧 count 和 usage_count，用 getAllByText）
-    expect(screen.getByText('200')).toBeInTheDocument()
+    expect(screen.getAllByText('200').length).toBeGreaterThan(0)
     expect(screen.getByText('80')).toBeInTheDocument()
     expect(screen.getByText('70')).toBeInTheDocument()
     expect(screen.getByText('50')).toBeInTheDocument()

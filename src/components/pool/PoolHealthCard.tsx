@@ -49,7 +49,7 @@ export function PoolHealthCard({
       )}
 
       <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-700 dark:bg-neutral-800/50">
-        <div className="flex items-baseline justify-between">
+        <div className="flex items-baseline justify-between gap-3">
           <div>
             <div className="text-sm text-neutral-500 dark:text-neutral-400">池健康度</div>
             <div className="mt-2 flex items-baseline gap-2">
@@ -61,8 +61,17 @@ export function PoolHealthCard({
               </span>
             </div>
           </div>
-          <div className="text-right text-xs text-neutral-400 dark:text-neutral-500">
-            GET /admin/few-shot-pool/health
+          {/* 原来这里写的是接口路径（GET /admin/few-shot-pool/health），
+              和左边的「池健康度」说的是同一件事，白占一个视觉落点。
+              换成样本量：这个分数到底由几条范例算出来的，是运营判断
+              「70 分能不能信」的唯一依据。池里只有 1 条时报 70 分毫无意义。 */}
+          <div className="shrink-0 text-right text-xs text-neutral-400 dark:text-neutral-500">
+            <div className="tnum">
+              基于 <span className="text-neutral-600 dark:text-neutral-300">{data.total_count}</span> 条范例
+            </div>
+            {data.total_count < 20 && (
+              <div className="mt-0.5 text-warning">样本过少，分数仅供参考</div>
+            )}
           </div>
         </div>
 

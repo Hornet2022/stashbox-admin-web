@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import {
   Bar,
   BarChart,
+  CartesianGrid,
   Legend,
   ResponsiveContainer,
   Tooltip,
@@ -11,70 +12,122 @@ import {
 import { RefreshCw } from 'lucide-react'
 import { getDistillP95 } from '../api/admin'
 import { useApi } from '../hooks/useApi'
-import { CardSkeleton, ErrorNotice, pageHintClass, pageTitleClass } from '../components/ui'
+import {
+  CardSkeleton,
+  EmptyState,
+  ErrorNotice,
+  PageHeader,
+  formatDuration,
+} from '../components/ui'
+import { DISTILL_STEP_LABELS } from '../constants/labels'
 import type { DistillP95Response, DistillStepPercentiles } from '../types'
 
-/** 4 个蒸馏步骤的展示顺序和标签 */
+/** 4 个蒸馏步骤的展示顺序 */
 const STEP_ORDER = [
-  { key: 'step1_structure', label: '结构提取' },
-  { key: 'step2_rewrite', label: '内容改写' },
-  { key: 'step3_tts', label: '语音合成' },
-  { key: 'step4_concat', label: '音频拼接' },
+  { key: 'step1_structure', label: DISTILL_STEP_LABELS.step1_structure },
+  { key: 'step2_rewrite', label: DISTILL_STEP_LABELS.step2_rewrite },
+  { key: 'step3_tts', label: DISTILL_STEP_LABELS.step3_tts },
+  { key: 'step4_concat', label: DISTILL_STEP_LABELS.step4_concat },
 ]
 
-const OVERALL_KEY = 'overall'
-const OVERALL_LABEL = '整体均值'
-
-/** 配色：P50 蓝 / P95 橙 / P99 红 */
-const BARColors = {
-  p50: '#3B82F6',
-  p95: '#F97316',
-  p99: '#EF4444',
+/**
+ * 分位数序列配色。
+ *
+ * 原来用的是 Tailwind 默认的 blue-500 / orange-500 / red-500 ——
+ * 那是脚手架初始化时自带的颜色，跟「暖赭 + 纸感中性」的品牌语言毫无关系，
+ * 出现在一个讲「安静 / 留白 / 印刷感」的后台里就是品牌破功。
+ * 换成同一色相的三档明度：P50/P95/P99 是同一条轴上的三个刻度，
+ * 不是三个并列的类别，用色相区分反而会让人读成三件不同的事。
+ * 告警红只在真的越界时才出现。
+ */
+const BAR_COLORS = {
+  p50: 'var(--viz-seq-1)',
+  p95: 'var(--viz-seq-2)',
+  p99: 'var(--viz-seq-3)',
 }
 
 interface MetricCardProps {
   label: string
   metrics: DistillStepPercentiles | null
   loading: boolean
+  emphasis?: boolean
 }
 
-function MetricCard({ label, metrics, loading }: MetricCardProps) {
+function MetricCard({ label, metrics, loading, emphasis = false }: MetricCardProps) {
+  const cardClass = [
+    'rounded-lg border p-4',
+    emphasis
+      ? 'border-warm-ochre/40 border-l-[3px]'
+      : 'border-neutral-200 dark:border-neutral-700',
+  ].join(' ')
+
   if (loading) {
     return (
-      <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-700 dark:bg-neutral-800/50">
-        <div className="text-sm text-neutral-500 dark:text-neutral-400">{label}</div>
+      <div className={cardClass}>
+        <div className="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+          {label}
+        </div>
         <CardSkeleton lines={3} />
       </div>
     )
   }
 
-  const vals = metrics ?? { p50: null, p95: null, p99: null }
+  const v = metrics
+  // 分位数可能因超量程为 null；count=0 是「没跑过」，两者含义不同
+  const unresolvable = !!v && v.count > 0 && v.p50 === null
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-700 dark:bg-neutral-800/50">
-      <div className="text-sm text-neutral-500 dark:text-neutral-400">{label}</div>
-      <div className="mt-3 space-y-1">
-        {[
-          { key: 'p50', label: 'P50', value: vals.p50 },
-          { key: 'p95', label: 'P95', value: vals.p95 },
-          { key: 'p99', label: 'P99', value: vals.p99 },
-        ].map(({ key, label: lbl, value }) => (
-          <div key={key} className="flex items-baseline gap-1">
-            <span className="text-xs text-neutral-400 dark:text-neutral-500">{lbl}</span>
-            <span className="font-serif text-xl font-semibold text-ink dark:text-neutral-100">
-              {value !== null ? value.toFixed(2) : '—'}
-            </span>
-            <span className="text-xs text-neutral-400 dark:text-neutral-500">秒</span>
-          </div>
-        ))}
+    <div className={cardClass}>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+          {label}
+        </span>
+        {v && v.count > 0 && (
+          <span className="tnum shrink-0 text-[11px] text-neutral-400 dark:text-neutral-500">
+            {v.count} 次采样
+          </span>
+        )}
       </div>
+      <dl className="mt-2.5 space-y-1">
+        {(['p50', 'p95', 'p99'] as const).map((key) => {
+          const label2 = key.toUpperCase()
+          const raw = v?.[key]
+          return (
+            <div key={key} className="flex items-baseline justify-between gap-2">
+              <dt className="text-xs text-neutral-400 dark:text-neutral-500">{label2}</dt>
+              <dd className="tnum-clip text-sm font-medium text-ink dark:text-neutral-100">
+                {!v || v.count === 0 ? (
+                  <span className="text-neutral-300 dark:text-neutral-600">—</span>
+                ) : raw === null ? (
+                  <span
+                    className="text-xs font-normal text-warning"
+                    title={
+                      v.upper_bound
+                        ? `样本超出监控量程上限（${formatDuration(v.upper_bound)}），算不出分位数`
+                        : '样本超出监控量程，算不出分位数'
+                    }
+                  >
+                    超量程
+                  </span>
+                ) : (
+                  formatDuration(raw)
+                )}
+              </dd>
+            </div>
+          )
+        })}
+      </dl>
+      {unresolvable && v?.mean !== null && v?.mean !== undefined && (
+        <p className="mt-2 border-t border-neutral-200 pt-2 text-[11px] text-neutral-400 dark:border-neutral-700 dark:text-neutral-500">
+          均值 {formatDuration(v.mean)}（分位数不可解时它是唯一准确的量）
+        </p>
+      )}
     </div>
   )
 }
 
 /** 单个 bar 的数据条目 */
 interface ChartEntry {
-  step: string
   label: string
   p50: number | null
   p95: number | null
@@ -83,15 +136,8 @@ interface ChartEntry {
 
 function buildChartData(resp: DistillP95Response): ChartEntry[] {
   const entries: ChartEntry[] = STEP_ORDER.map(({ key, label }) => {
-    const s = resp.by_step[key] ?? { p50: null, p95: null, p99: null }
-    return { step: key, label, p50: s.p50, p95: s.p95, p99: s.p99 }
-  })
-  entries.push({
-    step: OVERALL_KEY,
-    label: OVERALL_LABEL,
-    p50: resp.overall.p50,
-    p95: resp.overall.p95,
-    p99: resp.overall.p99,
+    const s = resp.by_step[key]
+    return { label, p50: s?.p50 ?? null, p95: s?.p95 ?? null, p99: s?.p99 ?? null }
   })
   return entries
 }
@@ -99,7 +145,6 @@ function buildChartData(resp: DistillP95Response): ChartEntry[] {
 export function DistillMetrics() {
   const { data, loading, error, missing, reload } = useApi(getDistillP95, 'distill-p95')
 
-  // 30s 定时刷新
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   useEffect(() => {
     timerRef.current = setInterval(() => reload(), 30_000)
@@ -109,27 +154,55 @@ export function DistillMetrics() {
   }, [reload])
 
   const isDark = document.documentElement.classList.contains('dark')
-  const axisColor = isDark ? '#8C8680' : '#8C8680'
+  const chartData = data ? buildChartData(data) : []
+  // 全 null 的柱子会让 Y 轴退化成 0~1，刻度全显示成 00000s —— 那种图不如不画
+  const hasAnyBar = chartData.some((d) => d.p50 !== null || d.p95 !== null || d.p99 !== null)
+  // 别把 4 个阶段的样本数相加说成「共 N 次采样」——那是把同一次蒸馏的
+  // 4 个阶段数了 4 遍，读起来像跑了 24 次蒸馏。真实次数是各阶段的最小值
+  // （每跑一次蒸馏每个阶段各记一条）。
+  const stepCounts = data ? Object.values(data.by_step).map((v) => v.count ?? 0) : []
+  const runCount = stepCounts.length ? Math.min(...stepCounts) : 0
 
   return (
     <div>
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className={pageTitleClass}>蒸馏耗时分布</h1>
-          <p className={pageHintClass}>来自 ai-service Prometheus，30s 缓存</p>
-        </div>
-        {data && (
-          <div className="mt-0.5 flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
-            <RefreshCw size={12} className={data.cached ? 'animate-spin' : ''} />
-            {data.cached ? 'Cached 30s' : 'Live'}
-          </div>
-        )}
-      </div>
+      <PageHeader
+        title="蒸馏耗时分布"
+        description="每个阶段单独计时。语音合成占绝大部分时间，其余几步在百毫秒量级。"
+        meta={
+          data ? (
+            <span className="text-xs text-neutral-400 dark:text-neutral-500">
+              {runCount > 0
+                ? `基于 ${runCount} 次蒸馏 · ${data.cached ? '30 秒内为缓存' : '实时读取'}`
+                : '尚无采样'}
+            </span>
+          ) : null
+        }
+        actions={
+          <button
+            type="button"
+            onClick={reload}
+            className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-sm text-neutral-600 transition-colors hover:border-neutral-300 hover:bg-white hover:text-ink dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-100"
+            aria-label="刷新耗时数据"
+          >
+            <RefreshCw size={14} aria-hidden="true" />
+            刷新
+          </button>
+        }
+      />
 
       {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
 
-      {/* 4 个 step cards */}
-      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* 端到端单独成卡并强调：4 步串行，运营真正关心的是「一篇要等多久」 */}
+      <div className="mt-6 max-w-xs">
+        <MetricCard
+          label="端到端"
+          metrics={data?.overall ?? null}
+          loading={loading}
+          emphasis
+        />
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {STEP_ORDER.map(({ key, label }) => (
           <MetricCard
             key={key}
@@ -140,53 +213,69 @@ export function DistillMetrics() {
         ))}
       </div>
 
-      {/* Overall card */}
-      <div className="mt-4 max-w-xs">
-        <MetricCard label={OVERALL_LABEL} metrics={data?.overall ?? null} loading={loading} />
-      </div>
-
-      {/* Bar chart */}
-      {!loading && data && (
+      {!loading && data && hasAnyBar && (
         <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-700 dark:bg-neutral-800/50">
-          <h2 className="font-serif text-base font-semibold text-ink dark:text-neutral-100">
-            蒸馏耗时分布
-          </h2>
-          <div className="mt-4 h-72">
+          <h2 className="text-sm font-semibold text-ink dark:text-neutral-100">各阶段耗时对比</h2>
+          <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
+            横轴为阶段，纵轴为耗时
+          </p>
+          <div className="mt-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={buildChartData(data)}
-                margin={{ top: 4, right: 16, left: 0, bottom: 0 }}
-              >
+              <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid
+                  vertical={false}
+                  stroke="var(--viz-grid)"
+                  strokeDasharray="2 4"
+                />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 12 }}
-                  stroke={axisColor}
+                  tick={{ fontSize: 12, fill: 'var(--viz-ink)' }}
+                  axisLine={{ stroke: 'var(--viz-axis)' }}
+                  tickLine={false}
                 />
-                <YAxis tick={{ fontSize: 12 }} stroke={axisColor} unit="s" />
+                {/* 不写死刻度，让 recharts 按数据范围自动取整。
+                    固定 domain 遇到 4e17 这种量级时，五个刻度会全部
+                    渲染成同一个字符串「00000s」，轴就废了。 */}
+                <YAxis
+                  tick={{ fontSize: 11, fill: 'var(--viz-ink)' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={56}
+                  tickFormatter={(v: number) => formatDuration(v)}
+                />
                 <Tooltip
+                  cursor={{ fill: 'var(--viz-grid)', opacity: 0.35 }}
                   contentStyle={{
-                    backgroundColor: isDark ? '#1f2937' : '#fff',
-                    borderColor: isDark ? '#374151' : '#e5e7eb',
-                    borderRadius: 6,
+                    backgroundColor: isDark ? '#242019' : '#fff',
+                    borderColor: isDark ? '#353129' : '#E8E4DD',
+                    borderRadius: 8,
                     fontSize: 12,
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
                   }}
                   formatter={(value, name) => [
-                    value !== null && value !== undefined
-                      ? `${(value as number).toFixed(3)}s`
-                      : '—',
+                    value === null || value === undefined ? '—' : formatDuration(value as number),
                     String(name).toUpperCase(),
                   ]}
                 />
                 <Legend
                   formatter={(value) => value.toUpperCase()}
-                  wrapperStyle={{ fontSize: 12 }}
+                  wrapperStyle={{ fontSize: 12, color: 'var(--viz-ink)' }}
                 />
-                <Bar dataKey="p50" name="p50" fill={BARColors.p50} radius={[2, 2, 0, 0]} />
-                <Bar dataKey="p95" name="p95" fill={BARColors.p95} radius={[2, 2, 0, 0]} />
-                <Bar dataKey="p99" name="p99" fill={BARColors.p99} radius={[2, 2, 0, 0]} />
+                <Bar dataKey="p50" name="p50" fill={BAR_COLORS.p50} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="p95" name="p95" fill={BAR_COLORS.p95} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="p99" name="p99" fill={BAR_COLORS.p99} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
+        </div>
+      )}
+
+      {!loading && data && !hasAnyBar && (
+        <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800/50">
+          <EmptyState
+            title="还没有可绘制的耗时样本"
+            hint="跑过一次蒸馏后这里会出现各阶段的分位数对比。"
+          />
         </div>
       )}
     </div>

@@ -48,7 +48,7 @@ export function ModelRouting() {
     <div>
       <h1 className={pageTitleClass}>模型路由</h1>
       <p className={pageHintClass}>
-        数据源：GET /api/v1/admin/tier-config · PUT /api/v1/admin/tier-config（热生效，Redis 5s 缓存 + 写后失效）
+        决定每个付费档位走哪个模型。修改保存后立即生效，不需要重启服务
       </p>
 
       {configState.error && (

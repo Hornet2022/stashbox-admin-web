@@ -173,7 +173,7 @@ export function LlmSettings() {
       <div>
         <h1 className={pageTitleClass}>LLM 配置</h1>
         <p className={pageHintClass}>
-          admin 可改服务商 / 模型 / API key —— 数据源：GET /api/v1/admin/llm/config
+          决定改写文本用哪个模型。保存后立即生效，不需要重启服务
         </p>
       </div>
 

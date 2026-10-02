@@ -190,7 +190,7 @@ export function TtsBlindTest() {
     <div>
       <h1 className={pageTitleClass}>TTS 盲测</h1>
       <p className={pageHintClass}>
-        数据源：POST /api/v1/admin/tts/blind-test · /submit · /results
+        同一段文本交给多个语音引擎合成，隐藏引擎身份，让你只按听感打分
       </p>
 
       <CaveatBanner

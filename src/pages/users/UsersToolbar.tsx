@@ -1,6 +1,7 @@
 import { type FormEvent } from 'react'
-import { Field, buttonGhostClass, buttonPrimaryClass, inputClass, pageHintClass, pageTitleClass } from '../../components/ui'
-import { TIERS, STATUSES } from './constants'
+import { Select, buttonGhostClass, buttonPrimaryClass, inputClass } from '../../components/ui'
+import { TIER_LABELS, TIERS, STATUSES } from './constants'
+import { USER_STATUS_LABELS, labelFor } from '../../constants/labels'
 
 /**
  * 用户管理 Toolbar —— 头部 + 过滤表单 + 导出 CSV。
@@ -33,9 +34,13 @@ export function UsersToolbar({
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className={pageTitleClass}>用户管理</h1>
-          <p className={pageHintClass}>数据源：GET /api/v1/admin/users</p>
+        <div className="min-w-0">
+          <h1 className="font-serif text-xl font-semibold text-ink dark:text-neutral-100">
+            用户管理
+          </h1>
+          <p className="mt-1 max-w-xl text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
+            查看注册用户与配额使用情况。配额调整会立即影响用户当月的可用次数。
+          </p>
         </div>
         <button type="button" className={buttonGhostClass} onClick={onExport}>
           导出 CSV
@@ -44,45 +49,38 @@ export function UsersToolbar({
 
       <form className="mt-6 flex flex-wrap items-end gap-3" onSubmit={onSearch}>
         <div className="w-64">
-          <Field label="关键词">
-            <input
-              type="text"
-              value={keyword}
-              onChange={(e) => onKeywordChange(e.target.value)}
-              placeholder="邮箱 / 昵称"
-              className={inputClass}
-            />
-          </Field>
+          <label className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-500 dark:text-neutral-400">
+            关键词
+          </label>
+          <input
+            type="text"
+            value={keyword}
+            onChange={(e) => onKeywordChange(e.target.value)}
+            placeholder="按邮箱或昵称搜索"
+            className={inputClass}
+          />
         </div>
-        <div className="w-36">
-          <Field label="套餐">
-            <select
-              value={tier}
-              onChange={(e) => onTierChange(e.target.value)}
-              className={inputClass}
-            >
-              {TIERS.map((t) => (
-                <option key={t || 'all'} value={t}>
-                  {t || '全部'}
-                </option>
-              ))}
-            </select>
-          </Field>
+        <div className="w-32">
+          <Select
+            label="套餐"
+            value={tier}
+            onChange={onTierChange}
+            options={TIERS.map((t) => ({
+              value: t,
+              label: t ? (TIER_LABELS[t] ?? t) : '全部套餐',
+            }))}
+          />
         </div>
-        <div className="w-36">
-          <Field label="状态">
-            <select
-              value={status}
-              onChange={(e) => onStatusChange(e.target.value)}
-              className={inputClass}
-            >
-              {STATUSES.map((s) => (
-                <option key={s || 'all'} value={s}>
-                  {s || '全部'}
-                </option>
-              ))}
-            </select>
-          </Field>
+        <div className="w-32">
+          <Select
+            label="状态"
+            value={status}
+            onChange={onStatusChange}
+            options={STATUSES.map((s) => ({
+              value: s,
+              label: s ? labelFor(USER_STATUS_LABELS, s).label : '全部状态',
+            }))}
+          />
         </div>
         <button type="submit" className={buttonPrimaryClass}>
           搜索

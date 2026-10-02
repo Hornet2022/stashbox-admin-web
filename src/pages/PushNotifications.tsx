@@ -24,6 +24,7 @@ import {
 } from '../components/ui'
 import { formatTime } from '../utils'
 import type { PushNotificationRow } from '../types'
+import { PUSH_STATUS_LABELS } from '../constants/labels'
 
 /**
  * 推送队列页 —— GET /api/v1/admin/push-notifications（v1 需求文档落地版）。
@@ -131,7 +132,7 @@ export function PushNotifications() {
     <div>
       <h1 className={pageTitleClass}>推送队列</h1>
       <p className={pageHintClass}>
-        数据源：GET /api/v1/admin/push-notifications（全量队列 · created_at 倒序）
+        待发送的站内推送，按创建时间倒序
       </p>
 
       {/* 状态 tab + 过滤 */}
@@ -180,7 +181,7 @@ export function PushNotifications() {
       {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
 
       <div className={tableWrapClass}>
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-max text-left text-sm">
           <thead className={theadClass}>
             <tr>
               {columns.map((col) => (
@@ -206,7 +207,7 @@ export function PushNotifications() {
                   <td className={`${cellStrongClass} max-w-xs truncate`}>{item.title}</td>
                   <td className={`${cellTextClass} max-w-md truncate`}>{item.body}</td>
                   <td className="px-4 py-3">
-                    <Badge value={item.status} />
+                    <Badge value={item.status} map={PUSH_STATUS_LABELS} />
                   </td>
                   <td className={`${cellTextClass} max-w-xs truncate`}>
                     <span className={item.error ? 'text-error' : undefined} title={item.error ?? undefined}>

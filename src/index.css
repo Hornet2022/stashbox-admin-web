@@ -95,6 +95,45 @@
   --check-ease-rotate: cubic-bezier(0.22, 1, 0.36, 1);
   --check-ease-bob: cubic-bezier(0.34, 1.35, 0.64, 1);
   --check-ease-path: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── Data-viz palette ──────────────────────────────────────
+     图表色必须从品牌色推导，不能用 Tailwind 默认的 blue-500 /
+     orange-500 / red-500 —— 那三个是脚手架的默认色，跟「暖赭 +
+     纸感中性色」的品牌语言没有关系，出现在后台里就是品牌破功。
+
+     序列（P50→P95→P99）用同一色相的三档明度，而不是三个色相：
+     它们是同一条轴上的三个刻度，不是三个并列的类别。色相一致时
+     眼睛会自动按顺序读下去，换色相反而会读成「三件不同的事」。
+     告警语义色（error）只在真的越界时才出现。 */
+  --viz-seq-1: #C4A184;   /* P50 —— 最浅 */
+  --viz-seq-2: #A67B5B;   /* P95 —— 品牌暖赭 */
+  --viz-seq-3: #6F4E38;   /* P99 —— 最深 */
+  --viz-grid: #E8E4DD;
+  --viz-axis: #B8B2A8;
+  --viz-ink:   #4A4642;
+
+  /* 分类色（来源分布等互不相关的类目） */
+  --viz-cat-1: #A67B5B;
+  --viz-cat-2: #6B8E7F;
+  --viz-cat-3: #8C8680;
+  --viz-cat-4: #C4956A;
+  --viz-cat-5: #7D8B93;
+  --viz-cat-6: #B87070;
+}
+
+html.dark {
+  --viz-seq-1: #8A6A52;
+  --viz-seq-2: #C4A184;
+  --viz-seq-3: #E3CDB8;
+  --viz-grid: #353129;
+  --viz-axis: #6A665F;
+  --viz-ink:   #B8B2A8;
+  --viz-cat-1: #C4A184;
+  --viz-cat-2: #8FAE9E;
+  --viz-cat-3: #8C8680;
+  --viz-cat-4: #D4A87C;
+  --viz-cat-5: #9FAEB6;
+  --viz-cat-6: #D09393;
 }
 
 /* ── Dark Mode Tokens ─────────────────────────────── */
@@ -333,4 +372,42 @@ html.dark .t-tabs-pill {
 /* ── Smooth scroll ─────────────────────────────────── */
 html {
   scroll-behavior: smooth;
+}
+
+/* ── 排版与数字 ────────────────────────────────────── */
+
+/* 数字列用等宽数字：否则「1 / 11 / 111」三种字宽会让整列数字对不齐，
+   运营扫一眼数量级时要重新对位。指标卡的大数字同理。 */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* 指数级的大数字（10^15 这种）必须被约束住宽度，
+   否则一张卡就能把整行卡挤到换行 / 溢出容器。 */
+.tnum-clip {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* 多行截断 —— 表格里的长标题用。line-clamp 需要 @tailwindcss/line-clamp，
+   这里用纯 CSS 兜底，避免为了一行样式加依赖。 */
+.t-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.t-clamp-1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 键盘可达性：统一焦点环。设计系统里所有可聚焦元素都应该看得见自己在哪。 */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--warm-ochre);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }

@@ -98,6 +98,30 @@ describe('Tags', () => {
     })
   })
 
+  /**
+   * 系统标签不是「按了没反应」的禁用按钮 —— 后端对 is_system 恒返 403，
+   * 而禁用态（opacity-40 压在低对比幽灵按钮上）肉眼几乎看不出差别。
+   * 改成显式说明「受保护」。
+   */
+  it('系统标签 → 显示「受保护」而不是一个看不出禁用态的删除按钮', async () => {
+    mockedListTags.mockResolvedValue({
+      total: 2,
+      items: [
+        { ...sampleTags.items[0], is_system: true },
+        { ...sampleTags.items[1], is_system: false },
+      ],
+    })
+    renderTags()
+    await waitFor(() => {
+      expect(screen.getAllByText('tech').length).toBeGreaterThanOrEqual(1)
+    })
+    // 有删除按钮的行数 = 非系统标签数
+    const deleteBtns = screen.getAllByRole('button', { name: /删除标签/ })
+    const protectedMarks = screen.getAllByText('受保护')
+    expect(deleteBtns.length).toBe(1)
+    expect(protectedMarks.length).toBe(1)
+  })
+
   it('行内删除按钮存在', async () => {
     mockedListTags.mockResolvedValue(sampleTags)
     renderTags()

@@ -50,7 +50,7 @@ describe('PushNotifications', () => {
     await waitFor(() => {
       expect(screen.getByText('推送队列')).toBeInTheDocument()
     })
-    expect(screen.getByText(/全量队列/)).toBeInTheDocument()
+    expect(screen.getByText(/待发送的站内推送/)).toBeInTheDocument()
     expect(screen.queryByText(/仅返回?.*当前登录账号自己/)).toBeNull()
   })
 
@@ -61,8 +61,11 @@ describe('PushNotifications', () => {
     })
     expect(screen.getByText('失败原因')).toBeInTheDocument()
     expect(screen.getByText('apns timeout')).toBeInTheDocument()
-    expect(screen.getByText('sent')).toBeInTheDocument()
-    expect(screen.getByText('pending')).toBeInTheDocument()
+    // 限定 role=status：顶部的状态 tab 也叫「已发送 / 待发送」
+    const badgeLabels = screen.getAllByRole('status').map((b) => b.textContent)
+    expect(badgeLabels).toContain('已发送')
+    expect(badgeLabels).toContain('发送失败')
+    expect(badgeLabels).toContain('待发送')
   })
 
   it('状态 tab 点击 → 真实传 status 参数', async () => {

@@ -112,13 +112,13 @@ export function SidebarNav() {
   const grouped = groupItems(visibleItems(role))
 
   return (
-    <nav className="mt-2 flex-1 overflow-y-auto pb-2">
+    <nav className="flex-1 overflow-y-auto px-2 py-3">
       {GROUP_ORDER.map((groupKey, groupIdx) => {
         const items = grouped[groupKey]
         if (items.length === 0) return null
         return (
-          <div key={groupKey} className={groupIdx === 0 ? '' : 'mt-4'}>
-            <div className="mx-3 mb-1 px-1 text-[10px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+          <div key={groupKey} className={groupIdx === 0 ? '' : 'mt-5'}>
+            <div className="mb-1.5 px-3 text-[10px] font-medium uppercase tracking-[0.12em] text-neutral-400 dark:text-neutral-500">
               {groupKey}
             </div>
             {items.map((item) => {
@@ -128,17 +128,24 @@ export function SidebarNav() {
                   key={item.path}
                   to={item.path}
                   aria-current={active ? 'page' : undefined}
-                  className={`mx-2 my-0.5 flex items-center gap-2.5 rounded px-3 py-2 text-sm transition-colors ${
+                  className={`group relative my-0.5 flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
                     active
-                      ? 'bg-neutral-200 font-medium text-ink dark:bg-neutral-700 dark:text-neutral-100'
+                      ? 'bg-neutral-200/70 font-medium text-ink dark:bg-neutral-700/70 dark:text-neutral-100'
                       : 'text-neutral-500 hover:bg-neutral-100 hover:text-ink dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100'
                   }`}
                 >
+                  {/* 选中态用暖赭竖条定位，比整块底色更轻、也更像「当前位置」 */}
+                  {active && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-warm-ochre"
+                    />
+                  )}
                   <span
                     className={
                       active
                         ? 'text-warm-ochre'
-                        : 'text-neutral-400 dark:text-neutral-500'
+                        : 'text-neutral-400 transition-colors group-hover:text-neutral-500 dark:text-neutral-500'
                     }
                   >
                     {item.icon}
@@ -157,12 +164,20 @@ export function SidebarNav() {
 export function Sidebar() {
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
-      <div className="border-b border-neutral-200 p-4 font-serif text-lg font-semibold tracking-wide text-ink dark:border-neutral-700 dark:text-neutral-100">
-        stashbox
+      {/* 字标：中文主名用衬线（与 h1~h6 同一套排版语言），
+          拉丁副名用无衬线小字。之前「stashbox」直接用衬线大字，
+          和整页的中文黑体正文是两套语言并排，看着像贴上去的。 */}
+      <div className="border-b border-neutral-200 px-4 py-4 dark:border-neutral-700">
+        <div className="font-serif text-lg font-semibold leading-none tracking-wide text-ink dark:text-neutral-100">
+          听匣
+        </div>
+        <div className="mt-1.5 font-sans text-[10px] uppercase tracking-[0.16em] text-neutral-400 dark:text-neutral-500">
+          Stashbox · Console
+        </div>
       </div>
       <SidebarNav />
-      <div className="border-t border-neutral-200 p-4 text-xs text-neutral-400 dark:border-neutral-700 dark:text-neutral-500">
-        CP-NEW.1 v0.7
+      <div className="border-t border-neutral-200 px-4 py-3 text-[11px] text-neutral-400 dark:border-neutral-700 dark:text-neutral-500">
+        v0.7
       </div>
     </aside>
   )

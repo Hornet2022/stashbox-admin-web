@@ -92,7 +92,7 @@ export function Evaluations() {
     <div>
       <h1 className={pageTitleClass}>评测标注</h1>
       <p className={pageHintClass}>
-        数据源：GET /api/v1/admin/evaluations · /evaluations/agreement · POST /evaluations/{'{id}'}/annotate
+        两名评测员对同一条改写独立打分，下方显示两者的一致程度
       </p>
 
       {/* 一致性卡 */}

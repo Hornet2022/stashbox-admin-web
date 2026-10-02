@@ -1,6 +1,7 @@
 import { AlertTriangle } from 'lucide-react'
 import { Badge, cellMutedClass, cellStrongClass, cellTextClass, rowClass } from '../../components/ui'
 import type { TtsTestResult } from '../../types'
+import { RESULT_LABELS } from '../../constants/labels'
 
 /**
  * TTS 测试调用结果面板 —— 表单提交成功后由父组件 setTestResult 触发显示。
@@ -63,7 +64,7 @@ export function TtsTestPanel({ result }: { result: TtsTestResult | null }) {
             <tr className={rowClass}>
               <th className={`${cellMutedClass} font-normal`}>结果</th>
               <td className={cellStrongClass}>
-                <Badge value={result.ok ? 'ok' : 'failed'} />
+                <Badge value={result.ok ? 'ok' : 'failed'} map={RESULT_LABELS} />
               </td>
             </tr>
             <tr className={rowClass}>

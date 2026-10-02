@@ -22,9 +22,20 @@ export function Layout() {
       <Drawer.Root open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-50 bg-black/30" />
-          <Drawer.Content className="fixed bottom-0 left-0 top-0 z-50 w-56 bg-neutral-50 outline-none dark:bg-neutral-900">
-            <Drawer.Handle className="mx-auto mt-3 h-1 w-12 flex-shrink-0 cursor-grab rounded-full bg-neutral-300 dark:bg-neutral-600" />
-            <Drawer.Title className="sr-only">导航菜单</Drawer.Title>
+          <Drawer.Content className="fixed bottom-0 left-0 top-0 z-50 flex w-64 flex-col border-r border-neutral-200 bg-neutral-50 outline-none dark:border-neutral-700 dark:bg-neutral-900">
+            <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-700">
+              <Drawer.Title className="text-sm font-semibold tracking-wide text-ink dark:text-neutral-100">
+                导航
+              </Drawer.Title>
+              <Drawer.Close
+                className="rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                aria-label="关闭导航菜单"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M3 3l10 10M13 3L3 13" />
+                </svg>
+              </Drawer.Close>
+            </div>
             <SidebarNav />
           </Drawer.Content>
         </Drawer.Portal>
@@ -32,8 +43,12 @@ export function Layout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onMenuToggle={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-auto p-6">
-          <Outlet />
+        {/* p-6 在 390px 下左右各留 24px，内容只剩 342px —— 表格挤不下。
+            窄屏收到 16px，桌面保持 24px 的呼吸感。 */}
+        <main className="flex-1 overflow-auto p-4 md:p-6">
+          <div className="mx-auto max-w-[1400px]">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

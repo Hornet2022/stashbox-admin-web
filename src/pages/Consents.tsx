@@ -56,7 +56,7 @@ export function Consents() {
     <div>
       <h1 className={pageTitleClass}>GDPR 同意</h1>
       <p className={pageHintClass}>
-        数据源：GET /api/v1/admin/consents（仅结构化字段，不回显 comment 类自由文本）
+        用户对隐私条款的同意记录。这里只展示结构化字段，原始自由文本不回显
       </p>
 
       <CaveatBanner

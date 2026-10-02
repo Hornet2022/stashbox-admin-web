@@ -48,10 +48,11 @@ describe('Header', () => {
     expect(screen.getByText('admin')).toBeInTheDocument()
   })
 
-  it('主题切换按钮：light → 显示"暗色"+ aria-pressed=false', () => {
+  it('主题切换按钮：light → aria-pressed=false，标签可读', () => {
     renderHeader()
+    // 窄屏下按钮只剩图标，文字标签放在 title 上（aria-label 另有其名）
     const btn = screen.getByRole('button', { name: '切换到暗色模式' })
-    expect(btn).toHaveTextContent('暗色')
+    expect(btn).toHaveAttribute('title', '切换到暗色模式')
     expect(btn.getAttribute('aria-pressed')).toBe('false')
   })
 
@@ -62,19 +63,19 @@ describe('Header', () => {
     expect(useThemeStore.getState().theme).toBe('dark')
   })
 
-  it('dark 态 → aria-pressed=true + 显示"亮色"', () => {
+  it('dark 态 → aria-pressed=true，标签可读', () => {
     useThemeStore.setState({ theme: 'dark' })
     renderHeader()
     const btn = screen.getByRole('button', { name: '切换到亮色模式' })
-    expect(btn).toHaveTextContent('亮色')
+    expect(btn).toHaveAttribute('title', '切换到亮色模式')
     expect(btn.getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('点击"快捷键"按钮 → 打开帮助弹窗', async () => {
+  it('点击快捷键按钮 → 打开帮助弹窗', async () => {
     const user = userEvent.setup()
     renderHeader()
     expect(useShortcutsHelp.getState().helpOpen).toBe(false)
-    await user.click(screen.getByText('快捷键'))
+    await user.click(screen.getByRole('button', { name: '快捷键帮助' }))
     expect(useShortcutsHelp.getState().helpOpen).toBe(true)
   })
 

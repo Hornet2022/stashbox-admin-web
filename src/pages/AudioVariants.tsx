@@ -19,7 +19,7 @@ export function AudioVariants() {
     <div>
       <h1 className={pageTitleClass}>多码率统计</h1>
       <p className={pageHintClass}>
-        数据源：GET /api/v1/admin/audio-variants/stats（按 bitrate GROUP BY + 覆盖率聚合）
+        同一篇文章生成的多码率音频及其命中情况
       </p>
 
       {state.error && (

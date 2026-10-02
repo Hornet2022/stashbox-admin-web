@@ -393,11 +393,23 @@ export interface ImportVoiceResult {
   created: boolean
 }
 
-/** 蒸馏 P95 响应 — GET /api/v1/admin/distill-p95 */
+/** 蒸馏 P95 响应 — GET /api/v1/admin/distill-p95
+ *
+ * p50/p95/p99 为 null 表示**超出监控量程**（样本全落在直方图 +Inf 桶），
+ * 不是「没有数据」。两种情况必须区分：前者说明该调桶上界或改监控配置，
+ * 后者说明没跑过。宁可留 null 也不编造 —— 旧实现把 +Inf 当 1e18 插值，
+ * 页面显示过 400000000000000320.00 秒。
+ */
 export interface DistillStepPercentiles {
   p50: number | null
   p95: number | null
   p99: number | null
+  /** 样本数。分位数基于几个样本算出来的，直接决定它有多可信。 */
+  count: number
+  /** _sum/_count，精确均值。分位数不可解时它是唯一还准确的量。 */
+  mean: number | null
+  /** 直方图最大有限桶上界。p50 为 null 时用它解释「为什么算不出来」。 */
+  upper_bound: number | null
 }
 
 export interface DistillP95Response {

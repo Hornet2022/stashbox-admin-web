@@ -86,7 +86,7 @@ describe('PoolHealthCard', () => {
 
   it('6 个统计 tile 都渲染', () => {
     render(<PoolHealthCard data={baseHealth} loading={false} />)
-    expect(screen.getByText('200')).toBeInTheDocument() // 总条目
+    expect(screen.getAllByText('200').length).toBeGreaterThan(0) // 总条目
     expect(screen.getByText('80')).toBeInTheDocument() // 高分
     expect(screen.getByText('70')).toBeInTheDocument() // 中分
     expect(screen.getByText('50')).toBeInTheDocument() // 低分

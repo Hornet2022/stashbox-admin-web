@@ -1,10 +1,19 @@
-/** 用户管理列头 */
+/** 用户管理列头
+ *
+ * 去掉了「角色」列。它不是独立字段 —— 后端 `user-service/main.py:873` 是
+ * `role = tier if tier in {admin, operator} else "user"` 算出来的：
+ *   - 26/27 行恒为 `user`，整列是一个常量
+ *   - 唯一那行 admin 会和右边「等级」列显示同一个值
+ * 等于把一个函数的输出和它的输入并排放着，零信息量。
+ *
+ * 「邮箱」和「昵称」合成一列：邮箱 27 个用户里只有 2 个有值，单列开一整栏
+ * 92% 是破折号。两行放一起反而更像「这是谁」——昵称为主、邮箱为辅，
+ * 有邮箱的人自然多出一行，没有的人也不占额外宽度。
+ */
 export const COLUMNS = [
   'ID',
-  '邮箱',
-  '昵称',
-  '角色',
-  '等级',
+  '用户',
+  '套餐',
   '状态',
   '月配额',
   '已用',
@@ -32,3 +41,25 @@ export const TIERS = ['', 'free', 'admin', 'operator'] as const
  * 返回 0 条的假选项；要支持冻结得先加列，不能靠下拉框许诺。
  */
 export const STATUSES = ['', 'active', 'deleted'] as const
+
+/** tier → 中文。内部值同时会出现在筛选下拉和表格里，两处必须一致。 */
+export const TIER_LABELS: Record<string, string> = {
+  free: '免费',
+  admin: '管理员',
+  operator: '运营',
+  student: '学生',
+  member: '会员',
+  pro: '专业版',
+}
+
+/** 配额用量的可视化：超过配额要一眼看出来，而不是靠两个数字对比。 */
+export function quotaUsage(used: number, monthly: number): {
+  ratio: number
+  tone: 'ok' | 'warn' | 'over'
+} {
+  if (monthly <= 0) return { ratio: 0, tone: 'ok' }
+  const ratio = used / monthly
+  if (used > monthly) return { ratio, tone: 'over' }
+  if (ratio >= 0.8) return { ratio, tone: 'warn' }
+  return { ratio, tone: 'ok' }
+}

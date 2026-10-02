@@ -1,3 +1,4 @@
+import { DEFAULT_BADGE_LABELS, USER_STATUS_LABELS } from '../constants/labels'
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -245,22 +246,37 @@ describe('Badge', () => {
     expect(screen.getByText('—')).toBeInTheDocument()
   })
 
-  it('active → success tone（绿色）', () => {
+  // active/failed/pending 在用户、文章、推送、听感池四个域里含义不同，
+  // 所以不进默认表：传 map 才翻译，不传就原样显示 —— 显示层不猜。
+  it('无 map → 原样显示内部值，并按语义判色调', () => {
     render(<Badge value="active" />)
-    const el = screen.getByText('active')
+    expect(screen.getByText('active').className).toMatch(/text-success/)
+  })
+
+  it('传 map → 翻译成中文，色调跟随映射表的 tone', () => {
+    render(<Badge value="active" map={USER_STATUS_LABELS} />)
+    const el = screen.getByText('正常')
     expect(el.className).toMatch(/text-success/)
   })
 
-  it('failed → error tone（红色）', () => {
-    render(<Badge value="failed" />)
-    const el = screen.getByText('failed')
-    expect(el.className).toMatch(/text-error/)
+  it('有歧义的词不会被别的域的映射表冲掉', () => {
+    // 回归：曾经把各域映射平铺合并成默认表，PUSH_STATUS_LABELS 后展开，
+    // 把 failed 悄悄覆盖成「发送失败」。这里断言默认表里没有歧义词。
+    for (const k of ['active', 'failed', 'pending', 'done', 'sent']) {
+      expect(DEFAULT_BADGE_LABELS[k]).toBeUndefined()
+    }
+    // 无歧义的词才在默认表里
+    expect(DEFAULT_BADGE_LABELS.enabled?.label).toBe('已开启')
   })
 
-  it('pending → warning tone（黄色）', () => {
-    render(<Badge value="pending" />)
-    const el = screen.getByText('pending')
-    expect(el.className).toMatch(/text-warning/)
+  it('enabled（已开启）是绿色，不是灰色', () => {
+    render(<Badge value="enabled" />)
+    expect(screen.getByText('已开启').className).toMatch(/text-success/)
+  })
+
+  it('disabled（已关闭）是灰色', () => {
+    render(<Badge value="disabled" />)
+    expect(screen.getByText('已关闭').className).toMatch(/text-neutral-500/)
   })
 
   it('未知值 → muted（中性灰）', () => {

@@ -293,8 +293,8 @@ export function VoiceLibrary() {
         <div>
           <h1 className={pageTitleClass}>音色库</h1>
           <p className={pageHintClass}>
-            数据源：GET /api/v1/admin/tts/voices —— IndexTTS 零样本克隆，
-            音色 = 参考音频 + 参考文本，两者必须一致
+            可供选择的朗读音色。音色由一段参考音频克隆而来，
+            参考音频和参考文本必须一致，否则合成质量会下降
           </p>
         </div>
         <div className="flex gap-2">

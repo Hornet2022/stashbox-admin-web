@@ -148,8 +148,7 @@ export function TtsSettings() {
       <div>
         <h1 className={pageTitleClass}>TTS 配置</h1>
         <p className={pageHintClass}>
-          admin 可改语音合成服务商 / 音色 / API key —— 数据源：
-          GET /api/v1/admin/tts/config，保存后立即热生效，不用重启 ai-service
+          决定音频用什么引擎合成。保存后立即生效，不需要重启服务
         </p>
       </div>
 

@@ -23,6 +23,7 @@ import {
   thClass,
   theadClass,
 } from '../components/ui'
+import { POOL_ACTIVE_LABELS } from '../constants/labels'
 import { formatTime } from '../utils'
 import type { FewShotKind, PoolExample } from '../types'
 
@@ -73,7 +74,7 @@ export function FewShotPool() {
     <div>
       <h1 className={pageTitleClass}>听感池</h1>
       <p className={pageHintClass}>
-        数据源：GET /api/v1/admin/few-shot-pool/health · /few-shot-pool · /audit-sample · /cleanup · /audit-result
+        改写时参考的写作范例库。范例质量直接决定改写质量
       </p>
 
       <div className="mt-5">
@@ -144,8 +145,11 @@ function OverviewTab({
           <h2 className="font-serif text-base font-semibold text-ink dark:text-neutral-100">
             池条目
           </h2>
-          <div className="text-xs text-neutral-400 dark:text-neutral-500">
-            GET /admin/few-shot-pool
+          {/* 原来这里写的是接口路径（GET /admin/few-shot-pool），和页面标题
+              「听感池」重复。换成当前筛选下的命中数 —— 运营调整过滤条件时
+              需要立刻知道还剩多少条可抽查。 */}
+          <div className="tnum text-xs text-neutral-400 dark:text-neutral-500">
+            当前筛选 {listState.data?.items?.length ?? 0} 条
           </div>
         </div>
 
@@ -277,7 +281,7 @@ function PoolRow({ item }: { item: PoolExample }) {
       </td>
       <td className={cellMutedClass}>{formatTime(item.last_used_at)}</td>
       <td className={cellTextClass}>
-        <Badge value={item.active ? 'active' : 'inactive'} />
+        <Badge value={item.active ? 'active' : 'inactive'} map={POOL_ACTIVE_LABELS} />
       </td>
     </tr>
   )

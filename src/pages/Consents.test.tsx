@@ -60,7 +60,7 @@ describe('Consents', () => {
       expect(screen.getByText('GDPR 同意')).toBeInTheDocument()
     })
     expect(screen.getByText('隐私红线')).toBeInTheDocument()
-    expect(screen.getByText(/不回显 comment 类自由文本/)).toBeInTheDocument()
+    expect(screen.getByText(/原始自由文本不回显/)).toBeInTheDocument()
   })
 
   it('表格渲染两行 + Badge 状态', async () => {
@@ -71,9 +71,12 @@ describe('Consents', () => {
     expect(screen.getByText('102')).toBeInTheDocument()
     expect(screen.getByText('v1')).toBeInTheDocument()
     expect(screen.getByText('v2')).toBeInTheDocument()
-    // enabled/disabled Badge（user 101 personalization on, share off；102 反之）
-    expect(screen.getAllByText('enabled').length).toBe(2)
-    expect(screen.getAllByText('disabled').length).toBe(2)
+    // enabled/disabled 现在显示中文（user 101 personalization on, share off；102 反之）
+    // 限定 role=status：页面顶部还有一个同名「已开启」的筛选 tab。
+    const badges = screen.getAllByRole('status')
+    const labels = badges.map((b) => b.textContent)
+    expect(labels.filter((l) => l === '已开启').length).toBe(2)
+    expect(labels.filter((l) => l === '已关闭').length).toBe(2)
   })
 
   it('表格固定 6 列（无 comment 类自由文本列）', async () => {

@@ -1,3 +1,4 @@
+import { Lock as LockIcon } from 'lucide-react'
 import { useState, useRef, type FormEvent } from 'react'
 import { createTag, deleteAdminTag, downloadCsv, listTags } from '../api/admin'
 import { toErrorMessage } from '../api/client'
@@ -10,6 +11,7 @@ import {
   ErrorNotice,
   Field,
   TableSkeleton,
+  ButtonGhost,
   buttonGhostClass,
   buttonPrimaryClass,
   cellMutedClass,
@@ -168,7 +170,9 @@ export function Tags() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className={pageTitleClass}>标签管理</h1>
-          <p className={pageHintClass}>数据源：GET /api/v1/admin/tags</p>
+          <p className={pageHintClass}>
+            蒸馏对齐文章结构的基础标签集。系统标签参与改写，不能删除
+          </p>
         </div>
         <div className="flex gap-2">
           <button type="button" className={buttonGhostClass} onClick={handleExportTags}>
@@ -192,7 +196,7 @@ export function Tags() {
       {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
 
       <div className={tableWrapClass}>
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-max text-left text-sm">
           <thead className={theadClass}>
             <tr>
               {columns.map((col) => (
@@ -229,23 +233,30 @@ export function Tags() {
                     {formatTime(tag.created_at)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    {canOperate ? (
-                      <button
-                        type="button"
-                        className={`${buttonGhostClass} border-error/40 text-error hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-red-300`}
-                        disabled={tag.is_system}
-                        title={
-                          tag.is_system
-                            ? '系统标签不可删除（蒸馏标签体系依赖）'
-                            : '删除标签（订阅关系级联清理）'
-                        }
+                    {!canOperate ? (
+                      <span className="text-neutral-400">—</span>
+                    ) : tag.is_system ? (
+                      /* 系统标签不是一个「按了没反应」的禁用按钮。
+                         后端对 is_system 恒返 403（蒸馏标签体系依赖这批内置标签），
+                         而禁用态靠 opacity-40 压在本来就低对比的幽灵按钮上，
+                         肉眼几乎看不出它和旁边能点的删除有什么区别 ——
+                         运营会反复点它然后以为系统坏了。
+                         直接说清「受保护」，比一个看不见的禁用态有用。 */
+                      <span className="inline-flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500">
+                        <LockIcon size={11} aria-hidden="true" />
+                        受保护
+                      </span>
+                    ) : (
+                      <ButtonGhost
+                        variant="danger"
                         onClick={() => openDelete(tag)}
+                        title="删除标签（订阅关系级联清理）"
+                        // 一列都叫「删除」对读屏用户是有歧义的（听不出删的是哪个），
+                        // 视觉文字保持两字，无障碍名带上标签名。
                         aria-label={`删除标签 ${tag.name}`}
                       >
                         删除
-                      </button>
-                    ) : (
-                      <span className="text-neutral-400">—</span>
+                      </ButtonGhost>
                     )}
                   </td>
                 </tr>

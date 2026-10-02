@@ -69,7 +69,7 @@ export function AbReport() {
     <div>
       <h1 className={pageTitleClass}>A/B 报表</h1>
       <p className={pageHintClass}>
-        数据源：GET /api/v1/admin/ab-report（按 user_id%100&lt;30 ITT 分组，0029 上线前数据归 pre_experiment）
+        实验组看到改写版，对照组看到原版，比较两边的完播表现
       </p>
 
       {/* 强制展示的 caveats */}
