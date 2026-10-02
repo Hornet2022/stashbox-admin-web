@@ -273,10 +273,17 @@ describe('CSV 导出', () => {
     )
   })
 
-  it('exportCsvUrl 带 token query 参数', () => {
+  /**
+   * 回归：导出曾经靠 `?token=` 鉴权，但后端只认 Authorization 头。
+   * 实测带 ?token= 返 401、带头返 200 —— 也就是说「导出 CSV」在 4 个
+   * 页面上从来没成功过。这条用例守住「URL 里不带凭证」：凭证只走请求头。
+   */
+  it('exportCsvUrl 不带 token query（后端只认 Authorization 头）', () => {
     mockedGetAuthToken.mockReturnValue('jwt-abc')
-    expect(exportCsvUrl('users')).toContain('?token=jwt-abc')
-    expect(exportCsvUrl('users')).toContain('/export/users.csv')
+    const url = exportCsvUrl('users')
+    expect(url).not.toContain('?token=')
+    expect(url).not.toContain('jwt-abc')
+    expect(url).toContain('/export/users.csv')
   })
 
   it('exportCsvUrl 支持 6 种 ExportKind', () => {
@@ -286,11 +293,42 @@ describe('CSV 导出', () => {
     }
   })
 
-  it('downloadCsv → 返回 URL 含 kind + 拼 token', () => {
-    // downloadCsv 内部会触发 window.location.href 跳转（happy-dom 下报错），
-    // 这里改测它"返回 URL"的契约，行为由 e2e 覆盖
-    const url = downloadCsv('feedback')
-    expect(url).toContain('/export/feedback.csv')
+  it('downloadCsv → 走 fetch 带 Authorization 头，不做整页跳转', async () => {
+    mockedGetAuthToken.mockReturnValue('jwt-abc')
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob(['id,name\n1,a'], { type: 'text/csv' }),
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+    const createObjectURL = vi.fn().mockReturnValue('blob:fake')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL })
+
+    const url = await downloadCsv('feedback')
     expect(url).toBe(`${API_BASE_URL}${ADMIN_API_PREFIX}/export/feedback.csv`)
+
+    // 关键：请求头里必须有 Authorization，且没有 ?token=
+    const [calledUrl, init] = fetchSpy.mock.calls[0]
+    expect(calledUrl).toBe(url)
+    expect(init.headers.Authorization).toBe('Bearer jwt-abc')
+    expect(String(calledUrl)).not.toContain('?token=')
+
+    // 不能再动 window.location —— 那会把运营的会话页整个换掉
+    expect(createObjectURL).toHaveBeenCalled()
+    vi.unstubAllGlobals()
+  })
+
+  it('downloadCsv 失败时抛错（不能静默，运营会以为导出了空文件）', async () => {
+    mockedGetAuthToken.mockReturnValue('jwt-abc')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        text: async () => JSON.stringify({ code: 40100, message: 'Missing or invalid Authorization header' }),
+      })
+    )
+    await expect(downloadCsv('users')).rejects.toThrow(/Missing or invalid Authorization header/)
+    vi.unstubAllGlobals()
   })
 })

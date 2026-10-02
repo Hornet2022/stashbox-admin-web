@@ -51,7 +51,10 @@ export const useToastStore = create<ToastState>((set, get) => ({
       return { toasts: next.slice(-MAX_TOASTS) }
     })
 
-    window.setTimeout(() => get().dismiss(id), TOAST_DURATION)
+    // 自动消失的计时由 ToastContainer 里的 <ToastItem> 负责 —— 它需要
+    // 先播退场动画再卸载。计时留在这里的话，dismiss 会直接把条目从列表
+    // 里 filter 掉，组件当场卸载，动画无从播起（实测状态序列只有
+    // ["in","gone"]，中间那个 out 不存在）。
   },
 
   dismiss: (id) =>

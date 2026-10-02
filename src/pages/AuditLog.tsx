@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { downloadCsv, listAuditLog } from '../api/admin'
+import { downloadCsv, exportErrorMessage, listAuditLog } from '../api/admin'
 import { useApi } from '../hooks/useApi'
 import { toast } from '../store/toast'
 import {
@@ -22,6 +22,19 @@ import {
   theadClass,
 } from '../components/ui'
 import { formatTime } from '../utils'
+
+
+/** CSV 导出：fetch + blob，留在应用内并给出成功/失败反馈。
+ *  失败必须提示 —— 静默失败会让运营以为导出了一份空文件。 */
+async function runExport(kind: Parameters<typeof downloadCsv>[0], label: string) {
+  toast(`正在导出${label} CSV…`, 'info')
+  try {
+    await downloadCsv(kind)
+    toast(`${label} CSV 已开始下载`, 'success')
+  } catch (err) {
+    toast(exportErrorMessage(err), 'error')
+  }
+}
 
 /**
  * 审计日志页 —— GET /api/v1/admin/audit-log（actor_id + action_type 过滤）。
@@ -61,11 +74,7 @@ export function AuditLog() {
     setTo(toDraft.trim())
   }
 
-  /** CSV 导出：走 window.location 触发浏览器原生下载 */
-  const handleExport = () => {
-    toast('正在导出审计日志 CSV…', 'info')
-    downloadCsv('audit-log')
-  }
+  const handleExport = () => runExport('audit-log', '审计日志')
 
   const rows = data?.items ?? []
 

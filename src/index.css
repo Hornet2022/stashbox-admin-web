@@ -374,6 +374,69 @@ html {
   scroll-behavior: smooth;
 }
 
+/* ── Toast 进出动效 ────────────────────────────────
+   Toast 是「我刚才那个操作到底成没成」的唯一反馈，瞬时出现 + 瞬时消失
+   会让它看起来像界面卡了一下。入场走「右移入 + 淡入 + 轻微放大」，
+   退场走反向，都�� 250ms 内结束 —— 超过这个时长就成了拖沓。
+
+   缓用 --ease-smooth-out（cubic-bezier(0.22, 1, 0.36, 1)）：起步快、收尾
+   稳，和 .t-tabs 滑动是同一条曲线，动效语言统一。
+
+   位移只给 12px：右上角位移太大，看起来像卡片在飞。 */
+@keyframes t-toast-in {
+  from { opacity: 0; transform: translateX(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes t-toast-out {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to   { opacity: 0; transform: translateX(12px) scale(0.98); }
+}
+
+/* 底部倒计时线：宽度从 100% 收到 0 = 自动消失的剩余时间。
+   必须是 linear —— 匀速才对应真实时间流逝，缓动会让用户误判还剩多久。 */
+@keyframes t-toast-countdown {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
+.t-toast[data-state='in']  { animation: t-toast-in var(--dur-fast) var(--ease-smooth-out) both; }
+.t-toast[data-state='out'] { animation: t-toast-out var(--dur-fast) var(--ease-smooth-out) both; }
+
+.t-toast-countdown {
+  transform-origin: left center;
+  animation: t-toast-countdown var(--toast-duration, 3200ms) linear forwards;
+}
+
+/* ── 页面内容入场 ─────────────────────────────────────
+   路由切换是硬跳变，上一页内容瞬间被替换，眼睛要重新定位。给内容区一层
+   极轻的淡入（不做位移 —— 位移会和侧边栏选中指示条打架），
+   120ms：足够消掉「闪一下」，又不会被察觉为在等���。 */
+@keyframes t-content-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.t-content-in { animation: t-content-in 120ms var(--ease-smooth-out) both; }
+
+/* 侧边栏选中指示条：只淡入不做位移。换页时它是「长」到新位置的，
+   位移会和上面的内容入场撞在一起。 */
+.t-nav-active { animation: t-content-in var(--dur-quick) var(--ease-smooth-out) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .t-toast[data-state='in'],
+  .t-toast[data-state='out'],
+  .t-content-in,
+  .t-nav-active {
+    animation: none !important;
+  }
+  /* 减弱动效下倒计时线仍然要收缩 —— 它承载的是「还剩多久」这个信息，
+     不只是装饰。 */
+  .t-toast-countdown {
+    animation: t-toast-countdown var(--toast-duration, 3200ms) linear forwards !important;
+  }
+}
+
 /* ── 排版与数字 ────────────────────────────────────── */
 
 /* 数字列用等宽数字：否则「1 / 11 / 111」三种字宽会让整列数字对不齐，

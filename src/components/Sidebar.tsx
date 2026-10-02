@@ -138,7 +138,7 @@ export function SidebarNav() {
                   {active && (
                     <span
                       aria-hidden="true"
-                      className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-warm-ochre"
+                      className="t-nav-active absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-warm-ochre"
                     />
                   )}
                   <span

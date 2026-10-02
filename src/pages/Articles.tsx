@@ -3,6 +3,7 @@ import {
   createArticle,
   deleteAdminArticle,
   downloadCsv,
+  exportErrorMessage,
   forceRetryArticle,
   invalidateAudio,
   listArticles,
@@ -18,6 +19,19 @@ import { ArticleActionModal } from './articles/ArticleActionModal'
 import { CreateArticleDrawer } from './articles/CreateArticleDrawer'
 import type { ActionKind } from './articles/constants'
 import type { ArticleRow } from '../types'
+
+
+/** CSV 导出：fetch + blob，留在应用内并给出成功/失败反馈。
+ *  失败必须提示 —— 静默失败会让运营以为导出了一份空文件。 */
+async function runExport(kind: Parameters<typeof downloadCsv>[0], label: string) {
+  toast(`正在导出${label} CSV…`, 'info')
+  try {
+    await downloadCsv(kind)
+    toast(`${label} CSV 已开始下载`, 'success')
+  } catch (err) {
+    toast(exportErrorMessage(err), 'error')
+  }
+}
 
 /**
  * 文章管理页（拆分后主控）。
@@ -103,14 +117,8 @@ export function Articles() {
     setTag('')
     setAppliedTag('')
   }
-  const handleExportArticles = () => {
-    toast('正在导出文章 CSV…', 'info')
-    downloadCsv('articles')
-  }
-  const handleExportFeedback = () => {
-    toast('正在导出反馈 CSV…', 'info')
-    downloadCsv('feedback')
-  }
+  const handleExportArticles = () => runExport('articles', '文章')
+  const handleExportFeedback = () => runExport('feedback', '用户反馈')
 
   const handleSubmitAction = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()

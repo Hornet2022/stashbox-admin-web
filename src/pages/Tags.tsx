@@ -1,6 +1,6 @@
 import { Lock as LockIcon } from 'lucide-react'
 import { useState, useRef, type FormEvent } from 'react'
-import { createTag, deleteAdminTag, downloadCsv, listTags } from '../api/admin'
+import { createTag, deleteAdminTag, downloadCsv, exportErrorMessage, listTags } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
 import { useRole, hasPermission } from '../hooks/useRole'
@@ -28,6 +28,19 @@ import {
 } from '../components/ui'
 import { formatNumber, formatTime } from '../utils'
 import type { TagRow } from '../types'
+
+
+/** CSV 导出：fetch + blob，留在应用内并给出成功/失败反馈。
+ *  失败必须提示 —— 静默失败会让运营以为导出了一份空文件。 */
+async function runExport(kind: Parameters<typeof downloadCsv>[0], label: string) {
+  toast(`正在导出${label} CSV…`, 'info')
+  try {
+    await downloadCsv(kind)
+    toast(`${label} CSV 已开始下载`, 'success')
+  } catch (err) {
+    toast(exportErrorMessage(err), 'error')
+  }
+}
 
 /**
  * 标签管理页 —— GET /api/v1/tags + POST /api/v1/tags。
@@ -118,16 +131,10 @@ export function Tags() {
     wrap.setAttribute(revertKey, String(timer))
   }
 
-  /** CSV 导出：走 window.location 触发浏览器原生下载 */
-  const handleExportTags = () => {
-    toast('正在导出标签 CSV…', 'info')
-    downloadCsv('tags')
-  }
-
+  const handleExportTags = () => runExport('tags', '标签')
   const handleExportSubscriptions = () => {
     if (!window.confirm('将导出全量订阅用户，确认？')) return
-    toast('正在导出订阅用户 CSV…', 'info')
-    downloadCsv('subscriptions')
+    return runExport('subscriptions', '订阅用户')
   }
 
   const handleCreate = async (e: FormEvent<HTMLFormElement>) => {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { Drawer } from 'vaul'
 import { Header } from './Header'
 import { Sidebar, SidebarNav } from './Sidebar'
@@ -10,6 +10,7 @@ import { Sidebar, SidebarNav } from './Sidebar'
  */
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { pathname } = useLocation()
 
   return (
     <div className="flex h-screen bg-neutral-50 dark:bg-neutral-900">
@@ -46,7 +47,9 @@ export function Layout() {
         {/* p-6 在 390px 下左右各留 24px，内容只剩 342px —— 表格挤不下。
             窄屏收到 16px，桌面保持 24px 的呼吸感。 */}
         <main className="flex-1 overflow-auto p-4 md:p-6">
-          <div className="mx-auto max-w-[1400px]">
+          {/* key 绑 pathname：路由一变整块内容重新挂载，入场动画才会重播。
+              不加 key 的话动画只在首次加载跑一次，之后换页都是硬跳变。 */}
+          <div key={pathname} className="t-content-in mx-auto max-w-[1400px]">
             <Outlet />
           </div>
         </main>

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { adjustQuota, downloadCsv, listUsers } from '../api/admin'
+import { adjustQuota, downloadCsv, exportErrorMessage, listUsers } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
 import { hasPermission, useRole } from '../hooks/useRole'
@@ -10,6 +10,19 @@ import { UsersToolbar } from './users/UsersToolbar'
 import { UsersTable } from './users/UsersTable'
 import { QuotaAdjustModal } from './users/QuotaAdjustModal'
 import type { UserRow } from '../types'
+
+
+/** CSV 导出：fetch + blob，留在应用内并给出成功/失败反馈。
+ *  失败必须提示 —— 静默失败会让运营以为导出了一份空文件。 */
+async function runExport(kind: Parameters<typeof downloadCsv>[0], label: string) {
+  toast(`正在导出${label} CSV…`, 'info')
+  try {
+    await downloadCsv(kind)
+    toast(`${label} CSV 已开始下载`, 'success')
+  } catch (err) {
+    toast(exportErrorMessage(err), 'error')
+  }
+}
 
 /**
  * 用户管理页 —— GET /api/v1/admin/users + POST /admin/users/{id}/quota-adjust。
@@ -92,10 +105,7 @@ export function Users() {
     setTier('')
     setStatus('')
   }
-  const handleExport = () => {
-    toast('正在导出用户 CSV…', 'info')
-    downloadCsv('users')
-  }
+  const handleExport = () => runExport('users', '用户')
   const handleQuotaSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!target) return

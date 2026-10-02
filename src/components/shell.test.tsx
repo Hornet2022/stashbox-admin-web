@@ -5,7 +5,7 @@ import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { AuthGuard } from './AuthGuard'
 import { ErrorBoundary } from './ErrorBoundary'
 import { ToastContainer } from './Toast'
-import { toast, useToastStore } from '../store/toast'
+import { TOAST_DURATION, toast, useToastStore } from '../store/toast'
 import { useAuthStore } from '../store/auth'
 
 /**
@@ -164,13 +164,70 @@ describe('ToastContainer', () => {
     expect(screen.getByText('第二条')).toBeInTheDocument()
   })
 
-  it('点关闭按钮 → toast 消失', async () => {
+  /**
+   * 关闭后不是瞬间消失 —— 组件会先切到 data-state="out" 播完退场动画，
+   * 再由 onDone 摘掉。直接卸载等于动画一帧都播不出来（这也是最初没做
+   * 进出场动效的原因：没有「播放中」这个中间态）。
+   */
+  it('点关闭按钮 → 先播退场动画，再卸载', async () => {
     const user = userEvent.setup()
     render(<ToastContainer />)
     act(() => toast('临时提示', 'info'))
-    expect(screen.getByText('临时提示')).toBeInTheDocument()
+    const el = screen.getByText('临时提示')
+    expect(el).toBeInTheDocument()
+    expect(el.closest('[data-state]')?.getAttribute('data-state')).toBe('in')
+
     await user.click(screen.getByRole('button', { name: '关闭提示' }))
-    expect(screen.queryByText('临时提示')).toBeNull()
+
+    // 退场期间仍在 DOM 里（否则动画无从播起）
+    expect(screen.getByText('临时提示')).toBeInTheDocument()
+    expect(
+      screen.getByText('临时提示').closest('[data-state]')?.getAttribute('data-state')
+    ).toBe('out')
+
+    await waitFor(
+      () => {
+        expect(screen.queryByText('临时提示')).toBeNull()
+      },
+      { timeout: 1500 }
+    )
+  })
+
+  /**
+   * 自动消失也必须先播退场动画。
+   * 这条是回归：计时原本在 store 里，dismiss 直接 filter 掉条目，组件当场
+   * 卸载，实测采样到的状态序列只有 ["in","gone"]，中间的 out 从未出现。
+   */
+  it('自动消失：先切 out 再卸载（不是瞬间消失）', async () => {
+    render(<ToastContainer />)
+    act(() => toast('自动消失的提示', 'info'))
+    expect(screen.getByText('自动消失的提示')).toBeInTheDocument()
+
+    // 用真实定时器等它自己走完：TOAST_DURATION 之后应该先出现 out 阶段
+    await waitFor(
+      () => {
+        const el = screen.queryByText('自动消失的提示')
+        expect(el?.closest('[data-state]')?.getAttribute('data-state')).toBe('out')
+      },
+      { timeout: TOAST_DURATION + 2000 }
+    )
+
+    await waitFor(
+      () => {
+        expect(screen.queryByText('自动消失的提示')).toBeNull()
+      },
+      { timeout: 1500 }
+    )
+  })
+
+  it('入场即带倒计时进度线，时长绑定真实 TOAST_DURATION', async () => {
+    render(<ToastContainer />)
+    act(() => toast('带倒计时的提示', 'success'))
+    const bar = document.querySelector('.t-toast-countdown')
+    expect(bar).toBeTruthy()
+    // 进度线时长必须来自 store 的常量，不能在 CSS 里另写一个魔数
+    const host = screen.getByText('带倒计时的提示').closest('.t-toast') as HTMLElement
+    expect(host.style.getPropertyValue('--toast-duration')).toBe(`${TOAST_DURATION}ms`)
   })
 
   it('toast 容器 aria-live=polite', () => {

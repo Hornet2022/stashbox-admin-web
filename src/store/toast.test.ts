@@ -75,12 +75,21 @@ describe('useToastStore', () => {
     expect(msgs).toEqual(['msg-2', 'msg-3', 'msg-4', 'msg-5'])
   })
 
-  it('TOAST_DURATION 后自动 dismiss', () => {
+  /**
+   * store 只管「有哪些 toast」，不管「什么时候消失」。
+   *
+   * 自动消失的计时放在 <ToastItem> 里，因为它要先播退场动画再卸载 ——
+   * 计时留在 store 的话 dismiss 会直接 filter，组件当场消失，动画播不出来。
+   * 这条用例守住的是「push 只负责入列，不启动定时器」这个边界。
+   * 自动消失的端到端行为由 shell.test.tsx 覆盖。
+   */
+  it('push 只入列，不自行启动消失定时器', () => {
     useToastStore.getState().push('hello', 'info')
     expect(useToastStore.getState().toasts).toHaveLength(1)
-    vi.advanceTimersByTime(TOAST_DURATION - 100)
+    vi.advanceTimersByTime(TOAST_DURATION * 3)
+    // 仍然在列里 —— 消失时机由渲染层决定
     expect(useToastStore.getState().toasts).toHaveLength(1)
-    vi.advanceTimersByTime(200) // 总 TOAST_DURATION
+    useToastStore.getState().dismiss(useToastStore.getState().toasts[0].id)
     expect(useToastStore.getState().toasts).toHaveLength(0)
   })
 
