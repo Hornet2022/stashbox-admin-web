@@ -189,4 +189,64 @@ describe('AbReport', () => {
       expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
     })
   })
+  // ── 实验前提不成立（2026-10-02 闭环 2）────────────────────────────────
+  // 后端下发 experiment_valid=false 时，页面必须在数字**之前**拦一道。
+  // 之前只把原因混在 caveats 列表里，表格照常渲染，运营很容易读成
+  // 「实验跑了，两组没差异」—— 而真实情况是实验根本没跑起来。
+
+  it('experiment_valid=false 时显示醒目的停用标注', async () => {
+    mockedAbReport.mockResolvedValue({
+      ...enoughData,
+      experiment_valid: false,
+      caveats: ['⛔ 实验前提不成立：两组拿到完全相同的 few-shot 样本'],
+    })
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText(/这个实验当前不可用/)).toBeInTheDocument()
+    })
+    // 要说清「不是没差异，是没跑起来」这个区别
+    expect(screen.getByText(/不是「实验结论是没差异」/)).toBeInTheDocument()
+  })
+
+  it('experiment_valid=false 时表格数字仍然渲染（仅供排查）', async () => {
+    mockedAbReport.mockResolvedValue({ ...enoughData, experiment_valid: false })
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText(/这个实验当前不可用/)).toBeInTheDocument()
+    })
+    // 停用不等于隐藏 —— 排查时还要看得到数
+    expect(screen.getAllByText(/personalized · 个性化组/).length).toBeGreaterThan(0)
+  })
+
+  it('experiment_valid 缺省（旧后端）时不显示停用标注', async () => {
+    mockedAbReport.mockResolvedValue(enoughData)
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/personalized · 个性化组/).length).toBeGreaterThan(0)
+    })
+    expect(screen.queryByText(/这个实验当前不可用/)).not.toBeInTheDocument()
+  })
+
+  it('experiment_valid=true 时不显示停用标注', async () => {
+    mockedAbReport.mockResolvedValue({ ...enoughData, experiment_valid: true })
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/personalized · 个性化组/).length).toBeGreaterThan(0)
+    })
+    expect(screen.queryByText(/这个实验当前不可用/)).not.toBeInTheDocument()
+  })
+
+  it('副标题不再宣称实验组看改写版、对照组看原版', async () => {
+    mockedAbReport.mockResolvedValue(enoughData)
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText(/原本的设想/)).toBeInTheDocument()
+    })
+  })
 })

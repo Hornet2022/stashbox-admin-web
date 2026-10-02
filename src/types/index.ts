@@ -605,10 +605,15 @@ export interface ABGroup {
 }
 
 /** GET /api/v1/admin/ab-report 响应
- *  caveats 是必须展示给运营的硬约束（接口文档 §2.2 契约） */
+ *  caveats 是必须展示给运营的硬约束（接口文档 §2.2 契约）
+ *
+ *  experiment_valid=false 表示「实验前提不成立」，此时 groups 里的差异
+ *  **不能**当结论看 —— 2026-10-02 起后端会显式下发这个标记，之前是照常
+ *  给数字、不给信号，运营会误读成「实验跑了，没差异」。 */
 export interface ABReport {
   groups: ABGroup[]
   caveats: string[]
+  experiment_valid?: boolean
 }
 
 /* ── A5 · 多码率变体统计 ─────────────────────────────────────── */

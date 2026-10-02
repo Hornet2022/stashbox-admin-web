@@ -69,8 +69,26 @@ export function AbReport() {
     <div>
       <h1 className={pageTitleClass}>A/B 报表</h1>
       <p className={pageHintClass}>
-        实验组看到改写版，对照组看到原版，比较两边的完播表现
+        原本的设想是实验组看改写版、对照组看原版，比较两边完播表现
       </p>
+
+      {/* 实验停用标注（2026-10-02）。
+          之前只把 caveat 混在列表里，页面照常渲染分组数字和对比 —— 运营
+          很容易直接读成「实验跑了，两组没差异」。前提不成立时数据本身就没有
+          解释力，必须在数字**之前**拦一道，标题级别地说明。 */}
+      {abState.data?.experiment_valid === false && (
+        <div className="mt-4 rounded-lg border-2 border-error/50 bg-error/10 p-4 dark:border-red-800 dark:bg-red-950/40">
+          <p className="text-sm font-semibold text-error dark:text-red-300">
+            这个实验当前不可用，下面两组数字不能作为结论
+          </p>
+          <p className="mt-1.5 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
+            personalized 和 general 两组拿到的改写输入其实是同一份
+            （few-shot 样本没有按用户分组），所以两边数字的差异只可能来自噪声。
+            这不是「实验结论是没差异」，而是「实验还没真正跑起来」。
+            下方表格保留仅供排查用。
+          </p>
+        </div>
+      )}
 
       {/* 强制展示的 caveats */}
       <CaveatBanner variant="danger" title="结论有效性硬约束" items={allCaveats} />
