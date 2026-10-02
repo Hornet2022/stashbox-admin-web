@@ -15,7 +15,6 @@ import {
   cellStrongClass,
   cellTextClass,
   footerCountClass,
-  inputClass,
   pageHintClass,
   pageTitleClass,
   rowClass,
@@ -170,9 +169,26 @@ function OverviewTab({
             ))}
           </div>
 
-          <label className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
-            最低分
+          {/* 原来这里是 `<label className="flex items-center gap-1.5">最低分
+              <input className="{inputClass} w-20 …"></label>`，两个毛病：
+
+              1) 裸文本是匿名 flex item，会被 input 挤到 min-content 宽，而
+                 中文可以逐字断行 —— 窄屏下「最低分」被压成竖排的「最/低/
+                 分」，白占三行高度；
+              2) inputClass 自带 w-full，后面又跟一个 w-20。Tailwind 同属性
+                 冲突，实际生效的那个取决于生成 CSS 的先后顺序，不可预期。
+
+              改成：文字是独立 label 且不参与收缩；宽度直接写在 input 上，
+              不再借用带 w-full 的 inputClass。 */}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <label
+              htmlFor="pool-min-score"
+              className="shrink-0 whitespace-nowrap text-sm text-neutral-500 dark:text-neutral-400"
+            >
+              最低分
+            </label>
             <input
+              id="pool-min-score"
               type="number"
               min={0}
               max={5}
@@ -180,16 +196,16 @@ function OverviewTab({
               value={minScore}
               onChange={(e) => setMinScore(e.target.value)}
               placeholder="0-5"
-              className={`${inputClass} w-20 py-1 text-xs`}
+              className="w-20 shrink-0 rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1 text-xs text-ink placeholder:text-neutral-400 focus:border-warm-ochre focus:outline-none dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100"
             />
-          </label>
+          </div>
 
-          <label className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
+          <label className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-neutral-500 dark:text-neutral-400">
             <input
               type="checkbox"
               checked={activeOnly}
               onChange={(e) => setActiveOnly(e.target.checked)}
-              className="h-3.5 w-3.5"
+              className="h-3.5 w-3.5 shrink-0"
             />
             仅活跃
           </label>
