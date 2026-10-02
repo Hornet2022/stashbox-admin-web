@@ -6,13 +6,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>stashbox-admin</title>
 
-    <!-- Google Fonts: Inter + Noto Serif SC + JetBrains Mono -->
+    <!--
+      Google Fonts: Inter + Noto Serif SC + JetBrains Mono
+
+      ⚠️ 2026-10-03 改为**非阻塞**加载：原来是无 media 属性的 <link rel=stylesheet>，
+      它在首屏渲染阻塞链上 —— 浏览器要等它返回（或 TCP 超时）才开始渲染。
+      而 fonts.googleapis.com 在国内网络通常不可达/极慢，表现为「打开后台白屏
+      好几秒」。
+
+      现在用 media="print" + onload 切回 all 的经典异步化：浏览器仍会下载
+      字体（onload 时生效），但**不阻塞首帧**。加载不出来就走 src/index.css
+      里的系统字体栈 —— body 是 'Inter', 'Noto Serif SC', system-ui, …，
+      标题是 'Noto Serif SC', Georgia, serif，都有兜底，不会出现无字形。
+
+      彻底解法是自托管字体（public/ 下放 woff2），但那要往仓库塞几百 KB
+      二进制，且 CJK 字体尤其大；异步化已经消掉了「白屏」这个真问题。
+    -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
 
     <script>
       // 首屏前应用主题，避免暗色模式下闪白（与 src/store/theme.ts 同 key）
