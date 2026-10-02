@@ -93,7 +93,7 @@ export function AuditLog() {
       </div>
 
       <form className="mt-6 flex flex-wrap items-end gap-3" onSubmit={handleFilter}>
-        <div className="w-44">
+        <div className="w-full sm:w-44">
           <Field label="操作人 ID">
             <input
               type="text"
@@ -104,7 +104,7 @@ export function AuditLog() {
             />
           </Field>
         </div>
-        <div className="w-56">
+        <div className="w-full sm:w-56">
           <Field label="动作类型">
             <input
               type="text"
@@ -115,7 +115,7 @@ export function AuditLog() {
             />
           </Field>
         </div>
-        <div className="w-52">
+        <div className="w-full sm:w-52">
           <Field label="开始时间">
             <input
               type="datetime-local"
@@ -125,7 +125,7 @@ export function AuditLog() {
             />
           </Field>
         </div>
-        <div className="w-52">
+        <div className="w-full sm:w-52">
           <Field label="结束时间">
             <input
               type="datetime-local"

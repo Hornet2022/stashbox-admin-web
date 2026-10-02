@@ -230,7 +230,7 @@ export function Dashboard() {
       </Section>
 
       <Section title="规模与存量">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {overviewCards.map(renderCard)}
         </div>
       </Section>

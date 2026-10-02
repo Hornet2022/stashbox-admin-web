@@ -416,7 +416,10 @@ export function VoiceLibrary() {
                         </button>
                       </div>
                     ) : (
-                      <span className={cellMutedClass}>—</span>
+                      // 这里原来用 cellMutedClass，那是一条带 px-4 py-3 的单元格类，
+                      // 套在已经有 px-4 py-3 的操作格里 → 破折号比同格的
+                      // 试听/编辑/删除按钮多缩进 32px，降级态没对齐。
+                      <span className="text-neutral-400 dark:text-neutral-500">—</span>
                     )}
                   </td>
                 </tr>

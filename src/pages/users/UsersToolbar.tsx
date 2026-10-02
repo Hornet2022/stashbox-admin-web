@@ -48,7 +48,7 @@ export function UsersToolbar({
       </div>
 
       <form className="mt-6 flex flex-wrap items-end gap-3" onSubmit={onSearch}>
-        <div className="w-64">
+        <div className="w-full sm:w-64">
           <label className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-500 dark:text-neutral-400">
             关键词
           </label>
@@ -60,7 +60,7 @@ export function UsersToolbar({
             className={inputClass}
           />
         </div>
-        <div className="w-32">
+        <div className="w-full sm:w-32">
           <Select
             label="套餐"
             value={tier}
@@ -71,7 +71,7 @@ export function UsersToolbar({
             }))}
           />
         </div>
-        <div className="w-32">
+        <div className="w-full sm:w-32">
           <Select
             label="状态"
             value={status}

@@ -90,7 +90,7 @@ export function Consents() {
           }}
         />
 
-        <button type="button" className={buttonGhostClass + ' ml-auto'} onClick={state.reload}>
+        <button type="button" className={buttonGhostClass + ' sm:ml-auto'} onClick={state.reload}>
           刷新
         </button>
       </div>

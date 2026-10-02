@@ -170,7 +170,7 @@ export function PushNotifications() {
 
         <button
           type="button"
-          className={`${buttonGhostClass} ml-auto`}
+          className={`${buttonGhostClass} sm:ml-auto`}
           onClick={reload}
           aria-label="刷新推送列表"
         >

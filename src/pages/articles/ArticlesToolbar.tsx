@@ -80,7 +80,7 @@ export function ArticlesToolbar({
       </div>
 
       <form className="mt-6 flex flex-wrap items-end gap-3" onSubmit={onApply}>
-        <div className="w-36">
+        <div className="w-full sm:w-36">
           <Select
             label="状态"
             value={status}
@@ -91,7 +91,7 @@ export function ArticlesToolbar({
             }))}
           />
         </div>
-        <div className="w-48">
+        <div className="w-full sm:w-48">
           <label className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
             标签
           </label>
