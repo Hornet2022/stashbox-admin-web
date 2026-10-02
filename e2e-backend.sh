@@ -44,7 +44,7 @@ USER_PORT=18101
 CONTENT_PORT=18102
 AI_PORT=18103
 RUN_DIR=/tmp/stashbox-e2e-backend
-mkdir -p "${RUN_DIR}"
+mkdir -p "${RUN_DIR}" "${RUN_DIR}/audio"
 
 # 所有服务共用的隔离 env：不覆盖这三个就等于没隔离。
 ISO_ENV=(
@@ -55,6 +55,17 @@ ISO_ENV=(
   "CONTENT_SERVICE_URL=http://127.0.0.1:${CONTENT_PORT}"
   "AI_SERVICE_URL=http://127.0.0.1:${AI_PORT}"
   "STASHBOX_ALLOW_DEV_JWT=1"
+  # 存储必须显式钉在 local。2026-10-02 起 storage 工厂的缺省从 local 改成 oss
+  # （对齐 config.py / api-gateway，原先只有这一处是 local），于是 e2e 会去连
+  # **生产** SeaweedFS —— 而 voice-library.spec.ts 会真上传参考音频，
+  # 隔离测试就直接写进生产 bucket 了。e2e 一律写 ${RUN_DIR}/audio。
+  "STORAGE_PROVIDER=local"
+  "LOCAL_AUDIO_DIR=${RUN_DIR}/audio"
+  # 公开 URL 必须指向 e2e 自己的 gateway（18100）。不设的话 LocalStorage
+  # 会 fallback 到 .env 的 PUBLIC_GATEWAY_URL=http://192.168.3.100:8100 ——
+  # 于是 e2e 造出来的试听产物 URL 指向**生产** gateway，必然 404
+  # （e2e gateway 明明挂载成功、文件也在，只是没人去它那儿取）。
+  "LOCAL_STORAGE_PUBLIC_URL=http://127.0.0.1:${GW_PORT}/audio"
 )
 
 export PGPASSWORD="${PGPASSWORD:-stashbox_dev}"
