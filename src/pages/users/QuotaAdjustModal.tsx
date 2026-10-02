@@ -74,7 +74,7 @@ export function QuotaAdjustModal({
         </Field>
 
         {error && (
-          <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+          <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-error/40 dark:bg-error/10 dark:text-[#E0A0A0]">
             {error}
           </p>
         )}

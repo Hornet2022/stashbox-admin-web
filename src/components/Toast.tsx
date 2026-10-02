@@ -26,13 +26,13 @@ const tone: Record<
   success: {
     box: 'border-success/25 bg-neutral-50 text-ink dark:border-success/30 dark:bg-neutral-800 dark:text-neutral-100',
     bar: 'bg-success',
-    icon: 'text-success',
+    icon: 'text-success-ink',
     Icon: Check,
   },
   error: {
     box: 'border-error/30 bg-neutral-50 text-ink dark:border-error/35 dark:bg-neutral-800 dark:text-neutral-100',
     bar: 'bg-error',
-    icon: 'text-error',
+    icon: 'text-error-ink',
     Icon: TriangleAlert,
   },
   info: {
@@ -53,11 +53,14 @@ function ToastItem({
   id,
   kind,
   message,
+  exiting = false,
   onDone,
 }: {
   id: number
   kind: ToastKind
   message: string
+  /** store 标记「该退场了」（超出上限时）。与自动消失走同一条 close() */
+  exiting?: boolean
   onDone: (id: number) => void
 }) {
   const [state, setState] = useState<'in' | 'out'>('in')
@@ -84,14 +87,20 @@ function ToastItem({
     return () => window.clearTimeout(t)
   }, [close])
 
-  // 键盘可达：Escape 关掉最早的一条
+  // 2026-10-03：超出 4 条时，store 不再 slice 掉最旧的，而是把它标成
+  // exiting 留在数组里，等这里走和自动消失完全相同的退场路径。
+  // 之前是数组里直接少一项 → 组件卸载 → 动画一帧都播不出来，
+  // 而且被丢掉的偏偏是用户最可能正在读的那条。
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [close])
+    if (exiting) close()
+  }, [exiting, close])
+
+  // Escape 原来注册在**每一个 ToastItem** 上。挂 3 条 toast 就是 3 个
+  // document 监听器，一次按键三发同去 —— 注释写的是「关掉最早的一条」，
+  // 实际行为是清空整摞，用户正读的那条也一起没了。
+  // 现在这个监听器上移到 ToastContainer，全局只有一个。
+  // （顺带解决第二个冲突：useShortcuts 也监听 Escape 收快捷键抽屉，
+  //   之前两处会一起响应。）
 
   const t = tone[kind]
   const { Icon } = t
@@ -147,6 +156,25 @@ export function ToastContainer() {
   const toasts = useToastStore((s) => s.toasts)
   const dismiss = useToastStore((s) => s.dismiss)
 
+  // 单一 Escape 监听器：只关最早的一条。toasts[0] 是数组头部（见 toast.ts
+  // 的 [...state.toasts, new] 追加），所以「最早」就是下标 0。
+  // 用函数式读取避免把 toasts 放进依赖导致每次新增都重挂监听。
+  const oldestIdRef = useRef<number | null>(null)
+  useEffect(() => {
+    oldestIdRef.current = toasts.length > 0 ? toasts[0].id : null
+  }, [toasts])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (oldestIdRef.current == null) return
+      e.stopPropagation()
+      dismiss(oldestIdRef.current)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [dismiss])
+
   if (toasts.length === 0) return null
 
   return (
@@ -161,6 +189,7 @@ export function ToastContainer() {
           id={item.id}
           kind={item.kind}
           message={item.message}
+          exiting={item.exiting}
           onDone={dismiss}
         />
       ))}

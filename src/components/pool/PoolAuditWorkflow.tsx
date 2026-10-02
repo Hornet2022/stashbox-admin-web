@@ -161,7 +161,7 @@ export function PoolAuditWorkflow() {
             按 health_score 报告手动触发清理，幂等。reason 写入审计日志（≥5 字符）。
           </p>
           {cleanupResult && cleanupResult.total > 0 && (
-            <div className="mt-3 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-sm text-success">
+            <div className="mt-3 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-sm text-success-ink">
               上次清理：陈旧 {cleanupResult.stale} · 低分 {cleanupResult.low_quality} · 重复 {cleanupResult.duplicates} · 合计 {cleanupResult.total}
             </div>
           )}
@@ -251,7 +251,7 @@ export function PoolAuditWorkflow() {
           </p>
 
           {lastResult && (
-            <div className="mt-3 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-sm text-success">
+            <div className="mt-3 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-sm text-success-ink">
               已提交：{lastResult.example_id} → audit_score {lastResult.audit_score.toFixed(1)}
             </div>
           )}

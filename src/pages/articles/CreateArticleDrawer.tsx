@@ -95,7 +95,7 @@ export function CreateArticleDrawer({
               />
             </Field>
             {error && (
-              <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+              <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-error/40 dark:bg-error/10 dark:text-[#E0A0A0]">
                 {error}
               </p>
             )}
@@ -103,7 +103,7 @@ export function CreateArticleDrawer({
             {showSuccess ? (
               <div className="flex items-center justify-center gap-2 py-6">
                 <span
-                  className="t-success-check text-emerald-500"
+                  className="t-success-check text-success-ink"
                   data-state="in"
                   aria-hidden="true"
                 >
@@ -120,7 +120,7 @@ export function CreateArticleDrawer({
                     <path d="M10 25 L20 35 L38 14" />
                   </svg>
                 </span>
-                <span className="text-sm font-medium text-success">文章已创建</span>
+                <span className="text-sm font-medium text-success-ink">文章已创建</span>
               </div>
             ) : (
               <div className="flex justify-end gap-2 pt-4">

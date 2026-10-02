@@ -89,8 +89,8 @@ export function ErrorNotice({
     <div
       className={`mt-6 flex items-center justify-between rounded-md border px-4 py-3 text-sm ${
         missing
-          ? 'border-warning/30 bg-warning/10 text-warning'
-          : 'border-error/30 bg-error/10 text-error'
+          ? 'border-warning/30 bg-warning/10 text-warning-ink'
+          : 'border-error/30 bg-error/10 text-error-ink'
       }`}
     >
       <span>
@@ -131,7 +131,13 @@ export function Modal({
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-md rounded-lg border border-neutral-200 bg-neutral-50 shadow-md dark:border-neutral-700 dark:bg-neutral-800"
+        // max-h + overflow 不可省：这个弹窗是居中（items-center）的，
+        // 内容一旦高过视口，上下会被**对称地裁掉**。VoiceLibrary 的编辑
+        // 弹窗有 5 组字段（含一个 rows={3} 的 textarea），375×667 上
+        // 顶部的「音色名称」和底部的「取消/保存」会同时消失，
+        // 既不能填完也不能取消 —— 任务直接卡死。
+        // 2rem = 上下各 8px，正好对上遮罩的 p-4。
+        className="max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-lg border border-neutral-200 bg-neutral-50 shadow-md dark:border-neutral-700 dark:bg-neutral-800"
       >
         <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3 dark:border-neutral-700">
           <h2 className="font-serif text-base font-semibold text-ink dark:text-neutral-100">
@@ -187,10 +193,36 @@ export const buttonGhostClass =
 
 /* ── Page Shared ──────────────────────────────────────── */
 
-export const pageTitleClass =
-  'font-serif text-xl font-semibold text-ink dark:text-neutral-100'
+/**
+ * 区块标题（页面内 h2）。
+ *
+ * 抽成常量是因为它之前是分裂的：20 处写 `font-serif text-base font-semibold`，
+ * 4 处（Dashboard ×3、DistillMetrics ×1）写 `text-sm font-semibold` 无衬线。
+ * 同一个角色、两种字号、两种字族 —— 而页面标题是 font-serif text-xl（20px），
+ * 14px 无衬线的 h2 挂在它下面只有 6px 落差，还换了字族，
+ * 读起来像「碰巧加粗的正文」而不是一个区块，用户没法把一页扫成几段。
+ * 现在统一走这里，层级只剩「页标题 20 / 区块 16」两级。
+ */
+export const sectionTitleClass =
+  'font-serif text-base font-semibold text-ink dark:text-neutral-100'
 
-export const pageHintClass = 'mt-1 text-sm text-neutral-500 dark:text-neutral-400'
+/**
+ * 页面标题（h1）。
+ *
+ * 20px → 24px：内容列在 1920px 下宽 1400px，20px 的 h1 站在上面几乎不显；
+ * 更要紧的是它比不过 StatCard 里的 28px 数字 —— 数字比标题还大，
+ * 层级是反的。24px 让「页标题 24 / 区块 16 / 卡片数字 28-30」里
+ * 卡片数字作为视觉主角这件事变成**有意的**，而不是因为标题太小才显出来。
+ */
+export const pageTitleClass =
+  'font-serif text-2xl font-semibold text-ink dark:text-neutral-100'
+
+// max-w-2xl 不可省：内容列在 1920px 下宽 1400px（Layout.tsx 的 max-w-[1400px]），
+// 一行 CJK 铺满 1400px 时回视要来回扫，一屏读不完。
+// PageHeader 早就把这个上限带上了（ui.tsx:682 的 max-w-2xl），
+// 而 8 个页面用的是这个裸常量，于是同一份「页面副标题」有两种排版。
+export const pageHintClass =
+  'mt-1 max-w-2xl text-sm leading-relaxed text-neutral-500 dark:text-neutral-400'
 
 /**
  * 表格外层。
@@ -205,7 +237,10 @@ export const tableWrapClass =
 export const theadClass =
   'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
 
-export const thClass = 'px-4 py-3 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap'
+/* 去掉 uppercase + tracking：这张表渲染的表头是中文
+   （Tags 的 订阅数/创建时间、VoiceLibrary 的 音色/标识/状态、
+   AuditLog、PushNotifications…），见 'ALREADY STRONG' 里记住的同款结论。 */
+export const thClass = 'px-4 py-3 text-left text-xs font-medium whitespace-nowrap'
 
 export const rowClass = 'border-t border-neutral-100 dark:border-neutral-700/60'
 
@@ -219,10 +254,14 @@ export const footerCountClass = 'mt-3 text-xs text-neutral-400 dark:text-neutral
 
 /* ── Badge ────────────────────────────────────────────── */
 
+/* ⚠ Tailwind 的 opacity 刻度只有 0/5/10/15/20/25/30/…/100。这里的 /12 和 /8 **不在刻度里**，类会被静默丢弃 —— 编译产物里grep 不到任何对应规则。也就是说这个 tint 底色从来没生效过，徽标只剩一行浮着的彩色文字，「药丸」这个形本身不存在了。实测：`bg-success/12` `bg-error/12` `bg-error/8` `bg-warm-ochre/12` `bg-[#B87070]/12` 全部 0 处；同文件里的 `/10` `/15` 正常生成。*/
 const BADGE_TONE: Record<string, string> = {
-  good: 'bg-success/12 text-success',
-  bad: 'bg-error/12 text-error',
-  warn: 'bg-warning/15 text-warning',
+  // 底色 tint 用语义色本身，文字用同色相压暗的 *-ink（米白底 5.10:1 / 5.44:1 / 5.25:1）。
+  // 之前文字直接用语义色：success 3.24:1、error 3.36:1，都不到 4.5:1，
+  // 而徽标是 12px 的小字 —— 全站每一个状态徽标都在 AA 线以下。
+  good: 'bg-success/10 text-success-ink',
+  bad: 'bg-error/10 text-error-ink',
+  warn: 'bg-warning/15 text-warning-ink',
   muted: 'bg-neutral-100 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400',
 }
 
@@ -391,14 +430,31 @@ export function Stepper({
           >
             <div className="flex items-center gap-2">
               <span
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-medium ${dotClass}`}
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-medium transition-colors duration-[250ms] ${dotClass}`}
               >
                 {done ? '✓' : idx + 1}
               </span>
-              <span className={`text-sm ${labelClass}`}>{step.label}</span>
+              <span
+                className={`text-sm transition-colors duration-[250ms] ${labelClass}`}
+              >
+                {step.label}
+              </span>
             </div>
+            {/* 2026-10-03：连接线原来是**写死的灰**，done 从不碰它，
+                Stepper 里也没有任何 transition —— 每按一次「下一步」，
+                圆点填色和文字变色是瞬时的，而三个组件之外的 tab 指示块
+                却在走 250ms 缓动。同一个 App 里两种节奏。
+                更可惜的是这根线本该是唯一能表达「走了多远」的元素：
+                灰线永远不变，于是「我在第几步」只能靠数圆点。
+                改成有状态且有动画：走过的段落铺成暖赭色。 */}
             {!isLast && (
-              <div className="mx-3 h-px flex-1 bg-neutral-200 dark:bg-neutral-700" />
+              <div className="mx-3 h-0.5 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
+                <div
+                  className={`h-full origin-left rounded-full bg-warm-ochre transition-transform duration-[250ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+                    done ? 'scale-x-100' : 'scale-x-0'
+                  }`}
+                />
+              </div>
             )}
           </li>
         )
@@ -504,9 +560,9 @@ export function ReasonDialog({
             <span
               className={
                 tooShort
-                  ? 'text-error'
+                  ? 'text-error-ink'
                   : trimmed.length >= minLength
-                    ? 'text-success'
+                    ? 'text-success-ink'
                     : 'text-neutral-400 dark:text-neutral-500'
               }
             >
@@ -578,11 +634,11 @@ export function MetricCard({
               m.value === null
                 ? 'text-neutral-400 dark:text-neutral-500'
                 : m.tone === 'success'
-                  ? 'text-success'
+                  ? 'text-success-ink'
                   : m.tone === 'warning'
-                    ? 'text-warning'
+                    ? 'text-warning-ink'
                     : m.tone === 'error'
-                      ? 'text-error'
+                      ? 'text-error-ink'
                       : 'text-ink dark:text-neutral-100'
             const display =
               m.value === null
@@ -629,8 +685,8 @@ export function CaveatBanner({
 
   const tone =
     variant === 'danger'
-      ? 'border-error/30 bg-error/5 text-error'
-      : 'border-warning/30 bg-warning/5 text-warning'
+      ? 'border-error/30 bg-error/5 text-error-ink'
+      : 'border-warning/30 bg-warning/5 text-warning-ink'
 
   return (
     <div
@@ -724,9 +780,9 @@ export function StatCard({
 }) {
   const toneText: Record<StatTone, string> = {
     neutral: 'text-ink dark:text-neutral-100',
-    good: 'text-success',
-    warn: 'text-warning',
-    bad: 'text-error',
+    good: 'text-success-ink',
+    warn: 'text-warning-ink',
+    bad: 'text-error-ink',
     accent: 'text-warm-ochre',
   }
   return (
@@ -738,7 +794,11 @@ export function StatCard({
           : 'border-neutral-200 dark:border-neutral-700',
       ].join(' ')}
     >
-      <div className="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+      {/* uppercase + tracking 打在中文上，两件事都不该做：
+   uppercase 对汉字是空操作；正字距在汉字上是排版错误 —— 汉字设计时
+   就占满一个 em 字身框，字间塞空会破坏阅读节奏，短标签看着像撑开的
+   占位符。分组层级靠字号、字重和颜色来分，不靠字距。 */}
+      <div className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
         {label}
       </div>
       {loading ? (
@@ -749,7 +809,7 @@ export function StatCard({
       ) : (
         <div className="mt-1.5 flex items-baseline gap-1">
           <span
-            className={`tnum-clip font-serif text-[28px] font-semibold leading-none ${toneText[tone]}`}
+            className={`tnum-clip font-serif text-3xl font-semibold leading-none ${toneText[tone]}`}
           >
             {value}
           </span>
@@ -930,7 +990,10 @@ export function ButtonGhost({
     'inline-flex items-center justify-center whitespace-nowrap rounded-md border px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40'
   const tone =
     variant === 'danger'
-      ? 'border-error/30 text-error hover:border-error/50 hover:bg-error/8'
+      // hover 底色原来是 hover:bg-error/8 —— 8 不在 Tailwind 刻度里，
+      // 这个类不生成，于是这个「危险」按钮**没有任何 hover 填充**，
+      // 只挪边框和字色，是误点代价最高的一类控件上最弱的反馈。
+      ? 'border-error/30 text-error-ink hover:border-error/50 hover:bg-error/10'
       : 'border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:bg-neutral-100 hover:text-ink dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-100'
   return (
     <button

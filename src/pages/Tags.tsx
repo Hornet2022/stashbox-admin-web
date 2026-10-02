@@ -314,7 +314,7 @@ export function Tags() {
           </Field>
 
           {modalError && (
-            <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+            <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-error/40 dark:bg-error/10 dark:text-[#E0A0A0]">
               {modalError}
             </p>
           )}
@@ -322,7 +322,7 @@ export function Tags() {
           {showSuccess ? (
             <div className="flex items-center justify-center gap-2 py-6">
               <span
-                className="t-success-check text-emerald-500"
+                className="t-success-check text-success-ink"
                 data-state="in"
                 aria-hidden="true"
               >
@@ -330,7 +330,7 @@ export function Tags() {
                   <path d="M10 25 L20 35 L38 14" />
                 </svg>
               </span>
-              <span className="text-sm font-medium text-success">标签已创建</span>
+              <span className="text-sm font-medium text-success-ink">标签已创建</span>
             </div>
           ) : (
             <div className="flex justify-end gap-2 pt-4">
@@ -355,7 +355,7 @@ export function Tags() {
         onClose={closeDelete}
       >
         <form className="space-y-4" onSubmit={handleDelete}>
-          <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+          <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-error/40 dark:bg-error/10 dark:text-[#E0A0A0]">
             删除后该标签的订阅关系一并清除；已蒸馏文章上的历史标签文本不受影响。
           </p>
           <Field label="删除原因">
@@ -369,7 +369,7 @@ export function Tags() {
           </Field>
 
           {deleteError && (
-            <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+            <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-error/40 dark:bg-error/10 dark:text-[#E0A0A0]">
               {deleteError}
             </p>
           )}
@@ -380,7 +380,7 @@ export function Tags() {
             </button>
             <button
               type="submit"
-              className={`${buttonPrimaryClass} border-error bg-error text-white hover:bg-red-700`}
+              className={`${buttonPrimaryClass} border-error bg-error text-white hover:bg-error`}
               disabled={deleteSubmitting}
             >
               {deleteSubmitting ? '删除中…' : '确认删除'}

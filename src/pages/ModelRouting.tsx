@@ -221,8 +221,8 @@ function ConfigEditor({
 function SourceBadge({ source }: { source: TierConfig['source'] }) {
   const tone =
     source === 'db'
-      ? 'bg-success/10 text-success'
-      : 'bg-warning/10 text-warning'
+      ? 'bg-success/10 text-success-ink'
+      : 'bg-warning/10 text-warning-ink'
   return (
     <span
       role="status"
@@ -244,7 +244,11 @@ function ConfigPreview({ label, tierMap }: { label: string; tierMap: TierModelMa
         {label}
       </h2>
       <div className={tableWrapClass}>
-        <table className="w-full text-sm">
+                {/* w-full 不带 min-w-max 时表格会被压进容器宽度里挤列：375px 下 7 列平均每列 49px，
+          中文单元格会被挤成一两个字一行 —— 就是本仓库 f102934 修过的那个竖排。
+          带 min-w-max 才是「保持自然宽度 + 横向滚动」，降级方式才对。
+          仓库里已有 5 张表是这个写法，这里补齐。 */}
+        <table className="w-full min-w-max text-sm">
           <thead className={theadClass}>
             <tr>
               <th className={thClass}>tier</th>
@@ -325,7 +329,7 @@ function ConfigForm({
                     <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
                       {provider}
                       {!supported && (
-                        <span className="rounded bg-warning/10 px-1 text-warning">
+                        <span className="rounded bg-warning/10 px-1 text-warning-ink">
                           未实现
                         </span>
                       )}

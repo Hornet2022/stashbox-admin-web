@@ -13,6 +13,7 @@ import {
 } from '../components/ui'
 import { DISTILL_STEP_LABELS, SOURCE_LABELS, TONE_BG, labelFor } from '../constants/labels'
 import type { DashboardStats } from '../types'
+import { sectionTitleClass } from '../components/ui'
 
 /**
  * 总览页。
@@ -166,7 +167,7 @@ export function Dashboard() {
       {warningActive && warning && (
         <div
           role="alert"
-          className="mt-5 flex items-start gap-2.5 rounded-md border border-error/30 bg-error/5 px-4 py-3 text-sm text-error"
+          className="mt-5 flex items-start gap-2.5 rounded-md border border-error/30 bg-error/5 px-4 py-3 text-sm text-error-ink"
         >
           <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
           <div>
@@ -200,9 +201,9 @@ export function Dashboard() {
             const sign = pct > 0 ? '+' : ''
             const tone =
               pct > 0
-                ? 'text-success'
+                ? 'text-success-ink'
                 : pct < 0
-                  ? 'text-error'
+                  ? 'text-error-ink'
                   : 'text-neutral-400'
             return (
               <span key={k} className="inline-flex items-center gap-1.5">
@@ -268,7 +269,7 @@ function Section({
   return (
     <section className="mt-7">
       <div className="mb-3 flex items-baseline gap-2">
-        <h2 className="text-sm font-semibold tracking-wide text-ink dark:text-neutral-100">
+        <h2 className={sectionTitleClass}>
           {title}
         </h2>
         {caption && (
@@ -311,7 +312,7 @@ function SourceBreakdown({
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-700 dark:bg-neutral-800/50">
-      <h2 className="text-sm font-semibold text-ink dark:text-neutral-100">文章来源分布</h2>
+      <h2 className={sectionTitleClass}>文章来源分布</h2>
       {loading ? (
         <div className="mt-4 h-40 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
       ) : entries.length === 0 ? (
@@ -331,8 +332,11 @@ function SourceBreakdown({
                 </span>
                 <span className="relative h-2 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
                   <span
-                    className={`absolute inset-y-0 left-0 rounded-full ${TONE_BG[tone]}`}
-                    style={{ width: `${Math.max(pct, 1.5)}%` }}
+                    className={`absolute inset-y-0 left-0 rounded-full ${TONE_BG[tone]} transition-[width] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none`}
+                    style={{
+                      width: `${Math.max(pct, 1.5)}%`,
+                      transitionDelay: `${idx * 45}ms`,
+                    }}
                   />
                 </span>
                 <span className="tnum w-20 shrink-0 text-right text-xs text-neutral-500 dark:text-neutral-400">
@@ -362,7 +366,7 @@ function DistillDuration({
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-700 dark:bg-neutral-800/50">
-      <h2 className="text-sm font-semibold text-ink dark:text-neutral-100">蒸馏耗时</h2>
+      <h2 className={sectionTitleClass}>蒸馏耗时</h2>
       <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
         按步骤拆分；P50 是中位数，P95 是最慢的 5%
       </p>
@@ -431,7 +435,7 @@ function DistillDuration({
 function OutOfRange({ upper }: { upper: number | null }) {
   return (
     <span
-      className="inline-flex items-center text-[11px] text-warning"
+      className="inline-flex items-center text-[11px] text-warning-ink"
       title={
         upper
           ? `样本超出了监控量程上限（${formatDuration(upper)}），无法算出分位数`
@@ -485,7 +489,7 @@ function TrendBar({ title, rows }: { title: string; rows: Array<{ date: string; 
         </span>
       </div>
       <ul className="mt-3 space-y-1.5">
-        {filled.map((r) => (
+        {filled.map((r, i) => (
           <li key={r.date} className="flex items-center gap-2">
             <span className="tnum w-10 shrink-0 text-[11px] text-neutral-400 dark:text-neutral-500">
               {r.date.slice(5)}
@@ -493,8 +497,11 @@ function TrendBar({ title, rows }: { title: string; rows: Array<{ date: string; 
             <span className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
               {r.count > 0 && (
                 <span
-                  className="absolute inset-y-0 left-0 rounded-full bg-warm-ochre"
-                  style={{ width: `${Math.max((r.count / max) * 100, 4)}%` }}
+                  className="absolute inset-y-0 left-0 rounded-full bg-warm-ochre transition-[width] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+                  style={{
+                    width: `${Math.max((r.count / max) * 100, 4)}%`,
+                    transitionDelay: `${i * 45}ms`,
+                  }}
                 />
               )}
             </span>

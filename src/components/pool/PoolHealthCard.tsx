@@ -32,10 +32,10 @@ export function PoolHealthCard({
   const score = data.health_score
   const scoreTone =
     score >= 80
-      ? 'text-success'
+      ? 'text-success-ink'
       : score >= 60
-        ? 'text-warning'
-        : 'text-error'
+        ? 'text-warning-ink'
+        : 'text-error-ink'
   const scoreLabel =
     score >= 80 ? '良好' : score >= 60 ? '一般' : '需关注'
 
@@ -70,7 +70,7 @@ export function PoolHealthCard({
               基于 <span className="text-neutral-600 dark:text-neutral-300">{data.total_count}</span> 条范例
             </div>
             {data.total_count < 20 && (
-              <div className="mt-0.5 text-warning">样本过少，分数仅供参考</div>
+              <div className="mt-0.5 text-warning-ink">样本过少，分数仅供参考</div>
             )}
           </div>
         </div>
@@ -104,15 +104,19 @@ function StatTile({
 }) {
   const toneClass =
     tone === 'success'
-      ? 'text-success'
+      ? 'text-success-ink'
       : tone === 'warning'
-        ? 'text-warning'
+        ? 'text-warning-ink'
         : tone === 'error'
-          ? 'text-error'
+          ? 'text-error-ink'
           : 'text-ink dark:text-neutral-100'
   return (
     <div className="rounded-md border border-neutral-100 bg-white/40 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900/30">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+      {/* uppercase + tracking 打在中文上，两件事都不该做：
+   uppercase 对汉字是空操作；正字距在汉字上是排版错误 —— 汉字设计时
+   就占满一个 em 字身框，字间塞空会破坏阅读节奏，短标签看着像撑开的
+   占位符。分组层级靠字号、字重和颜色来分，不靠字距。 */}
+      <div className="text-xs text-neutral-400 dark:text-neutral-500">
         {label}
       </div>
       <div className={`mt-0.5 font-serif text-lg font-semibold ${toneClass}`}>

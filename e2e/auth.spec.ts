@@ -23,8 +23,16 @@ test.describe('auth', () => {
     await page.getByLabel('密码').fill('wrong-password')
     await page.getByRole('button', { name: '登录' }).click()
     await expect(page).toHaveURL(/\/login/)
-    // 错误会显示在表单上方 + 触发 toast；断言至少有一个错误提示
-    await expect(page.locator('text=登录')).toBeVisible()
+    // 2026-10-03：原来这里断言 `page.locator('text=登录')` 可见。
+    // 那条断言**从来没有验证过错误提示** —— 按钮上的「登录」二字
+    // 无条件可见，所以无论后端返回什么都不通过；它甚至匹配到了
+    // 副标题「运营管理后台登录」，是一条恒真断言。
+    // 改为断言真正的错误区：role="alert" 的那段文案。
+    // 登录失败只在表单内联报错，不再重复弹 toast（同一句话出现两次
+    // 只会让人怀疑是不是出了两个错），所以这里同时锁住「不产生 toast」。
+    await expect(page.getByRole('alert')).toBeVisible()
+    await expect(page.getByRole('alert')).not.toBeEmpty()
+    await expect(page.locator('[aria-live="polite"] .t-toast')).toHaveCount(0)
   })
 
   test('Header 退出按钮回登录页', async ({ authedPage }) => {

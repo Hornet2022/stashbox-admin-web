@@ -31,6 +31,12 @@
   --warning: #C4956A;
   --error:   #B87070;
 
+  /* 文字专用色阶 —— 在米白底上 5.10 / 5.25 / 5.44:1（WCAG AA 正文线 4.5:1）。
+     上面三个是色块用色，色块面积大、有背景兜底，3:1 即可。 */
+  --success-ink: #4A6E5E;
+  --warning-ink: #8A5A2B;
+  --error-ink:   #9A4A4A;
+
   /* Spacing (8-based) */
   --space-4:  4px;
   --space-8:  8px;

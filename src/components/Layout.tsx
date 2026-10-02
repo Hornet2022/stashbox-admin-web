@@ -14,8 +14,13 @@ export function Layout() {
 
   return (
     <div className="flex h-screen bg-neutral-50 dark:bg-neutral-900">
-      {/* Desktop sidebar — hidden on mobile */}
-      <div className="hidden md:block">
+      {/* Desktop sidebar — hidden on mobile
+          h-full 不可省：外层 div 在 flex 容器里会 stretch 到 h-screen，但它的
+          子元素 <aside> 没有高度约束时只按内容高走。导航 16 项 + 4 个分组标题
+          实测高 922px，在 1280×720 / 1440×780 这两种最常见的笔记本视口下会顶出
+          视口 —— body 跟着长出滚动条，而 main 自己又有 overflow-auto，于是
+          出现双滚动条，侧栏底部的版本号和分隔线也永远够不着。 */}
+      <div className="hidden h-full md:block">
         <Sidebar />
       </div>
 

@@ -210,7 +210,7 @@ export function PushNotifications() {
                     <Badge value={item.status} map={PUSH_STATUS_LABELS} />
                   </td>
                   <td className={`${cellTextClass} max-w-xs truncate`}>
-                    <span className={item.error ? 'text-error' : undefined} title={item.error ?? undefined}>
+                    <span className={item.error ? 'text-error-ink' : undefined} title={item.error ?? undefined}>
                       {item.error ?? '—'}
                     </span>
                   </td>

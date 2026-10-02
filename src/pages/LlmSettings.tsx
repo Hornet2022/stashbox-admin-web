@@ -55,15 +55,20 @@ const ddStrongClass = 'text-sm font-medium text-ink dark:text-neutral-100'
  *   - 网络类（timeout/connect/network）          → 蓝
  *   - 内部类（internal）                        → 中性灰
  */
+/* 2026-10-03：三类错误原本用 Tailwind 默认的 rose / amber / sky 三套冷色。
+   一次「蓝天色 banner」出现在暖赭米白的后台里，是最直接的脚手架痕迹。
+   这里收成品牌三语义：失败→error、限流/空音频/缺依赖→warning、
+   超时/连不上/网络→neutral。区分信息本来就由 label 文字承担，
+   而网络类本质是「没有结果」而不是「出错」，中性色比天蓝更诚实。 */
 const ERROR_KIND_TONE: Record<string, { badge: string; banner: string; label: string }> = {
-  auth: { badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200', banner: 'bg-rose-50 text-rose-900 border-rose-200 dark:bg-rose-900/20 dark:text-rose-100 dark:border-rose-800', label: '鉴权失败' },
-  forbidden: { badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200', banner: 'bg-rose-50 text-rose-900 border-rose-200 dark:bg-rose-900/20 dark:text-rose-100 dark:border-rose-800', label: '权限受限' },
-  notfound: { badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200', banner: 'bg-rose-50 text-rose-900 border-rose-200 dark:bg-rose-900/20 dark:text-rose-100 dark:border-rose-800', label: '资源不存在' },
-  badreq: { badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200', banner: 'bg-rose-50 text-rose-900 border-rose-200 dark:bg-rose-900/20 dark:text-rose-100 dark:border-rose-800', label: '参数错误' },
-  ratelimit: { badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200', banner: 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-900/20 dark:text-amber-100 dark:border-amber-800', label: '触发限流' },
-  timeout: { badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200', banner: 'bg-sky-50 text-sky-900 border-sky-200 dark:bg-sky-900/20 dark:text-sky-100 dark:border-sky-800', label: '调用超时' },
-  connect: { badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200', banner: 'bg-sky-50 text-sky-900 border-sky-200 dark:bg-sky-900/20 dark:text-sky-100 dark:border-sky-800', label: '无法连接' },
-  network: { badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200', banner: 'bg-sky-50 text-sky-900 border-sky-200 dark:bg-sky-900/20 dark:text-sky-100 dark:border-sky-800', label: '网络异常' },
+  auth: { badge: 'bg-error/10 text-error-ink', banner: 'border-error/30 bg-error/10 text-error-ink', label: '鉴权失败' },
+  forbidden: { badge: 'bg-error/10 text-error-ink', banner: 'border-error/30 bg-error/10 text-error-ink', label: '权限受限' },
+  notfound: { badge: 'bg-error/10 text-error-ink', banner: 'border-error/30 bg-error/10 text-error-ink', label: '资源不存在' },
+  badreq: { badge: 'bg-error/10 text-error-ink', banner: 'border-error/30 bg-error/10 text-error-ink', label: '参数错误' },
+  ratelimit: { badge: 'bg-warning/15 text-warning-ink', banner: 'border-warning/30 bg-warning/10 text-warning-ink', label: '触发限流' },
+  timeout: { badge: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300', banner: 'bg-neutral-100 text-neutral-700 border-neutral-300 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-600', label: '调用超时' },
+  connect: { badge: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300', banner: 'bg-neutral-100 text-neutral-700 border-neutral-300 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-600', label: '无法连接' },
+  network: { badge: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300', banner: 'bg-neutral-100 text-neutral-700 border-neutral-300 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-600', label: '网络异常' },
   internal: { badge: 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200', banner: 'bg-neutral-100 text-neutral-800 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700', label: '内部异常' },
 }
 
@@ -339,7 +344,7 @@ export function LlmSettings() {
                 </div>
               )}
 
-              <div className="overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-700">
+              <div className="overflow-x-auto overscroll-x-contain rounded-md border border-neutral-200 dark:border-neutral-700">
                 <table className="w-full text-left text-sm">
                   <tbody>
                     <tr className={rowClass}>

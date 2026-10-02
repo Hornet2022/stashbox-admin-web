@@ -81,7 +81,9 @@ export function ArticlesTable({
                   key={col.key}
                   scope="col"
                   className={[
-                    'px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide whitespace-nowrap',
+                    // 表头是中文，去掉 uppercase（对汉字是空操作）和 tracking
+                    // （正字距会破坏汉字的阅读节奏）。层级靠字重和颜色。
+                    'px-4 py-2.5 text-left text-xs font-medium whitespace-nowrap',
                     col.hideOnNarrow ? 'hidden xl:table-cell' : '',
                   ].join(' ')}
                 >
@@ -238,8 +240,9 @@ function StatusPill({ tone, label }: { tone: string; label: string }) {
   const tones: Record<string, string> = {
     sage: 'bg-[#6B8E7F]/10 text-[#4F6E60] dark:text-[#8FAE9E]',
     amber: 'bg-[#C4956A]/15 text-[#96693C] dark:text-[#D4A87C]',
-    clay: 'bg-[#B87070]/12 text-[#9A5454] dark:text-[#D09393]',
-    ochre: 'bg-warm-ochre/12 text-warm-ochre',
+/* ⚠ Tailwind 的 opacity 刻度只有 0/5/10/15/20/25/30/…/100。这里的 /12 和 /8 **不在刻度里**，类会被静默丢弃 —— 编译产物里grep 不到任何对应规则。也就是说这个 tint 底色从来没生效过，徽标只剩一行浮着的彩色文字，「药丸」这个形本身不存在了。实测：`bg-success/12` `bg-error/12` `bg-error/8` `bg-warm-ochre/12` `bg-[#B87070]/12` 全部 0 处；同文件里的 `/10` `/15` 正常生成。*/
+    clay: 'bg-[#B87070]/10 text-[#9A5454] dark:text-[#D09393]',
+    ochre: 'bg-warm-ochre/10 text-warm-ochre',
     stone: 'bg-neutral-100 text-neutral-500 dark:bg-neutral-700 dark:text-neutral-400',
   }
   return (

@@ -118,7 +118,11 @@ export function SidebarNav() {
         if (items.length === 0) return null
         return (
           <div key={groupKey} className={groupIdx === 0 ? '' : 'mt-5'}>
-            <div className="mb-1.5 px-3 text-[10px] font-medium uppercase tracking-[0.12em] text-neutral-400 dark:text-neutral-500">
+            {/* uppercase + tracking 打在中文上，两件事都不该做：
+   uppercase 对汉字是空操作；正字距在汉字上是排版错误 —— 汉字设计时
+   就占满一个 em 字身框，字间塞空会破坏阅读节奏，短标签看着像撑开的
+   占位符。分组层级靠字号、字重和颜色来分，不靠字距。 */}
+            <div className="mb-1.5 px-3 text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
               {groupKey}
             </div>
             {items.map((item) => {
@@ -163,7 +167,7 @@ export function SidebarNav() {
 
 export function Sidebar() {
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
+    <aside className="flex h-full w-56 shrink-0 flex-col border-r border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
       {/* 字标：中文主名用衬线（与 h1~h6 同一套排版语言），
           拉丁副名用无衬线小字。之前「stashbox」直接用衬线大字，
           和整页的中文黑体正文是两套语言并排，看着像贴上去的。 */}

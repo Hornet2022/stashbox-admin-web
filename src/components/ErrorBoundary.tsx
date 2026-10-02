@@ -44,15 +44,20 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!error) return this.props.children
 
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6 dark:bg-slate-950">
-        <div className="w-full max-w-lg rounded-lg border border-gray-200 bg-white p-8 shadow dark:border-slate-700 dark:bg-slate-800">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100">
+      // 2026-10-03：整屏从 gray/slate 换成 neutral 暖中性刻度。
+      // 原来这是全 App 唯一一块纯 Tailwind 灰的整页面：灰底 + 纯白卡片，
+      // 而里面放的两个按钮是 buttonGhostClass / buttonPrimaryClass ——
+      // 也就是**米白底上的墨色品牌按钮，被塞进一张冷白灰卡片里**。
+      // 而且它恰好出现在用户最不愿看到故障的时刻。
+      <div className="flex min-h-screen items-center justify-center bg-neutral-100 p-6 dark:bg-neutral-900">
+        <div className="w-full max-w-lg rounded-lg border border-neutral-200 bg-neutral-50 p-8 shadow dark:border-neutral-700 dark:bg-neutral-800">
+          <h1 className="font-serif text-xl font-semibold text-ink dark:text-neutral-100">
             出错了
           </h1>
-          <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
             页面渲染时发生异常，已阻止白屏。可尝试重新渲染或回到总览页。
           </p>
-          <pre className="mt-4 max-h-40 overflow-auto rounded border border-gray-200 bg-gray-50 p-3 text-xs text-red-600 dark:border-slate-700 dark:bg-slate-900 dark:text-red-400">
+          <pre className="mt-4 max-h-40 overflow-auto rounded border border-neutral-200 bg-neutral-100 p-3 text-xs text-error-ink dark:border-neutral-700 dark:bg-neutral-900 dark:text-[#E0A0A0]">
             {error.message || String(error)}
           </pre>
           <div className="mt-6 flex justify-end gap-2">

@@ -27,7 +27,7 @@ function QuotaMeter({ used, monthly }: { used: number; monthly: number }) {
         <span
           className={
             tone === 'over'
-              ? 'font-medium text-error'
+              ? 'font-medium text-error-ink'
               : 'text-neutral-600 dark:text-neutral-300'
           }
         >
@@ -81,7 +81,8 @@ export function UsersTable({ rows, total, loading, hasError, onAdjust }: UsersTa
                   key={col.key}
                   scope="col"
                   className={[
-                    'whitespace-nowrap px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide',
+                    // 同上：中文表头不设 uppercase / tracking
+                    'whitespace-nowrap px-4 py-2.5 text-left text-xs font-medium',
                     col.hideOnNarrow ? 'hidden lg:table-cell' : '',
                   ].join(' ')}
                 >

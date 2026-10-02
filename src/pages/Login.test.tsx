@@ -102,7 +102,14 @@ describe('Login', () => {
     })
   })
 
-  it('登录失败错误触发 Toast 提示', async () => {
+  /**
+   * 2026-10-03：原来失败时 `setError(message)` + `toast(message, 'error')`
+   * 同时发，同一句话在表单内联区和右上角 toast 栈各出现一次。
+   * 表单是登录失败唯一该报错的地方 —— 错误就出现在你刚按下的按钮上方，
+   * 视线不需要移动；toast 飘到右上角、还要被 4 条上限和去重逻辑牵连。
+   * 改成只留内联提示，相应地把「不产生 toast」也锁住。
+   */
+  it('登录失败：内联显示错误，且不再重复弹 Toast', async () => {
     const user = userEvent.setup()
     mockedLogin.mockRejectedValue({
       response: { status: 401, data: { message: '网络错误' } },
@@ -112,10 +119,34 @@ describe('Login', () => {
     await user.type(screen.getByLabelText(/密码/i), 'pw')
     await user.click(screen.getByRole('button', { name: '登录' }))
 
+    // 错误出现在表单内联区
     await waitFor(() => {
-      const toasts = useToastStore.getState().toasts
-      expect(toasts.some((t) => t.message === '网络错误')).toBe(true)
+      expect(screen.getByText('网络错误')).toBeTruthy()
     })
+    // 且只有这一处 —— 不再往 toast 栈里塞第二条
+    expect(useToastStore.getState().toasts.some((t) => t.message === '网络错误')).toBe(false)
+  })
+
+  it('提交中按钮保留可见文字，并标记 aria-busy', async () => {
+    const user = userEvent.setup()
+    let release: (() => void) | undefined
+    mockedLogin.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve({ role: 'super_admin', userId: 1 })
+        })
+    )
+    renderLogin()
+    await user.type(screen.getByLabelText(/邮箱/i), 'a@b.com')
+    await user.type(screen.getByLabelText(/密码/i), 'pw')
+    await user.click(screen.getByRole('button', { name: '登录' }))
+
+    // 原来这里渲染的是 <Skeleton>：文字整个消失，按钮在忙碌期间没有
+    // 任何无障碍名称，屏幕阅读器读出来是一个空按钮。
+    const btn = await screen.findByRole('button', { name: /登录中/ })
+    expect(btn.getAttribute('aria-busy')).toBe('true')
+
+    release?.()
   })
 
   it('已登录状态 → 重定向到 /dashboard', () => {

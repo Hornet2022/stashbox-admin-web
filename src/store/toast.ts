@@ -13,12 +13,24 @@ export interface ToastItem {
   id: number
   kind: ToastKind
   message: string
+  /**
+   * 已决定退场，但条目**仍留在数组里**，等 <ToastItem> 播完动画自己调 dismiss。
+   *
+   * 之前超出 4 条时是 `next.slice(-MAX_TOASTS)` 直接把最旧的从数组里切掉：
+   * 组件当场卸载，退场动画一帧都播不出来（就是本文件下面注释里记的
+   * 「实测状态序列只有 ["in","gone"]」那个 bug，只是它从自动消失那条路
+   * 绕到了溢出这条路）。而且 slice 丢的是**最旧**的那条 —— 恰好是用户
+   * 最可能正在读的那条。
+   */
+  exiting?: boolean
 }
 
 interface ToastState {
   toasts: ToastItem[]
   push: (message: string, kind?: ToastKind) => void
   dismiss: (id: number) => void
+  /** 标记为退场中：条目留在数组里，由 <ToastItem> 播完动画后自行 dismiss */
+  beginExit: (id: number) => void
   clear: () => void
 }
 
@@ -48,7 +60,24 @@ export const useToastStore = create<ToastState>((set, get) => ({
     const id = ++seq
     set((state) => {
       const next = [...state.toasts, { id, kind, message: text }]
-      return { toasts: next.slice(-MAX_TOASTS) }
+      // 超出上限时不再 slice —— 那样等于当场卸载，最旧的提示无声消失。
+      // 改成把它标成退场中，交给组件播完动画再移除。
+      //
+      // 上限只按**还活着**的条目算（exiting 的不占位），否则会误判：
+      // 一条正在退场时又来一条新提示，如果把 exiting 也算进基数，
+      // 就会多标一条，连环推送下数组会在那 240ms 里一路涨上去。
+      // live 就是此刻还该占位的条数，超过的部分标退场。
+      const live = next.filter((t) => !t.exiting).length
+      const overflow = live - MAX_TOASTS
+      if (overflow <= 0) return { toasts: next }
+      let marked = 0
+      return {
+        toasts: next.map((t) => {
+          if (t.exiting || marked >= overflow) return t
+          marked += 1
+          return { ...t, exiting: true }
+        }),
+      }
     })
 
     // 自动消失的计时由 ToastContainer 里的 <ToastItem> 负责 —— 它需要
@@ -56,6 +85,11 @@ export const useToastStore = create<ToastState>((set, get) => ({
     // 里 filter 掉，组件当场卸载，动画无从播起（实测状态序列只有
     // ["in","gone"]，中间那个 out 不存在）。
   },
+
+  beginExit: (id) =>
+    set((state) => ({
+      toasts: state.toasts.map((t) => (t.id === id ? { ...t, exiting: true } : t)),
+    })),
 
   dismiss: (id) =>
     set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),

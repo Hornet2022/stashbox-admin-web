@@ -49,7 +49,7 @@ export function ArticleActionModal({
           {target?.title ?? ''}
         </p>
         {action === 'delete' && (
-          <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+          <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-error/40 dark:bg-error/10 dark:text-[#E0A0A0]">
             硬删除：蒸馏结果、音频文件、收藏/稍后听/收听进度一并清除，
             <strong>不可恢复</strong>；已消耗的生成配额不返还。
           </p>
@@ -65,7 +65,7 @@ export function ArticleActionModal({
         </Field>
 
         {error && (
-          <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+          <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-error/40 dark:bg-error/10 dark:text-[#E0A0A0]">
             {error}
           </p>
         )}
@@ -83,7 +83,7 @@ export function ArticleActionModal({
             type="submit"
             className={
               action === 'delete'
-                ? `${buttonPrimaryClass} border-error bg-error text-white hover:bg-red-700`
+                ? `${buttonPrimaryClass} border-error bg-error text-white hover:bg-error`
                 : buttonPrimaryClass
             }
             disabled={submitting}

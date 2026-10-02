@@ -154,20 +154,16 @@ function OverviewTab({
 
         {/* 过滤栏 */}
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <div className="t-tabs" role="tablist" aria-label="kind 过滤">
-            {KIND_FILTERS.map((k) => (
-              <button
-                key={k.key}
-                type="button"
-                role="tab"
-                aria-selected={kind === k.key}
-                onClick={() => setKind(k.key)}
-                className="t-tab"
-              >
-                {k.label}
-              </button>
-            ))}
-          </div>
+          {/* // 这里原来手写 <div className="t-tabs"> + 一串 .t-tab 按钮，但没有 .t-tabs-pill ——
+             // 白色的滑动指示块（index.css:260）只存在于 PushNotifications 那一份手写副本里。
+             // 结果是 4 个筛选 tab 里有 3 个没有选中指示：active 态只把字色从灰变黑，
+             // 在一条灰底上肉眼几乎分不出来，用户会以为没点上而重复点击。
+             // 改用仓库里本来就有的 SlidingTabs 原语，四处统一。 */}
+          <SlidingTabs
+            items={KIND_FILTERS}
+            active={kind}
+            onChange={(k) => setKind(k as typeof kind)}
+          />
 
           {/* 原来这里是 `<label className="flex items-center gap-1.5">最低分
               <input className="{inputClass} w-20 …"></label>`，两个毛病：
@@ -229,7 +225,11 @@ function OverviewTab({
         )}
 
         <div className={tableWrapClass}>
-          <table className="w-full text-sm">
+                    {/* w-full 不带 min-w-max 时表格会被压进容器宽度里挤列：375px 下 7 列平均每列 49px，
+          中文单元格会被挤成一两个字一行 —— 就是本仓库 f102934 修过的那个竖排。
+          带 min-w-max 才是「保持自然宽度 + 横向滚动」，降级方式才对。
+          仓库里已有 5 张表是这个写法，这里补齐。 */}
+          <table className="w-full min-w-max text-sm">
             <thead className={theadClass}>
               <tr>
                 <th className={thClass}>kind</th>
@@ -275,10 +275,10 @@ function OverviewTab({
 function PoolRow({ item }: { item: PoolExample }) {
   const scoreTone =
     item.score_avg >= 4
-      ? 'text-success'
+      ? 'text-success-ink'
       : item.score_avg >= 3
-        ? 'text-warning'
-        : 'text-error'
+        ? 'text-warning-ink'
+        : 'text-error-ink'
 
   return (
     <tr className={rowClass}>

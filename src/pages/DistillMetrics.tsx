@@ -21,6 +21,7 @@ import {
 } from '../components/ui'
 import { DISTILL_STEP_LABELS } from '../constants/labels'
 import type { DistillP95Response, DistillStepPercentiles } from '../types'
+import { sectionTitleClass } from '../components/ui'
 
 /** 4 个蒸馏步骤的展示顺序 */
 const STEP_ORDER = [
@@ -64,7 +65,11 @@ function MetricCard({ label, metrics, loading, emphasis = false }: MetricCardPro
   if (loading) {
     return (
       <div className={cardClass}>
-        <div className="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+        {/* uppercase + tracking 打在中文上，两件事都不该做：
+   uppercase 对汉字是空操作；正字距在汉字上是排版错误 —— 汉字设计时
+   就占满一个 em 字身框，字间塞空会破坏阅读节奏，短标签看着像撑开的
+   占位符。分组层级靠字号、字重和颜色来分，不靠字距。 */}
+        <div className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
           {label}
         </div>
         <CardSkeleton lines={3} />
@@ -79,7 +84,7 @@ function MetricCard({ label, metrics, loading, emphasis = false }: MetricCardPro
   return (
     <div className={cardClass}>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+        <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
           {label}
         </span>
         {v && v.count > 0 && (
@@ -100,7 +105,7 @@ function MetricCard({ label, metrics, loading, emphasis = false }: MetricCardPro
                   <span className="text-neutral-300 dark:text-neutral-600">—</span>
                 ) : raw === null ? (
                   <span
-                    className="text-xs font-normal text-warning"
+                    className="text-xs font-normal text-warning-ink"
                     title={
                       v.upper_bound
                         ? `样本超出监控量程上限（${formatDuration(v.upper_bound)}），算不出分位数`
@@ -215,7 +220,7 @@ export function DistillMetrics() {
 
       {!loading && data && hasAnyBar && (
         <div className="mt-6 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-700 dark:bg-neutral-800/50">
-          <h2 className="text-sm font-semibold text-ink dark:text-neutral-100">各阶段耗时对比</h2>
+          <h2 className={sectionTitleClass}>各阶段耗时对比</h2>
           <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
             横轴为阶段，纵轴为耗时
           </p>

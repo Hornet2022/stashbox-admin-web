@@ -420,26 +420,32 @@ function SampleRow({
 
   return (
     <div className="rounded-md border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-900/40">
-      <div className="flex items-center gap-3">
+      {/* flex-wrap 不可省。算一下原来这一行的宽度：样本键约 60px + gap 12 +
+          播放器 max 260px + gap 12 + 「分 + 数字输入」约 80px ≈ 424px。
+          而 375px 上卡片内可用只有约 303px。这一行既不换行、里面的
+          audio 又只有 max-w 没有 min-w-0，结果是评分输入框被顶到屏幕外 ——
+          而这屏存在的全部意义就是「听一遍、给个分」，打不了分等于整屏不可用。
+          min-w-0 让 flex 子项真能收缩到内容以下，音频控件在窄屏上会自己压缩。*/}
+      <div className="flex flex-wrap items-center gap-3">
         <span className="rounded bg-neutral-100 px-2 py-0.5 font-mono text-xs text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
           {sampleKey}
         </span>
 
-        <div className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
-          <Volume2 size={14} />
+        <div className="flex min-w-0 flex-1 items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
+          <Volume2 size={14} className="shrink-0" />
           {audioError ? (
-            <span className="text-warning">该样本无法播放（合成可能失败或文件已被清理）</span>
+            <span className="text-warning-ink">该样本无法播放（合成可能失败或文件已被清理）</span>
           ) : (
             <audio
               controls
               src={audioUrl}
               onError={() => setAudioError(true)}
-              className="h-8 max-w-[260px]"
+              className="h-8 min-w-0 max-w-full"
             />
           )}
         </div>
 
-        <div className="ml-auto flex items-center gap-1.5 text-sm">
+        <div className="flex items-center gap-1.5 text-sm sm:ml-auto">
           <span className="text-xs text-neutral-400 dark:text-neutral-500">分</span>
           <input
             type="number"

@@ -77,8 +77,8 @@ export function AbReport() {
           很容易直接读成「实验跑了，两组没差异」。前提不成立时数据本身就没有
           解释力，必须在数字**之前**拦一道，标题级别地说明。 */}
       {abState.data?.experiment_valid === false && (
-        <div className="mt-4 rounded-lg border-2 border-error/50 bg-error/10 p-4 dark:border-red-800 dark:bg-red-950/40">
-          <p className="text-sm font-semibold text-error dark:text-red-300">
+        <div className="mt-4 rounded-lg border-2 border-error/50 bg-error/10 p-4 dark:border-error/50 dark:bg-error/10">
+          <p className="text-sm font-semibold text-error-ink dark:text-[#E0A0A0]">
             这个实验当前不可用，下面两组数字不能作为结论
           </p>
           <p className="mt-1.5 text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
@@ -149,7 +149,7 @@ export function AbReport() {
            运营看到红色错误条 + 一句「实验还没跑够 2 周」，把**故障读成业务结论**。
            同仓 Tags.tsx:222 早就用 `text={error ? '数据不可用' : '暂无标签数据'}`
            做了区分，这里漏了。 */
-        <div className="mt-6 rounded-lg border border-dashed border-error/40 p-8 text-center text-sm text-error dark:border-red-900 dark:text-red-300">
+        <div className="mt-6 rounded-lg border border-dashed border-error/40 p-8 text-center text-sm text-error-ink dark:border-error/40 dark:text-[#E0A0A0]">
           报表数据不可用（接口出错），不是「实验数据不足」。请检查上方错误提示后重试。
         </div>
       ) : !hasEnoughData ? (
@@ -167,7 +167,11 @@ export function AbReport() {
 
           {/* 对比表 */}
           <div className={tableWrapClass}>
-            <table className="w-full text-sm">
+                        {/* w-full 不带 min-w-max 时表格会被压进容器宽度里挤列：375px 下 7 列平均每列 49px，
+          中文单元格会被挤成一两个字一行 —— 就是本仓库 f102934 修过的那个竖排。
+          带 min-w-max 才是「保持自然宽度 + 横向滚动」，降级方式才对。
+          仓库里已有 5 张表是这个写法，这里补齐。 */}
+            <table className="w-full min-w-max text-sm">
               <thead className={theadClass}>
                 <tr>
                   <th className={thClass}>group</th>

@@ -5,6 +5,7 @@ import { Layout } from './components/Layout'
 import { AuthGuard } from './components/AuthGuard'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ToastContainer } from './components/Toast'
+import { Skeleton } from './components/ui'
 import { SHORTCUTS, useShortcuts, useShortcutsHelp } from './hooks/useShortcuts'
 import { Login } from './pages/Login'
 
@@ -28,18 +29,24 @@ const AbReport = lazy(() => import('./pages/AbReport'))
 const AudioVariants = lazy(() => import('./pages/AudioVariants'))
 const Consents = lazy(() => import('./pages/Consents'))
 
-/** Route-level loading fallback */
+/**
+ * Route-level loading fallback
+ *
+ * 2026-10-03：改用仓库自己的 Skeleton 原语。
+ * 原来这里是本地的一组 `bg-gray-200 dark:bg-slate-700` —— 于是这个 App
+ * 同时存在两套骨架屏颜色，而 Skeleton 原语是 `bg-neutral-200 dark:bg-neutral-700`。
+ * gray-200 是 #E5E7EB，偏蓝的冷灰，压在米白 #F5F2EB 上色相是跳的。
+ * 15 个页面全是 lazy()，也就是说**每次冷切路由都会闪一下冷灰** ——
+ * 这是整个产品里出现频次最高的一帧。
+ */
 function PageSkeleton() {
   return (
     <div className="space-y-4 p-6">
-      <div className="h-8 w-48 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
-      <div className="h-4 w-72 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-4 w-72" />
       <div className="mt-6 space-y-3">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-12 animate-pulse rounded bg-gray-100 dark:bg-slate-800"
-          />
+          <Skeleton key={i} className="h-12" />
         ))}
       </div>
     </div>
@@ -60,24 +67,24 @@ function ShortcutsLayer() {
     <Drawer.Root open={helpOpen} onOpenChange={(open) => !open && closeHelp()}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-        <Drawer.Content className="fixed bottom-0 right-0 top-auto z-50 flex flex-col rounded-t-xl bg-white dark:bg-slate-800 outline-none">
+        <Drawer.Content className="fixed bottom-0 right-0 top-auto z-50 flex flex-col rounded-t-xl bg-neutral-50 dark:bg-neutral-800 outline-none">
           <div className="mx-auto w-full max-w-sm">
-            <Drawer.Handle className="mx-auto mt-3 h-1 w-12 flex-shrink-0 cursor-grab rounded-full bg-gray-300 dark:bg-slate-600" />
-            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3 dark:border-slate-700">
-              <Drawer.Title className="text-base font-semibold text-gray-900 dark:text-slate-100">
+            <Drawer.Handle className="mx-auto mt-3 h-1 w-12 flex-shrink-0 cursor-grab rounded-full bg-neutral-300 dark:bg-neutral-600" />
+            <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3 dark:border-neutral-700">
+              <Drawer.Title className="text-base font-semibold text-ink dark:text-neutral-100">
                 键盘快捷键
               </Drawer.Title>
               <button
                 type="button"
                 onClick={closeHelp}
-                className="text-gray-400 hover:text-gray-700 dark:text-slate-500 dark:hover:text-slate-200"
+                className="text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
                 aria-label="关闭"
               >
                 ✕
               </button>
             </div>
           </div>
-          <div className="mx-auto w-full max-w-sm divide-y divide-neutral-100 px-5 py-2 dark:divide-slate-700">
+          <div className="mx-auto w-full max-w-sm divide-y divide-neutral-100 px-5 py-2 dark:divide-neutral-700">
             {(() => {
               // 按 group 聚合，未分组的（"?" / "Esc"）放在最末尾
               const grouped = SHORTCUTS.reduce(
@@ -96,7 +103,11 @@ function ShortcutsLayer() {
                 <>
                   {groupKeys.map((g) => (
                     <div key={g} className="py-2 first:pt-0">
-                      <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                      {/* uppercase + tracking 打在中文上，两件事都不该做：
+   uppercase 对汉字是空操作；正字距在汉字上是排版错误 —— 汉字设计时
+   就占满一个 em 字身框，字间塞空会破坏阅读节奏，短标签看着像撑开的
+   占位符。分组层级靠字号、字重和颜色来分，不靠字距。 */}
+                      <div className="mb-1 text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
                         {g}
                       </div>
                       <ul>
@@ -105,10 +116,10 @@ function ShortcutsLayer() {
                             key={item.keys}
                             className="flex items-center justify-between py-1.5"
                           >
-                            <span className="text-sm text-neutral-600 dark:text-slate-300">
+                            <span className="text-sm text-neutral-600 dark:text-neutral-300">
                               {item.label}
                             </span>
-                            <kbd className="rounded border border-neutral-200 bg-neutral-50 px-2 py-0.5 font-mono text-xs text-neutral-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200">
+                            <kbd className="rounded border border-neutral-200 bg-neutral-100 px-2 py-0.5 font-mono text-xs text-neutral-700 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200">
                               {item.keys}
                             </kbd>
                           </li>
@@ -123,10 +134,10 @@ function ShortcutsLayer() {
                           key={item.keys}
                           className="flex items-center justify-between py-1.5"
                         >
-                          <span className="text-sm text-neutral-600 dark:text-slate-300">
+                          <span className="text-sm text-neutral-600 dark:text-neutral-300">
                             {item.label}
                           </span>
-                          <kbd className="rounded border border-neutral-200 bg-neutral-50 px-2 py-0.5 font-mono text-xs text-neutral-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200">
+                          <kbd className="rounded border border-neutral-200 bg-neutral-50 px-2 py-0.5 font-mono text-xs text-neutral-700 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200">
                             {item.keys}
                           </kbd>
                         </li>

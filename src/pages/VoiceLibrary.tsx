@@ -318,7 +318,7 @@ export function VoiceLibrary() {
       </div>
 
       {rows.length === 0 && !loading && !error && (
-        <div className="mt-4 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-200">
+        <div className="mt-4 rounded border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning-ink dark:border-warning/40 dark:bg-warning/10 dark:text-[#E8CFAE]">
           音色库是空的。此时蒸馏仍会用全局 TTS 配置里的参考音频（不会失败），
           但用户无法选择音色。点「从当前配置导入」可零输入完成冷启动。
         </div>
@@ -332,7 +332,7 @@ export function VoiceLibrary() {
         系统**允许**没有默认音色（不会挂），所以得靠界面说清楚。
       */}
       {rows.length > 0 && !rows.some((v) => v.is_default) && !loading && !error && (
-        <div className="mt-4 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-200">
+        <div className="mt-4 rounded border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning-ink dark:border-warning/40 dark:bg-warning/10 dark:text-[#E8CFAE]">
           当前<strong>没有默认音色</strong>。用户在 App 里选「跟随默认音色」时会回落到
           全局 TTS 配置的参考音频，而不是这里的某一条。编辑任一音色并勾选
           「设为全局默认音色」即可恢复。
@@ -342,7 +342,11 @@ export function VoiceLibrary() {
       {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
 
       <div className={tableWrapClass}>
-        <table className="w-full text-left text-sm">
+          {/* w-full 不带 min-w-max 时表格会被压进容器宽度里挤列：375px 下 7 列
+      平均每列 49px，中文单元格会被挤成一两个字一行 —— 就是本仓库
+      f102934 修过的那个竖排。带 min-w-max 才是「保持自然宽度 + 横向滚动」，
+      降级方式才对。仓库里已有 5 张表是这个写法，这里补齐其余的。 */}
+        <table className="w-full min-w-max text-left text-sm">
           <thead className={theadClass}>
             <tr>
               {columns.map((col) => (
@@ -405,7 +409,7 @@ export function VoiceLibrary() {
                         </button>
                         <button
                           type="button"
-                          className={`${buttonGhostClass} border-error/40 text-error hover:bg-error/10`}
+                          className={`${buttonGhostClass} border-error/40 text-error-ink hover:bg-error/10`}
                           onClick={() => setDeleteTarget(v)}
                         >
                           删除
@@ -515,7 +519,7 @@ export function VoiceLibrary() {
               placeholder="把参考音频里**念出来的那段话**一字不差地写在这里"
               className={inputClass}
             />
-            <span className="mt-1 block text-xs text-amber-600 dark:text-amber-400">
+            <span className="mt-1 block text-xs text-warning-ink dark:text-[#E8CFAE]">
               文本和音频对不上，克隆出的音色会念错 —— 这是本模块最容易配错的地方
             </span>
           </Field>
@@ -540,7 +544,7 @@ export function VoiceLibrary() {
           </div>
 
           {modalError && (
-            <p className="text-sm text-error" role="alert">
+            <p className="text-sm text-error-ink" role="alert">
               {modalError}
             </p>
           )}
@@ -570,7 +574,7 @@ export function VoiceLibrary() {
             已生成的音频不受影响（只是失去溯源信息）。
           </p>
           {deleteTarget?.is_default && (
-            <p className="text-sm text-amber-600 dark:text-amber-400">
+            <p className="text-sm text-warning-ink dark:text-[#E8CFAE]">
               注意：这是当前的默认音色，删除后用户会回落到全局 TTS 配置的参考音频。
             </p>
           )}
