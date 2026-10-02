@@ -78,11 +78,14 @@ export function UsersTable({ rows, total, loading, hasError, onAdjust }: UsersTa
             <tr>
               {COLUMNS.map((col) => (
                 <th
-                  key={col}
+                  key={col.key}
                   scope="col"
-                  className="whitespace-nowrap px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide"
+                  className={[
+                    'whitespace-nowrap px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide',
+                    col.hideOnNarrow ? 'hidden lg:table-cell' : '',
+                  ].join(' ')}
                 >
-                  {col}
+                  {col.label}
                 </th>
               ))}
             </tr>

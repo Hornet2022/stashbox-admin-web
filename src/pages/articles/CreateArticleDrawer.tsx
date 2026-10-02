@@ -53,7 +53,7 @@ export function CreateArticleDrawer({
     <Drawer.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
-        <Drawer.Content className="fixed bottom-0 right-0 top-0 z-50 flex flex-col bg-neutral-50 dark:bg-neutral-800 outline-none">
+        <Drawer.Content className="fixed bottom-0 right-0 top-0 z-50 flex w-full max-w-lg flex-col bg-neutral-50 outline-none dark:bg-neutral-800 sm:w-[32rem]">
           <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3 dark:border-neutral-700">
             <Drawer.Title className="font-serif text-base font-semibold text-ink dark:text-neutral-100">
               新建文章

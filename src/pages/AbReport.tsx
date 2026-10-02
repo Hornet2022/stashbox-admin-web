@@ -138,10 +138,19 @@ export function AbReport() {
       )}
 
       {abState.loading && !abState.data ? (
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {Array.from({ length: 2 }).map((_, i) => (
             <Skeleton key={i} className="h-48 w-full" />
           ))}
+        </div>
+      ) : abState.error ? (
+        /* ⚠️ 2026-10-03：原来 error 和「数据不够」共用一个分支。接口 500/404 时
+           error 与 data 同时为空，条件落到下面那句「数据积累中…需满 2 周」——
+           运营看到红色错误条 + 一句「实验还没跑够 2 周」，把**故障读成业务结论**。
+           同仓 Tags.tsx:222 早就用 `text={error ? '数据不可用' : '暂无标签数据'}`
+           做了区分，这里漏了。 */
+        <div className="mt-6 rounded-lg border border-dashed border-error/40 p-8 text-center text-sm text-error dark:border-red-900 dark:text-red-300">
+          报表数据不可用（接口出错），不是「实验数据不足」。请检查上方错误提示后重试。
         </div>
       ) : !hasEnoughData ? (
         <div className="mt-6 rounded-lg border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-400 dark:border-neutral-600 dark:text-neutral-500">

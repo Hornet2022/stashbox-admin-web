@@ -144,18 +144,18 @@ export function ArticlesTable({
                       </td>
                     )}
                     {has('tags') && (
-                      <td className="hidden max-w-xs px-4 py-2.5 text-sm text-neutral-600 lg:table-cell dark:text-neutral-300">
+                      <td className="hidden max-w-xs px-4 py-2.5 text-sm text-neutral-600 xl:table-cell dark:text-neutral-300">
                         <span className="t-clamp-1">{renderTags(article.tags)}</span>
                       </td>
                     )}
                     {has('score') && (
-                      <td className="tnum hidden px-4 py-2.5 text-sm text-neutral-600 lg:table-cell dark:text-neutral-300">
+                      <td className="tnum hidden px-4 py-2.5 text-sm text-neutral-600 xl:table-cell dark:text-neutral-300">
                         {article.quality_score ?? '—'}
                       </td>
                     )}
                     {has('created') && (
                       <td
-                        className="tnum hidden whitespace-nowrap px-4 py-2.5 text-xs text-neutral-400 lg:table-cell dark:text-neutral-500"
+                        className="tnum hidden whitespace-nowrap px-4 py-2.5 text-xs text-neutral-400 xl:table-cell dark:text-neutral-500"
                       >
                         {formatTime(article.created_at)}
                       </td>

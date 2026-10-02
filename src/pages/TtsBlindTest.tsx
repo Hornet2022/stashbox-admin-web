@@ -135,8 +135,13 @@ export function TtsBlindTest() {
     }
   }
 
+  // ⚠️ 2026-10-03：原来用 `typeof scores[key] === 'number'` 判「已打分」，
+  // 而清空输入框时 onScore 收到的正是 `NaN` —— `typeof NaN === 'number'`
+  // 为 true，所以「全部打分后才能提交」这道门禁在代码上根本不成立：
+  // 打过分再清空的样本照样算已打分，整批带着 `score: NaN` 提交
+  // （JSON.stringify 会序列化成 null）。
   const allScored = setupData
-    ? setupData.samples.every((s) => typeof scores[s.key] === 'number')
+    ? setupData.samples.every((s) => Number.isFinite(scores[s.key]))
     : false
 
   const handleSubmitScores = async () => {

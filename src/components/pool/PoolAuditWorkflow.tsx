@@ -110,8 +110,17 @@ export function PoolAuditWorkflow() {
   /** 步骤 3 提交评分 */
   const submitScore = async () => {
     if (!currentItem) return
-    const score = Number(scoreInput)
-    if (Number.isNaN(score) || score < 0 || score > 10) {
+    // ⚠️ 2026-10-03：原来直接 `Number(scoreInput)`，而 `Number('') === 0`
+    // （不是 NaN），所以清空后点提交会静默写入 0 分，经
+    // `new_avg = (old*usage + audit)/(usage+1)` 把该范例的历史均分拉低。
+    // 按钮是 type="button"，input 上的 min/max 原生约束不参与校验。
+    const trimmed = scoreInput.trim()
+    if (trimmed === '') {
+      toast('请填写评分后再提交', 'error')
+      return
+    }
+    const score = Number(trimmed)
+    if (!Number.isFinite(score) || score < 0 || score > 10) {
       toast('评分需在 0-10 之间', 'error')
       return
     }

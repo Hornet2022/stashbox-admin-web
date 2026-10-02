@@ -28,13 +28,32 @@ export function QuotaAdjustModal({
   onReasonChange,
   onSubmit,
 }: QuotaAdjustModalProps) {
+  // ⚠️ 2026-10-03：原来标题只有 email，而 27 个用户里 25 个没有邮箱 ——
+  // 对多数用户标题渲染成「调整配额 · 」，正文也没有任何身份信息，
+  // 运营点完按钮在弹窗里看不出自己在改谁。这里改成邮箱/昵称/ID 逐级降级，
+  // 保证任何数据状态下都至少能认出一个人。
+  const who = target
+    ? (target.email || target.display_name || `ID ${target.id}`)
+    : ''
+
   return (
-    <Modal
-      open={target !== null}
-      title={`调整配额 · ${target?.email ?? ''}`}
-      onClose={onClose}
-    >
+    <Modal open={target !== null} title={`调整配额 · ${who}`} onClose={onClose}>
       <form className="space-y-4" onSubmit={onSubmit}>
+        {/* 身份条：邮箱/昵称与 ID 同时给出，避免同名或无邮箱时认不出人 */}
+        {target && (
+          <dl className="rounded-md border border-neutral-200 bg-neutral-100/60 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900/40">
+            <div className="flex justify-between gap-3">
+              <dt className="text-neutral-500 dark:text-neutral-400">用户</dt>
+              <dd className="truncate font-medium text-ink dark:text-neutral-100">
+                {target.display_name || target.email || '（未设置昵称与邮箱）'}
+              </dd>
+            </div>
+            <div className="mt-1 flex justify-between gap-3">
+              <dt className="text-neutral-500 dark:text-neutral-400">ID</dt>
+              <dd className="tnum font-medium text-ink dark:text-neutral-100">{target.id}</dd>
+            </div>
+          </dl>
+        )}
         <Field label="月配额（次）">
           <input
             type="number"

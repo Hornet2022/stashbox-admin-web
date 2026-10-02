@@ -48,8 +48,10 @@ export function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-100 dark:bg-neutral-900">
-      <div className="w-96 rounded-lg border border-neutral-200 bg-neutral-50 p-8 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+    <div className="flex min-h-screen items-center justify-center bg-neutral-100 px-4 dark:bg-neutral-900">
+      {/* w-96 = 384px，比 iPhone SE/8 的 375px 还宽 → 整页横向溢出。
+          改成 w-full + max-w-md，窄屏自适应、宽屏仍是 448px。 */}
+      <div className="w-full max-w-md rounded-lg border border-neutral-200 bg-neutral-50 p-8 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
         <h1 className="font-serif text-2xl font-semibold text-ink dark:text-neutral-100">
           stashbox
         </h1>
@@ -118,7 +120,7 @@ export function Login() {
         </form>
 
         <p className="mt-4 text-xs text-neutral-400 dark:text-neutral-500">
-          数据源：POST /api/v1/admin/auth/login
+          账号与会话记录都会写入审计日志
         </p>
       </div>
     </div>

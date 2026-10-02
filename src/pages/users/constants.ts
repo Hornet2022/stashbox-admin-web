@@ -10,15 +10,33 @@
  * 92% 是破折号。两行放一起反而更像「这是谁」——昵称为主、邮箱为辅，
  * 有邮箱的人自然多出一行，没有的人也不占额外宽度。
  */
-export const COLUMNS = [
-  'ID',
-  '用户',
-  '套餐',
-  '状态',
-  '月配额',
-  '已用',
-  '注册时间',
-  '操作',
+/**
+ * 用户表列定义。
+ *
+ * ⚠️ 2026-10-03：原来是纯字符串数组，表头 `COLUMNS.map` 渲染时**没加任何响应式
+ * 类**，而表体「注册时间」那个 td 是 `hidden lg:table-cell`。于是 768≤宽<1024px
+ * （平板竖屏到笔电之间）表头渲染 8 列、表体每行只有 7 个格子 —— 「操作」列的按钮
+ * 被排到「注册时间」表头下面，点之前看到的表头和实际操作的对象对不上。
+ *
+ * 改成带 `hideOnNarrow` 的结构，表头和表体读**同一份**定义：断点只写一次，
+ * 不可能再分叉。断点用 lg（1024），与表体原有写法一致。
+ */
+export interface UserColumn {
+  key: 'id' | 'user' | 'tier' | 'status' | 'quota' | 'used' | 'created' | 'actions'
+  label: string
+  /** < 1024px 时整列隐藏（表头与表体同时生效） */
+  hideOnNarrow?: boolean
+}
+
+export const COLUMNS: readonly UserColumn[] = [
+  { key: 'id', label: 'ID' },
+  { key: 'user', label: '用户' },
+  { key: 'tier', label: '套餐' },
+  { key: 'status', label: '状态' },
+  { key: 'quota', label: '月配额' },
+  { key: 'used', label: '已用' },
+  { key: 'created', label: '注册时间', hideOnNarrow: true },
+  { key: 'actions', label: '操作' },
 ] as const
 
 /**
