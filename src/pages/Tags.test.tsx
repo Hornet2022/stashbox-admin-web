@@ -77,7 +77,9 @@ describe('Tags', () => {
       expect(screen.getAllByText('tech').length).toBeGreaterThanOrEqual(1)
     })
     await user.click(screen.getByText('新增标签'))
-    expect(screen.getByPlaceholderText(/machine-learning/)).toBeInTheDocument()
+    // 名称与 slug 是两个独立输入，placeholder 必须可区分
+    expect(screen.getByPlaceholderText(/机器学习/)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/英文标识/)).toBeInTheDocument()
   })
 
   it('missing 端点 → ErrorNotice', async () => {

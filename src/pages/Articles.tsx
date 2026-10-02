@@ -80,7 +80,6 @@ export function Articles() {
   const [createOpen, setCreateOpen] = useState(false)
   const [createUrl, setCreateUrl] = useState('')
   const [createTitle, setCreateTitle] = useState('')
-  const [createTags, setCreateTags] = useState('')
   const [createSubmitting, setCreateSubmitting] = useState(false)
   const [createModalError, setCreateModalError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -89,7 +88,6 @@ export function Articles() {
     setCreateOpen(false)
     setCreateUrl('')
     setCreateTitle('')
-    setCreateTags('')
     setCreateSubmitting(false)
     setCreateModalError(null)
     setShowSuccess(false)
@@ -183,11 +181,7 @@ export function Articles() {
     setCreateSubmitting(true)
     setCreateModalError(null)
     try {
-      await createArticle(
-        createUrl.trim(),
-        'url',
-        createTitle.trim() || undefined,
-      )
+      await createArticle(createUrl.trim(), createTitle.trim() || undefined)
       setShowSuccess(true)
       setTimeout(() => {
         closeCreateDrawer()
@@ -245,14 +239,12 @@ export function Articles() {
         open={createOpen}
         url={createUrl}
         title={createTitle}
-        tags={createTags}
         submitting={createSubmitting}
         error={createModalError}
         showSuccess={showSuccess}
         onClose={closeCreateDrawer}
         onUrlChange={setCreateUrl}
         onTitleChange={setCreateTitle}
-        onTagsChange={setCreateTags}
         onSubmit={handleSubmitCreate}
       />
     </div>

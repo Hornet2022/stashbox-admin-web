@@ -116,7 +116,6 @@ export interface TagRow {
   category?: string
   is_system?: boolean
   name: string
-  description?: string
   subscriber_count?: number
   created_at?: string
 }

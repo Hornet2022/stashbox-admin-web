@@ -31,7 +31,7 @@ import type { TagRow } from '../types'
  * 标签管理页 —— GET /api/v1/tags + POST /api/v1/tags。
  */
 
-const columns = ['ID', '名称', '描述', '订阅数', '创建时间', '操作']
+const columns = ['ID', '名称', '订阅数', '创建时间', '操作']
 
 export function Tags() {
   const role = useRole()
@@ -40,7 +40,7 @@ export function Tags() {
 
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
+  const [slug, setSlug] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -135,15 +135,20 @@ export function Tags() {
       shakeError()
       return
     }
+    if (!slug.trim()) {
+      setModalError('标签标识（slug）必填')
+      shakeError()
+      return
+    }
 
     setSubmitting(true)
     setModalError(null)
     try {
-      await createTag(name.trim())
+      await createTag(slug.trim(), name.trim())
       setShowSuccess(true)
       setTimeout(() => {
         setName('')
-        setDescription('')
+        setSlug('')
         closeModal()
         reload()
       }, 700)
@@ -163,7 +168,7 @@ export function Tags() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className={pageTitleClass}>标签管理</h1>
-          <p className={pageHintClass}>数据源：GET /api/v1/tags</p>
+          <p className={pageHintClass}>数据源：GET /api/v1/admin/tags</p>
         </div>
         <div className="flex gap-2">
           <button type="button" className={buttonGhostClass} onClick={handleExportTags}>
@@ -217,7 +222,6 @@ export function Tags() {
                       </span>
                     )}
                   </td>
-                  <td className={cellTextClass}>{tag.description ?? '—'}</td>
                   <td className={cellTextClass}>
                     {formatNumber(tag.subscriber_count)}
                   </td>
@@ -275,17 +279,19 @@ export function Tags() {
                     input?.classList.remove('is-error')
                   }
                 }}
-                placeholder="如：machine-learning"
+                placeholder="如：机器学习"
                 className={`t-input ${inputClass}`}
               />
             </div>
           </Field>
-          <Field label="描述（可选）">
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
+          <Field label="标识（slug）">
+            <input
+              type="text"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="英文标识，如 machine-learning"
               className={inputClass}
+              autoComplete="off"
             />
           </Field>
 

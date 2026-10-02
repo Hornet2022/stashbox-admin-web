@@ -19,7 +19,9 @@ import type { BlindTestResults, BlindTestSetup } from '../types'
  *   ② 打分（submit）：逐条 1-5 分，全部打分完才能提交（evaluator_id 覆盖式更新）
  *   ③ 揭晓（results）：评测完成后展示 revealed_mapping（仅当 evaluator_count ≥ 上限目标）
  *
- * ⚠️ audio_url 当前是 mock provider，UI 必须标"模拟数据"。
+ * 2026-10-02 起后端走**真合成**（每 provider 调 build_client，音频落
+ * /tmp/audio/blind-test/ 由网关 /audio 挂载），所以这里不再标"模拟数据"。
+ * 继续挂着那个标会让评测员以为听到的是假的，从而不信任本来有效的结论。
  * ⚠️ provider 顺序已随机隐藏，盲测有效性依赖这一点，前端不要展示 mapping（步骤 3 之前）。
  * ⚠️ 盲测会话存 ai-service 进程内存（24h TTL）：单 worker 可用；重启/多 worker 会丢。
  *
@@ -58,7 +60,15 @@ function savePersisted(s: PersistedState | null) {
 
 export function TtsBlindTest() {
   const persisted = loadPersisted()
-  const stepper = useStepper(persisted ? 1 : 0, STEPS.length)
+  // 始终从步骤 1（发起）开始，不按 persisted 跳到打分步。
+  //
+  // 原来 `useStepper(persisted ? 1 : 0, ...)`：刷新后停在步骤 2，但打分区的渲染条件是
+  // `stepper.active === 1 && setupData && (...)`，而 setupData 只在本次挂载里由
+  // handleSetup 赋值、**从不从 persisted 恢复**（后端也没有 setup 查询端点可回查）。
+  // 结果是：页面只剩标题和 Stepper，「返回 / 重置 / 提交评分」三个按钮全在
+  // setupData 块里一个都渲染不出来 —— 死胡同，只能手抄 sessionStorage 清。
+  // 音频 URL 无法凭空恢复，所以诚实的做法是说明情况 + 给一条出路，而不是渲染空白。
+  const stepper = useStepper(0, STEPS.length)
 
   // CP-NEW.17：operator + super_admin 可打分；admin/viewer 只读
   const canAnnotate = useCanAnnotate()
@@ -185,9 +195,10 @@ export function TtsBlindTest() {
 
       <CaveatBanner
         variant="warning"
-        title="模拟数据说明"
+        title="盲测须知"
         items={[
-          '当前合成走 mock：audio_url 可播性不保证（链路先行）',
+          '音频为真实合成，但合成耗时长（本机 TTS 约 20 秒起），请等样本生成完再开始打分',
+          '某个 provider 合成失败时会被列在 failed_providers 里 —— 该 provider 不参与本次比较',
           'provider 顺序已随机隐藏，盲测有效性依赖这一点 —— 步骤 3 之前不要在 UI 中尝试反推',
         ]}
       />
@@ -195,6 +206,26 @@ export function TtsBlindTest() {
       <div className="mt-5">
         <Stepper steps={STEPS as unknown as Array<{ key: string; label: string }>} activeIndex={stepper.active} />
       </div>
+
+      {/* 未完成会话的恢复提示。
+          原来刷新后 stepper 直接跳到步骤 2、而 setupData 恒为 null，
+          「返回 / 重置 / 提交评分」又都锁在 setupData 块内部 → 整页只剩标题的死胡同，
+          只能手抄 sessionStorage 才能脱困。音频 URL 服务端存 24h 且没有查询端点，
+          没法真的恢复，所以明说 + 给一条出路。 */}
+      {persisted && !setupData && (
+        <CaveatBanner
+          variant="warning"
+          title="检测到一次未完成的盲测会话"
+          items={[
+            `blind_test_id ${persisted.blindTestId}${
+              Object.keys(persisted.scores ?? {}).length > 0
+                ? `，已打 ${Object.keys(persisted.scores).length} 个分`
+                : ''
+            }`,
+            '音频链接无法恢复（盲测会话存后端进程内存 24h，且没有查询 setup 的接口），需要重新发起一次。',
+          ]}
+        />
+      )}
 
       {/* 步骤 1：发起 */}
       {stepper.active === 0 && (
@@ -251,15 +282,22 @@ export function TtsBlindTest() {
             </label>
           </div>
 
-          <div className="mt-5 flex items-center justify-end">
-            <button
-              type="button"
-              className={buttonPrimaryClass}
-              onClick={handleSetup}
-              disabled={setupSubmitting}
-            >
-              {setupSubmitting ? '发起中…' : '发起盲测'}
-            </button>
+          <div className="mt-5 flex items-center justify-between gap-2">
+            {persisted && !setupData && (
+              <button type="button" className={buttonGhostClass} onClick={resetAll}>
+                清空未完成的会话
+              </button>
+            )}
+            <div className="ml-auto flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className={buttonPrimaryClass}
+                onClick={handleSetup}
+                disabled={setupSubmitting}
+              >
+                {setupSubmitting ? '发起中…' : '发起盲测'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -385,7 +423,7 @@ function SampleRow({
         <div className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
           <Volume2 size={14} />
           {audioError ? (
-            <span className="text-warning">audio_url 不可播（mock 预期内）</span>
+            <span className="text-warning">该样本无法播放（合成可能失败或文件已被清理）</span>
           ) : (
             <audio
               controls

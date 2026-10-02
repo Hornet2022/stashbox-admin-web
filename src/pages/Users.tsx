@@ -21,17 +21,24 @@ export function Users() {
   const role = useRole()
   const navigate = useNavigate()
 
-  // 路由守卫：写级权限（super_admin；admin 角色按 hasPermission 向上兼容）
+  // 路由守卫：与后端实际放行的角色对齐。
   //
   // CP-USERS-REALITY：原来是裸比较 `role !== 'super_admin'`。但
   // useRole 同文件体系里的 hasPermission() 已经定义了「admin 视为可访问
   // super_admin 资源」的兼容规则，这里绕过它 → admin 账号点进用户管理
   // 立刻被踢回首页，而后端 ADMIN_TIERS 恰恰只有 {admin, operator}，
-  // 根本没有 super_admin 这个值。也就是说**没人能进这个页面**。
-  const canWrite = hasPermission(role, ['super_admin'])
+  // 根本没有 super_admin 这个值。
+  //
+  // 后续又收紧成 `['super_admin']`，把 operator 也挡在外面 —— 但
+  // GET /admin/users 后端是放行 operator 的（user-service: _ALLOWED_ADMIN_ROLES），
+  // 于是 operator 登录后点侧栏「用户管理」被弹回总览，同一份数据后端明明给读。
+  // 现在与其余 4 个运营页（Tags/Articles/VoiceLibrary/PushNotifications）保持一致。
+  const canWrite = hasPermission(role, ['super_admin', 'operator'])
   useEffect(() => {
     if (role !== null && !canWrite) {
-      toast('权限不足，仅 super_admin 可访问用户管理', 'error')
+      // 文案里不写 super_admin —— 后端没有这个角色值，写出来会被当成
+      // "账号 tier 配错了"去排查，而实际是前端自设的门槛。
+      toast('权限不足，仅管理员或运营可访问用户管理', 'error')
       navigate('/dashboard', { replace: true })
     }
   }, [role, canWrite, navigate])

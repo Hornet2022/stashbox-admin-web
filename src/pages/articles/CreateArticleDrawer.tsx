@@ -13,14 +13,12 @@ export interface CreateArticleDrawerProps {
   open: boolean
   url: string
   title: string
-  tags: string
   submitting: boolean
   error: string | null
   showSuccess: boolean
   onClose: () => void
   onUrlChange: (v: string) => void
   onTitleChange: (v: string) => void
-  onTagsChange: (v: string) => void
   onSubmit: (e: FormEvent<HTMLFormElement>) => void
 }
 
@@ -28,14 +26,12 @@ export function CreateArticleDrawer({
   open,
   url,
   title,
-  tags,
   submitting,
   error,
   showSuccess,
   onClose,
   onUrlChange,
   onTitleChange,
-  onTagsChange,
   onSubmit,
 }: CreateArticleDrawerProps) {
   const urlRef = useRef<HTMLInputElement>(null)
@@ -98,16 +94,6 @@ export function CreateArticleDrawer({
                 className={inputClass}
               />
             </Field>
-            <Field label="标签（可选）">
-              <input
-                type="text"
-                value={tags}
-                onChange={(e) => onTagsChange(e.target.value)}
-                placeholder="标签，多个用逗号分隔"
-                className={inputClass}
-              />
-            </Field>
-
             {error && (
               <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950 dark:text-red-200">
                 {error}

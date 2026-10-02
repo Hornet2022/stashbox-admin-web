@@ -47,7 +47,9 @@ describe('TtsBlindTest', () => {
   it('渲染标题 + 顶部 mock 警告 + 步骤 1 表单', () => {
     renderPage()
     expect(screen.getByText('TTS 盲测')).toBeInTheDocument()
-    expect(screen.getByText('模拟数据说明')).toBeInTheDocument()
+    // 顶部须知条标题是「盲测须知」不是「模拟数据说明」——2026-10 后端改真合成后，
+    // 继续标「模拟数据」会误导评测员以为听到的是假音频，从而不信任有效结论。
+    expect(screen.getByText('盲测须知')).toBeInTheDocument()
     expect(screen.getByText(/步骤 1 · 发起盲测/)).toBeInTheDocument()
     expect(screen.getByText('发起盲测')).toBeInTheDocument()
   })

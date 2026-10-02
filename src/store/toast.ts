@@ -34,7 +34,11 @@ export const useToastStore = create<ToastState>((set, get) => ({
   toasts: [],
 
   push: (message, kind = 'info') => {
-    const text = message.trim()
+    // 兜底：message 的静态类型是 string，但调用方是 axios 拦截器等非 TS 边界，
+    // 传进来的可能是任何值。曾经真的崩过 —— FastAPI 422 的 detail 是**数组**，
+    // 数组没有 .trim() → TypeError → React 整页白屏（不是只丢一条提示）。
+    // 一个提示组件不该有能力搞崩整个应用，所以这里做最后一次归一化。
+    const text = (typeof message === 'string' ? message : String(message ?? '')).trim()
     if (!text) return
 
     // 同文案去重：拦截器可能对并发请求重复弹同一条错误

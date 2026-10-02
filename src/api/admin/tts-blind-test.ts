@@ -13,7 +13,7 @@ import type {
  * 挂 ai-service（8103），鉴权 require_admin_or_operator。
  * 3 步工作流：setup（发起）→ submit（评测员打分）→ results（揭晓）
  *
- * ⚠️ 现状：合成走 mock（假 URL 可播性不保证，链路先行）；
+ * 2026-10-02 起后端走真合成，audio_url 是可播放的真实音频；
  * 返回的 audio_url 已匿名化（不泄漏 provider 名 —— 盲测有效性依赖这一点，前端不要展示 mapping）。
  * ⚠️ 盲测会话存 ai-service **进程内存**（24h TTL）：单 worker 部署可用；重启/多 worker 会丢。
  * ⚠️ 同一 evaluator_id 重复提交 = 覆盖式更新。

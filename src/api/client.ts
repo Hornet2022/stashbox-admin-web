@@ -159,6 +159,43 @@ export function isEndpointMissing(error: unknown): boolean {
  * @param context    可选：本次调用的服务描述（如 'OpenAI 兼容端点（OpenAI/火山方舟）'），
  *                   用于 timeout 文案。不传默认 "第三方服务"。
  */
+/**
+ * 把后端返回的 detail 归一化成**字符串**。
+ *
+ * FastAPI 的校验失败（422）返回的是**数组**：
+ *   {"detail":[{"loc":["body","slug"],"msg":"Field required","type":"missing"}]}
+ * 原实现直接 `if (detail) return detail`，于是数组一路传到 toast.push() 的
+ * `message.trim()` → TypeError → React 整页白屏。实测路径：标签管理页「新建标签」
+ * 必现（前端不发 slug，后端 slug 必填）。
+ *
+ * 数组 detail 还会顺带触发第二个更糟的后果：TypeError 顶上原始 422 之后，
+ * catch 收到的对象没有 .response，toErrorMessage 一路走到最后显示
+ * "无法连接 api-gateway" —— 把排查方向从「参数写错了」带到「网关没启动」。
+ */
+function normalizeDetail(detail: unknown): string | null {
+  if (detail == null) return null
+  if (typeof detail === 'string') return detail.trim() || null
+  if (Array.isArray(detail)) {
+    const parts = detail.map((item) => {
+      if (typeof item === 'string') return item
+      if (item && typeof item === 'object') {
+        const loc = Array.isArray((item as any).loc)
+          ? (item as any).loc.filter((p: unknown) => p !== 'body' && p !== 'query').join('.')
+          : ''
+        const msg = typeof (item as any).msg === 'string' ? (item as any).msg : JSON.stringify(item)
+        return loc ? `${loc}: ${msg}` : msg
+      }
+      return String(item)
+    })
+    return parts.join('；') || null
+  }
+  if (typeof detail === 'object') {
+    const msg = (detail as any).message ?? (detail as any).msg
+    return typeof msg === 'string' ? msg : null
+  }
+  return String(detail)
+}
+
 export function toErrorMessage(error: unknown, context?: string): string {
   const err = error as {
     response?: { status?: number; data?: { message?: string; detail?: string } }
@@ -167,7 +204,8 @@ export function toErrorMessage(error: unknown, context?: string): string {
     config?: { timeout?: number }
   }
   const status = err?.response?.status
-  const detail = err?.response?.data?.message ?? err?.response?.data?.detail
+  const detail =
+    normalizeDetail(err?.response?.data?.message) ?? normalizeDetail(err?.response?.data?.detail)
   if (detail) return detail
   if (status === 404 || status === 501) return '端点不存在（404 / 501）'
   if (status === 401) return '登录已失效，请重新登录'

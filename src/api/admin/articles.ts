@@ -21,14 +21,22 @@ export async function listArticles(params: {
   return normalizeList<ArticleRow>(data)
 }
 
-export async function createArticle(
-  url: string,
-  source: 'url' | 'paste' = 'url',
-  title?: string,
-): Promise<void> {
-  await apiClient.post('/api/v1/articles', {
+/**
+ * 运营手动录入文章。
+ *
+ * 走 `/api/v1/admin/articles` 而不是用户侧的 `/api/v1/articles`：
+ * 后者是剪藏入口，用 admin token 打过去会**扣运营账号自己的配额**，
+ * 并把文章 owner 设成运营本人 —— 运营想造的是全站公共内容，
+ * 产出的却是挂在个人名下、用户侧只有自己看得见的私有文章。
+ *
+ * title 之前也是白填的：`AddArticleRequest` 压根没声明 title 字段，
+ * Pydantic 静默忽略未声明字段，运营看到「创建成功」但库里没有标题。
+ * 现在 schema 补上了（optional，老客户端行为不变）。
+ */
+export async function createArticle(url: string, title?: string): Promise<void> {
+  await apiClient.post('/api/v1/admin/articles', {
     url,
-    source,
+    source: 'url',
     title,
   })
 }

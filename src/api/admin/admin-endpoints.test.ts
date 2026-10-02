@@ -95,9 +95,9 @@ describe('articles 端点', () => {
     })
   })
 
-  it('createArticle → POST /articles（用户侧创建入口，网关注册如此）', async () => {
-    await createArticle('https://example.com/a', 'url', 'Title A')
-    expect(mockedPost).toHaveBeenCalledWith('/api/v1/articles', {
+  it('createArticle → POST /admin/articles（admin 入口：不扣运营配额、不挂运营名下）', async () => {
+    await createArticle('https://example.com/a', 'Title A')
+    expect(mockedPost).toHaveBeenCalledWith('/api/v1/admin/articles', {
       url: 'https://example.com/a',
       source: 'url',
       title: 'Title A',
@@ -136,11 +136,14 @@ describe('tags 端点', () => {
     })
   })
 
-  it('createTag → POST /tags（用户侧入口，网关注册如此，非 /admin/tags）', async () => {
-    await createTag('machine-learning', 'AI/ML 相关')
+  // slug 是后端必填（TagCreateRequest: slug/name/category），之前这个用例断言的
+  // body 里既没有 slug 还带了个后端根本不存在的 description 字段 —— 用例是绿的，
+  // 真实调用却必然 422。这条断言现在对齐真实契约。
+  it('createTag → POST /tags 带 slug（后端必填，缺了必 422）', async () => {
+    await createTag('machine-learning', '机器学习')
     expect(mockedPost).toHaveBeenCalledWith('/api/v1/tags', {
-      name: 'machine-learning',
-      description: 'AI/ML 相关',
+      slug: 'machine-learning',
+      name: '机器学习',
     })
   })
 
