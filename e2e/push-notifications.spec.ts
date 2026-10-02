@@ -8,7 +8,7 @@ test.describe('push-notifications', () => {
   test('页面标题 + 状态 tab + 表头', async ({ authedPage }) => {
     await authedPage.goto('/push-notifications')
     await expect(authedPage.getByRole('heading', { name: '推送队列' })).toBeVisible()
-    await expect(authedPage.getByText(/数据源/)).toBeVisible()
+    await expect(authedPage.getByText('待发送的站内推送，按创建时间倒序')).toBeVisible()
 
     // 4 个 tab —— 用 role=tab，aria-label 是 "全部/待发送/已发送/失败"
     for (const tab of ['全部', '待发送', '已发送', '失败']) {

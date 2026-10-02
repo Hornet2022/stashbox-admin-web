@@ -89,7 +89,7 @@ test.describe('音色库', () => {
     await authedPage.goto('/settings/voices')
     await expect(authedPage.getByRole('heading', { name: '音色库' })).toBeVisible()
     await expect(
-      authedPage.getByText('数据源：GET /api/v1/admin/tts/voices'),
+      authedPage.getByText(/音色由一段参考音频克隆而来/),
     ).toBeVisible()
 
     for (const col of ['音色', '标识', '状态', '参考音频', '更新时间', '操作']) {

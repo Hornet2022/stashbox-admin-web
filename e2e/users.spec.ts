@@ -13,7 +13,7 @@ test.describe('users', () => {
     // 搜索框 placeholder 的真实值是 "邮箱 / 昵称"（UsersToolbar.tsx）。
     // 原来这里写的是「搜索邮箱/昵称/ID」，那个串在代码里根本不存在 ——
     // 只在 super_admin 分支里，所以从没人跑过它，坏了也没人知道。
-    await expect(authedPage.getByPlaceholder('邮箱 / 昵称')).toBeVisible()
+    await expect(authedPage.getByPlaceholder('按邮箱或昵称搜索')).toBeVisible()
 
     // 注意：`/users` 路由**只包了 AuthGuard，没有角色守卫**（App.tsx）。
     // admin/operator 角色直接输 URL 也能进，能看到全量用户列表并点「调整配额」。
