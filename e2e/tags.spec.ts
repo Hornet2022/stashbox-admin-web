@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures'
+import { test, expect, canWrite } from './fixtures'
 
 /**
  * 标签管理页 —— 列表 + 权限允许时的新增/删除按钮。
@@ -26,7 +26,11 @@ test.describe('tags', () => {
   test('操作按钮可见性受角色控制', async ({ authedPage, role }) => {
     await authedPage.goto('/tags')
 
-    if (role === 'super_admin' || role === 'operator') {
+    // 判据必须与前端 hasPermission 一致：'admin' 会被当成 super_admin，
+    // 而本机种子账号正是 tier='admin'。原用例在这里判 `role === 'super_admin'
+    // || 'operator'` 才断言可见、对 admin 账号走 else 断言「不可见」——
+    // 但实际按钮是**可见**的，属于假绿：测试因为断言了一个不存在的行为而通过。
+    if (canWrite(role)) {
       await expect(authedPage.getByRole('button', { name: '新增标签' })).toBeVisible()
       await expect(authedPage.locator('button[aria-label^="删除标签"]').first()).toBeVisible()
     } else {

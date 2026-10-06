@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures'
+import { test, expect, canWrite } from './fixtures'
 
 /**
  * 用户管理页 —— super_admin 限定。
@@ -26,8 +26,10 @@ test.describe('users', () => {
     })
   })
 
-  test('super_admin 可打开配额调整 Modal', async ({ authedPage, role }) => {
-    test.skip(role !== 'super_admin', '当前账号不是 super_admin，跳过配额 Modal 用例')
+  test('有写权限的角色可打开配额调整 Modal', async ({ authedPage, role }) => {
+    // 原判据是 `role !== 'super_admin'` —— 后端 ADMIN_TIERS 只有 {admin, operator}，
+    // super_admin 永不出现，这条用例于是永久跳过，最危险的配额调整操作零覆盖。
+    test.skip(!canWrite(role), `当前角色 ${role} 无写权限，跳过配额 Modal 用例`)
 
     await authedPage.goto('/users')
 

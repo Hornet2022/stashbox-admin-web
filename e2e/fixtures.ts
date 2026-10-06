@@ -16,6 +16,21 @@ export { ADMIN_EMAIL, ADMIN_PASSWORD }
 
 export type Role = 'admin' | 'super_admin' | 'operator' | 'viewer' | 'unknown'
 
+/**
+ * 写权限判定 —— **必须与前端 `hasPermission` 逐字对齐**。
+ *
+ * 契约在 `src/hooks/useRole.ts:14-18`：`role === 'admin'` 会被当作
+ * super_admin 处理。而后端 `common/auth_admin.py:5` 的
+ * `ADMIN_TIERS = {"admin", "operator"}` —— **`super_admin` 根本不是**
+ * 一个会出现的角色值，本机种子管理员是 tier='admin'（migration 0006）。
+ *
+ * 于是曾有一批用例写成 `test.skip(role !== 'super_admin', ...)`：
+ * 条件永远成立 → 永远跳过 → 最危险的操作（配额调整）从来没被真实浏览器跑过。
+ * 这里集中定义一份，避免各 spec 各写各的、再次漂移。
+ */
+export const canWrite = (role: Role): boolean =>
+  role === 'admin' || role === 'super_admin' || role === 'operator'
+
 export const test = base.extend<{
   authedPage: Page
   role: Role

@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures'
+import { test, expect, canWrite } from './fixtures'
 
 /**
  * 文章管理页 —— 列表 + 强制重试 Modal（不真提交，避免副作用）。
@@ -25,7 +25,7 @@ test.describe('articles', () => {
 
   test('权限允许时表格出现操作按钮', async ({ authedPage, role }) => {
     await authedPage.goto('/articles')
-    if (role !== 'super_admin' && role !== 'operator') {
+    if (!canWrite(role)) {
       // 操作列只能看，不能点 → 占位 —
       // 原来等的是表格里某个「—」占位符（死列的兜底）。那些列已经改成
       // 「整列为空就不渲染」，所以改成等一个真实存在的行内元素。
@@ -40,7 +40,7 @@ test.describe('articles', () => {
   })
 
   test('点击强制重试 → 打开 Modal → 关闭', async ({ authedPage, role }) => {
-    test.skip(role !== 'super_admin' && role !== 'operator', '当前角色无操作权限，跳过')
+    test.skip(!canWrite(role), `当前角色 ${role} 无操作权限，跳过`)
 
     await authedPage.goto('/articles')
     const retryBtn = authedPage.locator('button[aria-label^="强制重试文章"]').first()
@@ -56,7 +56,7 @@ test.describe('articles', () => {
   })
 
   test('打开新建文章抽屉', async ({ authedPage, role }) => {
-    test.skip(role !== 'super_admin' && role !== 'operator', '当前角色无操作权限，跳过')
+    test.skip(!canWrite(role), `当前角色 ${role} 无操作权限，跳过`)
 
     await authedPage.goto('/articles')
     // 新建文章按钮（具体文案去 ArticlesToolbar 确认）
