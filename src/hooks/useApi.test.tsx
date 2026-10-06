@@ -129,3 +129,43 @@ describe('useApi', () => {
     expect(result.current.error).toBe(null)
   })
 })
+/**
+ * 回归：loading 卡死（bug #21，2026-10）。
+ *
+ * loading 曾经是从 `data === null && error === null` **推导**出来的。
+ * fetcher 一旦 resolve 出 nullish 值，setData(null) 让 data 依然是 null，
+ * loading 就永远为 true —— 页面停在转圈、没有报错，而请求其实早就回来了。
+ * 现改为显式的 settled 标记：成功与失败都会结束 loading，与返回值无关。
+ */
+describe('useApi · nullish 返回值不能卡死 loading', () => {
+  it('resolve 出 null → loading 必须结束', async () => {
+    const fetcher = vi.fn().mockResolvedValue(null)
+    const { result } = renderHook(() => useApi<unknown>(fetcher, 'k'))
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+    expect(result.current.data).toBeNull()
+    expect(result.current.error).toBe(null)
+  })
+
+  it('resolve 出 undefined → loading 必须结束', async () => {
+    const fetcher = vi.fn().mockResolvedValue(undefined)
+    const { result } = renderHook(() => useApi<unknown>(fetcher, 'k'))
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+    expect(result.current.error).toBe(null)
+  })
+
+  it('resolve 出 false / 0 这类假值也算成功，不该卡 loading', async () => {
+    const fetcher = vi.fn().mockResolvedValue(false)
+    const { result } = renderHook(() => useApi<unknown>(fetcher, 'k'))
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+    expect(result.current.data).toBe(false)
+  })
+})

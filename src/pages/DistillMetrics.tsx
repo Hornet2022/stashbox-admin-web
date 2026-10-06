@@ -140,8 +140,11 @@ interface ChartEntry {
 }
 
 function buildChartData(resp: DistillP95Response): ChartEntry[] {
+  // 后端失败路径返回 by_step: {}，正常路径一定有内容 —— 这里仍然兜一层，
+  // 因为 `resp.by_step[key]` 在 by_step 整体缺失时会直接抛 TypeError 把整页带崩。
+  const byStep = resp.by_step ?? {}
   const entries: ChartEntry[] = STEP_ORDER.map(({ key, label }) => {
-    const s = resp.by_step[key]
+    const s = byStep[key]
     return { label, p50: s?.p50 ?? null, p95: s?.p95 ?? null, p99: s?.p99 ?? null }
   })
   return entries
@@ -149,6 +152,15 @@ function buildChartData(resp: DistillP95Response): ChartEntry[] {
 
 export function DistillMetrics() {
   const { data, loading, error, missing, reload } = useApi(getDistillP95, 'distill-p95')
+
+  // 两种 error 不是一回事，别混：
+  //   `error` 来自 useApi —— HTTP 层失败（网关挂了、超时）。
+  //   `data.error` 来自**响应体** —— 后端抓不到 Prometheus / ai-service metrics 时
+  //   返回的是 HTTP 200 + {error: "..."}，不抛异常。
+  // 原实现只渲染前者，于是 metrics 后端挂掉时这一页显示「尚无采样」，与
+  // 「真的还没跑过蒸馏」完全无法区分 —— 监控在最需要报警的时候静默说谎。
+  const backendError = data?.error ?? null
+  const effectiveError = error ?? backendError
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   useEffect(() => {
@@ -165,7 +177,9 @@ export function DistillMetrics() {
   // 别把 4 个阶段的样本数相加说成「共 N 次采样」——那是把同一次蒸馏的
   // 4 个阶段数了 4 遍，读起来像跑了 24 次蒸馏。真实次数是各阶段的最小值
   // （每跑一次蒸馏每个阶段各记一条）。
-  const stepCounts = data ? Object.values(data.by_step).map((v) => v.count ?? 0) : []
+  const stepCounts = data
+    ? Object.values(data.by_step ?? {}).map((v) => v.count ?? 0)
+    : []
   const runCount = stepCounts.length ? Math.min(...stepCounts) : 0
 
   return (
@@ -195,7 +209,17 @@ export function DistillMetrics() {
         }
       />
 
-      {error && <ErrorNotice message={error} missing={missing} onRetry={reload} />}
+      {effectiveError && (
+        <ErrorNotice
+          message={
+            backendError
+              ? `耗时数据暂不可用：${backendError}`
+              : error ?? ''
+          }
+          missing={missing}
+          onRetry={reload}
+        />
+      )}
 
       {/* 端到端单独成卡并强调：4 步串行，运营真正关心的是「一篇要等多久」 */}
       <div className="mt-6 max-w-xs">
@@ -212,7 +236,7 @@ export function DistillMetrics() {
           <MetricCard
             key={key}
             label={label}
-            metrics={data?.by_step[key] ?? null}
+            metrics={data?.by_step?.[key] ?? null}
             loading={loading}
           />
         ))}

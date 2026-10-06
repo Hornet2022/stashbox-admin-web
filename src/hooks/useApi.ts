@@ -25,9 +25,18 @@ export function useApi<T>(
   const [error, setError] = useState<string | null>(null)
   const [missing, setMissing] = useState(false)
   const [tick, setTick] = useState(0)
+  /**
+   * 请求是否已落地（成功或失败都算）。
+   *
+   * 以前 loading 是从 `data === null && error === null` **推导**出来的，
+   * 这在 fetcher resolve 出 nullish 值时是个陷阱：setData(null) 让
+   * data 仍是 null，于是 loading 永远为 true —— 页面卡在转圈、没有报错，
+   * 也没人知道请求其实早就回来了。同理，若接口「成功但返回空」被调用方
+   * 当成正常结果，界面就再也停不下来。
+   */
+  const [settled, setSettled] = useState(false)
 
-  // loading is derived state — no setState in effect needed
-  const loading = enabled && (data === null && error === null)
+  const loading = enabled && !settled
 
   const fetcherRef = useRef(fetcher)
   useEffect(() => {
@@ -43,16 +52,20 @@ export function useApi<T>(
     setData(null)
     setError(null)
     setMissing(false)
+    setSettled(false)
 
     fetcherRef
       .current()
       .then((res) => {
-        if (!cancelled) setData(res)
+        if (cancelled) return
+        setData(res)
+        setSettled(true)
       })
       .catch((err) => {
         if (cancelled) return
         setError(() => toErrorMessage(err))
         setMissing(() => isEndpointMissing(err))
+        setSettled(true)
       })
 
     return () => {
