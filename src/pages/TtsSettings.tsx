@@ -78,33 +78,45 @@ export function TtsSettings() {
     setFields((prev) => ({ ...prev, [field]: value }))
   }
 
+  /**
+   * 由表单当前值构造请求体 —— 保存与「测试调用」共用同一份。
+   *
+   * 2026-10：两处必须发**完全相同**的内容。原先 testTts() 不带参、后端拿
+   * 已保存配置去测，运营填错的 base_url 也能测出绿灯。若两处各自拼 payload，
+   * 迟早会漂移成"测的和存的不是一个东西"——那正是这个 bug 的本质。
+   */
+  const buildPayload = (): Parameters<typeof updateTtsConfig>[0] => {
+    const payload: Parameters<typeof updateTtsConfig>[0] = { provider }
+    if (provider === 'edge') {
+      payload.edge_voice = fields.edgeVoice.trim() || null
+    } else if (provider === 'openai') {
+      if (fields.openaiApiKey) payload.openai_api_key = fields.openaiApiKey
+      payload.openai_base_url = fields.openaiBaseUrl.trim() || null
+      payload.openai_model = fields.openaiModel.trim() || null
+      payload.openai_voice = fields.openaiVoice.trim() || null
+    } else if (provider === 'doubao') {
+      if (fields.doubaoApiKey) payload.doubao_api_key = fields.doubaoApiKey
+      if (fields.doubaoToken) payload.doubao_token = fields.doubaoToken
+      payload.doubao_app_id = fields.doubaoAppId.trim() || null
+      payload.doubao_voice = fields.doubaoVoice.trim() || null
+      payload.doubao_resource_id = fields.doubaoResourceId.trim() || null
+    } else if (provider === 'local') {
+      payload.local_voice = fields.localVoice.trim() || null
+      payload.ffmpeg_bin = fields.ffmpegBin.trim() || null
+    } else if (provider === 'indextts') {
+      payload.indextts_base_url = fields.indexttsBaseUrl.trim() || null
+      payload.indextts_model = fields.indexttsModel.trim() || null
+      payload.indextts_ref_audio = fields.indexttsRefAudio.trim() || null
+      payload.indextts_ref_text = fields.indexttsRefText.trim() || null
+    }
+    return payload
+  }
+
   const handleSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setSaving(true)
     try {
-      const payload: Parameters<typeof updateTtsConfig>[0] = { provider }
-      if (provider === 'edge') {
-        payload.edge_voice = fields.edgeVoice.trim() || null
-      } else if (provider === 'openai') {
-        if (fields.openaiApiKey) payload.openai_api_key = fields.openaiApiKey
-        payload.openai_base_url = fields.openaiBaseUrl.trim() || null
-        payload.openai_model = fields.openaiModel.trim() || null
-        payload.openai_voice = fields.openaiVoice.trim() || null
-      } else if (provider === 'doubao') {
-        if (fields.doubaoApiKey) payload.doubao_api_key = fields.doubaoApiKey
-        if (fields.doubaoToken) payload.doubao_token = fields.doubaoToken
-        payload.doubao_app_id = fields.doubaoAppId.trim() || null
-        payload.doubao_voice = fields.doubaoVoice.trim() || null
-        payload.doubao_resource_id = fields.doubaoResourceId.trim() || null
-      } else if (provider === 'local') {
-        payload.local_voice = fields.localVoice.trim() || null
-        payload.ffmpeg_bin = fields.ffmpegBin.trim() || null
-      } else if (provider === 'indextts') {
-        payload.indextts_base_url = fields.indexttsBaseUrl.trim() || null
-        payload.indextts_model = fields.indexttsModel.trim() || null
-        payload.indextts_ref_audio = fields.indexttsRefAudio.trim() || null
-        payload.indextts_ref_text = fields.indexttsRefText.trim() || null
-      }
+      const payload = buildPayload()
       await updateTtsConfig(payload)
       toast('保存成功', 'success')
       // 清空 key 输入
@@ -129,7 +141,9 @@ export function TtsSettings() {
     setTesting(true)
     setTestResult(null)
     try {
-      const result = await testTts()
+      // 用 buildPayload() —— 与保存发同一份内容。原先 testTts() 不带参，
+      // 后端拿已保存配置去测，表单里刚填的错值能测出绿灯（2026-10 修）。
+      const result = await testTts(buildPayload())
       setTestResult(result)
       // CP-TTS-TEST-ERR：按 error_kind 给具体引导 toast（不再只说"失败"两字）
       const t = toastForTtsTestResult(result)

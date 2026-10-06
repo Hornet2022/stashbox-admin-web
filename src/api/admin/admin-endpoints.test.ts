@@ -235,9 +235,17 @@ describe('LLM 端点', () => {
     })
   })
 
-  it('testLlm → GET /admin/llm/test（回归：拆分时曾误用 POST）', async () => {
-    await testLlm()
-    expect(mockedGet).toHaveBeenCalledWith('/api/v1/admin/llm/test')
+  // 2026-10：这条断言本身就是那个静默失败的一部分 —— 它把「不传参」当成了
+  // 正确行为锁住，于是 testLlm() 一直拿不到表单值，后端一直测已保存配置。
+  it('testLlm → POST /admin/llm/test 并携带**表单配置**', async () => {
+    const cfg = {
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      api_key: 'sk-form-value',
+      base_url: 'https://example.invalid/v1',
+    }
+    await testLlm(cfg)
+    expect(mockedPost).toHaveBeenCalledWith('/api/v1/admin/llm/test', cfg)
   })
 })
 
@@ -261,9 +269,11 @@ describe('TTS 端点', () => {
     expect(mockedPut).toHaveBeenCalledWith('/api/v1/admin/tts/config', payload)
   })
 
-  it('testTts → GET /admin/tts/test（回归：拆分时曾误用 POST）', async () => {
-    await testTts()
-    expect(mockedGet).toHaveBeenCalledWith('/api/v1/admin/tts/test')
+  // 2026-10：与 testLlm 同因 —— 原用例断言 GET 且不传参，等于把 bug 写进了契约
+  it('testTts → POST /admin/tts/test 并携带**表单配置**', async () => {
+    const cfg = { provider: 'openai', openai_base_url: 'https://example.invalid/v1' }
+    await testTts(cfg)
+    expect(mockedPost).toHaveBeenCalledWith('/api/v1/admin/tts/test', cfg)
   })
 })
 

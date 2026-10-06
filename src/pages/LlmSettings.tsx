@@ -156,7 +156,16 @@ export function LlmSettings() {
     setTesting(true)
     setTestResult(null)
     try {
-      const result = await testLlm()
+      // 传**表单当前值**而不是让它去测已保存配置 —— 2026-10 修的静默失败：
+      // 以前 testLlm() 不带参，后端 reload() 取的是旧配置，填错的 base_url
+      // 也能测出绿灯，保存后才在生产推理时炸。
+      const result = await testLlm({
+        provider,
+        model: model.trim(),
+        // key 不填 = 沿用已保存的那把（后端合并语义：空/不传不动已存 key）
+        ...(apiKey ? { api_key: apiKey } : { api_key: '' }),
+        ...(baseUrl.trim() ? { base_url: baseUrl.trim() } : { base_url: null }),
+      })
       setTestResult(result)
       const t = toastForTestResult(result)
       toast(t.message, t.kind)

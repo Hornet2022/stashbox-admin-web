@@ -22,8 +22,14 @@ export async function updateTtsConfig(
   return (data as { data?: TtsConfig }).data ?? (data as TtsConfig)
 }
 
-export async function testTts(): Promise<TtsTestResult> {
-  // 网关注册的是 GET /api/v1/admin/tts/test（非 POST，2026-09-24 回归修正）
-  const { data } = await apiClient.get('/api/v1/admin/tts/test')
+/**
+ * 测试**传入的**这份 TTS 配置能否合成（不落库）。
+ *
+ * 2026-10 修：与 llm.ts 的 testLlm 同一个静默失败 —— 原实现不传参，
+ * 后端 `admin_tts_test` 走 `tts_reload()` 取的是**已保存**配置，表单里刚填的
+ * 错值能测出绿灯。请求体形状与 PUT /admin/tts/config 一致（复用其合并语义）。
+ */
+export async function testTts(config: Record<string, unknown>): Promise<TtsTestResult> {
+  const { data } = await apiClient.post('/api/v1/admin/tts/test', config)
   return (data as { data?: TtsTestResult }).data ?? (data as TtsTestResult)
 }
