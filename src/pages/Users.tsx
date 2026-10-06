@@ -5,11 +5,13 @@ import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
 import { hasPermission, useRole } from '../hooks/useRole'
 import { toast } from '../store/toast'
-import { ErrorNotice } from '../components/ui'
+import { ErrorNotice, buttonGhostClass, footerCountClass } from '../components/ui'
 import { UsersToolbar } from './users/UsersToolbar'
 import { UsersTable } from './users/UsersTable'
 import { QuotaAdjustModal } from './users/QuotaAdjustModal'
 import type { UserRow } from '../types'
+
+const PAGE_SIZE = 50
 
 
 /** CSV 导出：fetch + blob，留在应用内并给出成功/失败反馈。
@@ -61,19 +63,30 @@ export function Users() {
   const [tier, setTier] = useState('')
   const [status, setStatus] = useState('')
   const [appliedKeyword, setAppliedKeyword] = useState('')
+  const [page, setPage] = useState(1)
 
-  const queryKey = `${appliedKeyword}|${tier}|${status}`
+  const queryKey = `${appliedKeyword}|${tier}|${status}|${page}`
   const { data, loading, error, missing, reload } = useApi(
     () =>
       listUsers({
         keyword: appliedKeyword || undefined,
         tier: tier || undefined,
         status: status || undefined,
-        page: 1,
-        size: 50,
+        page,
+        size: PAGE_SIZE,
       }),
     queryKey,
   )
+
+  // 后端 admin_list_users 收的是 1-based page/size（默认 1/20），这里一直传
+  // page:1 写死，于是第 50 条之后的用户运营根本看不到 —— 页脚却照常显示
+  // 真实 total。筛选变化时回第 1 页。
+  useEffect(() => {
+    setPage(1)
+  }, [appliedKeyword, tier, status])
+
+  const total = data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   // —— 配额调整 Modal ——
   const [target, setTarget] = useState<UserRow | null>(null)
@@ -164,6 +177,35 @@ export function Users() {
         hasError={!!error}
         onAdjust={openQuotaModal}
       />
+
+      {/* 分页：此前写死 page:1，第 50 条之后的用户不可达，而页脚显示真实 total */}
+      {total > PAGE_SIZE && (
+        <div className={`${footerCountClass} flex items-center justify-between`}>
+          <span>
+            共 {total} 条 · 第 {page} / {totalPages} 页
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className={buttonGhostClass}
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page <= 1}
+              aria-label="上一页"
+            >
+              上一页
+            </button>
+            <button
+              type="button"
+              className={buttonGhostClass}
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              disabled={page >= totalPages}
+              aria-label="下一页"
+            >
+              下一页
+            </button>
+          </div>
+        </div>
+      )}
 
       <QuotaAdjustModal
         target={target}

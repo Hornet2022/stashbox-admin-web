@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import {
   createArticle,
   deleteAdminArticle,
@@ -12,13 +12,15 @@ import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
 import { useRole, hasPermission } from '../hooks/useRole'
 import { toast } from '../store/toast'
-import { ErrorNotice } from '../components/ui'
+import { ErrorNotice, buttonGhostClass, footerCountClass } from '../components/ui'
 import { ArticlesToolbar } from './articles/ArticlesToolbar'
 import { ArticlesTable } from './articles/ArticlesTable'
 import { ArticleActionModal } from './articles/ArticleActionModal'
 import { CreateArticleDrawer } from './articles/CreateArticleDrawer'
 import type { ActionKind } from './articles/constants'
 import type { ArticleRow } from '../types'
+
+const PAGE_SIZE = 50
 
 
 /** CSV 导出：fetch + blob，留在应用内并给出成功/失败反馈。
@@ -57,18 +59,27 @@ export function Articles() {
   const [status, setStatus] = useState('')
   const [tag, setTag] = useState('')
   const [appliedTag, setAppliedTag] = useState('')
+  const [page, setPage] = useState(0)
 
-  const queryKey = `${status}|${appliedTag}`
+  const queryKey = `${status}|${appliedTag}|${page}`
   const { data, loading, error, missing, reload } = useApi(
     () =>
       listArticles({
         status: status || undefined,
         tag: appliedTag || undefined,
-        page: 1,
-        size: 50,
+        limit: PAGE_SIZE,
+        offset: page * PAGE_SIZE,
       }),
     queryKey,
   )
+
+  // 筛选变了就回第一页 —— 停在第 5 页看第一页的筛选结果只会让人以为没数据
+  useEffect(() => {
+    setPage(0)
+  }, [status, appliedTag])
+
+  const total = data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   // —— 危险操作 Modal ——
   const [action, setAction] = useState<ActionKind | null>(null)
@@ -123,8 +134,17 @@ export function Articles() {
   const handleSubmitAction = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!action || !target) return
-    if (!reason.trim()) {
+    const trimmedReason = reason.trim()
+    // 三个动作（force-retry / invalidate / delete）后端统一要求 reason ≥5 字符
+    // （admin_router.py:244 / 300 / 351）。原先这里只拦「非空」，把 <5 的检查
+    // 只挂在 delete 上，于是重试/失效填两个字会被后端 400 打回 —— 前后端口径不一致，
+    // 运营看到的是一次莫名其妙的失败。Users.tsx / Tags.tsx 早已按 ≥5 校验。
+    if (!trimmedReason) {
       setModalError('请填写操作原因（会写入审计日志）')
+      return
+    }
+    if (trimmedReason.length < 5) {
+      setModalError(`操作原因至少 5 个字符（写入审计日志），当前 ${trimmedReason.length} 个`)
       return
     }
 
@@ -132,19 +152,16 @@ export function Articles() {
     setModalError(null)
     try {
       if (action === 'retry') {
-        await forceRetryArticle(target.id, reason.trim())
+        await forceRetryArticle(target.id, trimmedReason)
         toast(`已提交强制重试 · 文章 ${target.id}`, 'success')
       } else if (action === 'delete') {
-        if (reason.trim().length < 5) {
-          throw new Error('删除原因至少 5 个字符（写入审计日志）')
-        }
-        await deleteAdminArticle(target.id, reason.trim())
+        await deleteAdminArticle(target.id, trimmedReason)
         toast(`已删除文章 ${target.id}（蒸馏结果与音频已一并清理）`, 'success')
       } else {
         if (target.audio_id === undefined || target.audio_id === null) {
           throw new Error('该文章没有关联音频，无法失效')
         }
-        await invalidateAudio(target.audio_id, reason.trim())
+        await invalidateAudio(target.audio_id, trimmedReason)
         toast(`已失效音频 · 文章 ${target.id}`, 'success')
       }
       closeActionModal()
@@ -231,6 +248,36 @@ export function Articles() {
         canOperate={canOperate}
         onAction={openActionModal}
       />
+
+      {/* 分页：后端收 limit/offset，之前发 page/size 被静默丢弃，导致
+          这里永远只有第一页 50 条，而页脚照常打印真实 total。 */}
+      {total > PAGE_SIZE && (
+        <div className={`${footerCountClass} flex items-center justify-between`}>
+          <span>
+            共 {total} 条 · 第 {page + 1} / {totalPages} 页
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className={buttonGhostClass}
+              onClick={() => setPage(Math.max(0, page - 1))}
+              disabled={page === 0}
+              aria-label="上一页"
+            >
+              上一页
+            </button>
+            <button
+              type="button"
+              className={buttonGhostClass}
+              onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+              disabled={page >= totalPages - 1}
+              aria-label="下一页"
+            >
+              下一页
+            </button>
+          </div>
+        </div>
+      )}
 
       <ArticleActionModal
         action={action}

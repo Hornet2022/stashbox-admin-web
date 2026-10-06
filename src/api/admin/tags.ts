@@ -8,11 +8,11 @@ import type { TagRow } from '../../types'
  * CP-NEW.15：从老 api/admin.ts 拆出。
  */
 
-export async function listTags(params: {
-  page?: number
-  size?: number
-} = {}): Promise<ListResult<TagRow>> {
-  const { data } = await apiClient.get('/api/v1/admin/tags', { params })
+export async function listTags(): Promise<ListResult<TagRow>> {
+  // 不接受分页参数：后端 admin_list_tags 签名里只有 user/db，没有任何 query
+  // 参数，一次性返回全部。原签名收 page/size，但后端会静默丢弃，调用方
+  // （Tags.tsx）也从没传过 —— 是个纯装饰性的假接口，已删掉以免误导下一个人。
+  const { data } = await apiClient.get('/api/v1/admin/tags')
   return normalizeList<TagRow>(data)
 }
 

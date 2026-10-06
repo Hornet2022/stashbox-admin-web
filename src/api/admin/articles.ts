@@ -12,11 +12,16 @@ import type { ArticleRow } from '../../types'
  */
 
 export async function listArticles(params: {
+  limit?: number
+  offset?: number
   status?: string
   tag?: string
-  page?: number
-  size?: number
 } = {}): Promise<ListResult<ArticleRow>> {
+  // 参数名必须是 limit/offset —— 后端 admin_list_articles 的签名就是这两个。
+  // 原先这里发 page/size，而 FastAPI 会**静默丢弃**未知 query 参数：
+  // 结果永远返回第一页，页脚却照常打印真实 total（"共 312 条"只给 50 条），
+  // 看起来一切正常。scripts/check-endpoint-contract.py 现在会比对参数名，
+  // 这类漂移会被拦在提交前。
   const { data } = await apiClient.get('/api/v1/admin/articles', { params })
   return normalizeList<ArticleRow>(data)
 }

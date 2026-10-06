@@ -89,9 +89,11 @@ describe('users 端点', () => {
 
 describe('articles 端点', () => {
   it('listArticles → GET /admin/articles（回归：拆分时曾丢 /admin 段）', async () => {
-    await listArticles({ status: 'failed', tag: 'tech', page: 1, size: 50 })
+    // 参数名必须与后端 admin_list_articles 签名一致（limit/offset）。
+    // 原用例断言 page/size，把「前端发了后端不认的参数」当成了正确行为固化下来。
+    await listArticles({ status: 'failed', tag: 'tech', limit: 50, offset: 0 })
     expect(mockedGet).toHaveBeenCalledWith('/api/v1/admin/articles', {
-      params: { status: 'failed', tag: 'tech', page: 1, size: 50 },
+      params: { status: 'failed', tag: 'tech', limit: 50, offset: 0 },
     })
   })
 
@@ -129,11 +131,10 @@ describe('articles 端点', () => {
 })
 
 describe('tags 端点', () => {
-  it('listTags → GET /admin/tags', async () => {
-    await listTags({ page: 1, size: 50 })
-    expect(mockedGet).toHaveBeenCalledWith('/api/v1/admin/tags', {
-      params: { page: 1, size: 50 },
-    })
+  it('listTags → GET /admin/tags（不带 query 参数）', async () => {
+    // 后端 admin_list_tags 不接受任何 query 参数，发 page/size 会被静默丢弃
+    await listTags()
+    expect(mockedGet).toHaveBeenCalledWith('/api/v1/admin/tags')
   })
 
   // slug 是后端必填（TagCreateRequest: slug/name/category），之前这个用例断言的
