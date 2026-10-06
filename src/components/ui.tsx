@@ -317,7 +317,7 @@ export function Badge({
 
 /* ─────────────────────────────────────────────────────────
    CP-NEW.1 听感运营重构 —— 新增 UI 组件
-   听匣 Design System：安静 / 留白 / 工具感（沿用 warm-gray 系列 + .t-tabs motion token）
+   听匣 Design System：安静 / 留白 / 工具感（沿用 neutral 系列 + .t-tabs motion token）
 ───────────────────────────────────────────────────────── */
 
 /* ── SlidingTabs ─────────────────────────────────────────────── */

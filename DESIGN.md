@@ -21,12 +21,18 @@
 | `ink` | `#1A1A1A` | 主文字、主色调 |
 | `cream` | `#F5F2EB` | 浅色背景 |
 | `warm-ochre` | `#A67B5B` | 主高亮（替代 SaaS 蓝） |
-| `warm-gray-100` | `#F5F2EB` | 浅色表面 |
-| `warm-gray-200` | `#E8E4DD` | 边框线 |
-| `warm-gray-300` | `#D4CFC6` | 禁用态/次要边框 |
-| `warm-gray-500` | `#8C8680` | 次要文字 |
-| `warm-gray-700` | `#4A4642` | 主文字（暗色） |
-| `warm-gray-900` | `#1A1A1A` | 主文字（亮色） |
+| `neutral-50` | `#F5F2EB` | 浅色表面 |
+| `neutral-100` | `#E8E4DD` | 边框线 |
+| `neutral-200` | `#D4CFC6` | 禁用态/次要边框 |
+| `neutral-400` | `#8C8680` | 次要文字 |
+| `neutral-600` | `#4A4642` | 主文字（暗色） |
+| `ink` | `#1A1A1A` | 主文字（亮色） |
+
+> **2026-10 更正**：本表原先写作 `warm-gray-100/200/300/500/700/900`，但
+> `tailwind.config.js` 里从来就没有 `warm-gray-*` 这个家族 —— 实现用的是
+> `neutral-*`，且色值与上表逐条对应（只是整体错位一格，属改名时的遗留）。
+> 照着旧表写 `bg-warm-gray-200` 不会报错，Tailwind 只是**静默丢弃**这个类，
+> 结果是一个完全没样式的元素。色值本身以 `tailwind.config.js` 为准。
 
 ### 语义色
 
@@ -98,7 +104,7 @@ shadow-md:  0 2px 6px rgba(0,0,0,0.06)
 4. **无卡片嵌套卡片** — 最多一层嵌套
 5. **少动效** — 只保留 tabs sliding / success check / error shake
 6. **留白多** — padding 至少 16px，内容之间至少 12px gap
-7. **弱对比** — 边框用 warm-gray-200，不是 gray-200
+7. **弱对比** — 边框用 `neutral-100`，不是 `gray-200`
 
 ## 反模式清单
 
