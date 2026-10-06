@@ -132,11 +132,6 @@ export function Tags() {
   }
 
   const handleExportTags = () => runExport('tags', '标签')
-  const handleExportSubscriptions = () => {
-    if (!window.confirm('将导出全量订阅用户，确认？')) return
-    return runExport('subscriptions', '订阅用户')
-  }
-
   const handleCreate = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!name.trim()) {
@@ -184,9 +179,6 @@ export function Tags() {
         <div className="flex gap-2">
           <button type="button" className={buttonGhostClass} onClick={handleExportTags}>
             导出 CSV
-          </button>
-          <button type="button" className={buttonGhostClass} onClick={handleExportSubscriptions}>
-            导出订阅
           </button>
           {canOperate && (
             <button

@@ -287,8 +287,11 @@ describe('CSV 导出', () => {
     expect(url).toContain('/export/users.csv')
   })
 
-  it('exportCsvUrl 支持 6 种 ExportKind', () => {
-    for (const kind of ['users', 'articles', 'tags', 'audit-log', 'feedback', 'subscriptions'] as const) {
+  // 2026-10：原为 6 种，含 subscriptions。后者对应的后端表从未落地
+  // （无 ORM / 无 migration），导出恒为「只有表头、零行」，而按钮 toast 还报成功 ——
+  // 运营会以为「0 个订阅用户」是真的。已随按钮一并移除。
+  it('exportCsvUrl 支持 5 种 ExportKind', () => {
+    for (const kind of ['users', 'articles', 'tags', 'audit-log', 'feedback'] as const) {
       const url = exportCsvUrl(kind)
       expect(url).toContain(`/export/${kind}.csv`)
     }

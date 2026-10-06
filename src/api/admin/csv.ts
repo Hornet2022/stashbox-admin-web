@@ -19,7 +19,6 @@ export type ExportKind =
   | 'tags'
   | 'audit-log'
   | 'feedback'
-  | 'subscriptions'
 
 const KIND_LABEL: Record<ExportKind, string> = {
   users: '用户',
@@ -27,7 +26,6 @@ const KIND_LABEL: Record<ExportKind, string> = {
   tags: '标签',
   'audit-log': '审计日志',
   feedback: '用户反馈',
-  subscriptions: '标签订阅',
 }
 
 export function exportCsvUrl(kind: ExportKind): string {
