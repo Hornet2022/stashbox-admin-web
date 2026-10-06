@@ -27,6 +27,7 @@ import {
   inputClass,
   pageHintClass,
   pageTitleClass,
+  ReasonDialog,
   rowClass,
   tableWrapClass,
   thClass,
@@ -240,11 +241,11 @@ export function VoiceLibrary() {
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = async (reason: string) => {
     if (!deleteTarget) return
     setDeleteSubmitting(true)
     try {
-      await deleteVoice(deleteTarget.id)
+      await deleteVoice(deleteTarget.id, reason)
       toast(`已删除音色「${deleteTarget.display_name}」`, 'success')
       setDeleteTarget(null)
       setDeleteSubmitting(false)
@@ -563,43 +564,23 @@ export function VoiceLibrary() {
         </form>
       </Modal>
 
-      <Modal
+      {/* 破坏性操作统一走 ReasonDialog：强制 ≥5 字符并写入审计日志。
+          原先是一个不带原因的确认框 —— 后端也不收 reason，删掉默认音色后
+          审计日志里查不到是谁删的、为什么删。 */}
+      <ReasonDialog
         open={!!deleteTarget}
         title="删除音色"
+        description={[
+          `确认删除音色「${deleteTarget?.display_name}」？`,
+          '删除是软删。已选这个音色的用户会自动回落全局默认音色；已生成的音频不受影响（只是失去溯源信息）。',
+          ...(deleteTarget?.is_default
+            ? ['注意：这是当前的默认音色，删除后用户会回落到全局 TTS 配置的参考音频。']
+            : []),
+        ].join('\n')}
+        submitting={deleteSubmitting}
         onClose={() => setDeleteTarget(null)}
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-neutral-600 dark:text-neutral-300">
-            确认删除音色「{deleteTarget?.display_name}」？
-          </p>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            删除是软删。已选这个音色的用户会自动回落全局默认音色；
-            已生成的音频不受影响（只是失去溯源信息）。
-          </p>
-          {deleteTarget?.is_default && (
-            <p className="text-sm text-warning-ink dark:text-[#E8CFAE]">
-              注意：这是当前的默认音色，删除后用户会回落到全局 TTS 配置的参考音频。
-            </p>
-          )}
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              className={buttonGhostClass}
-              onClick={() => setDeleteTarget(null)}
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              className={buttonPrimaryClass}
-              onClick={handleDelete}
-              disabled={deleteSubmitting}
-            >
-              {deleteSubmitting ? '删除中…' : '确认删除'}
-            </button>
-          </div>
-        </div>
-      </Modal>
+        onConfirm={handleDelete}
+      />
     </div>
   )
 }

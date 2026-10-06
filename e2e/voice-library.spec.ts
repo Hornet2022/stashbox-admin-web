@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures'
+import { test, expect, canWrite } from './fixtures'
 import { GATEWAY } from './gateway'
 
 /**
@@ -33,17 +33,6 @@ const apiPost = async (page: import('@playwright/test').Page, path: string, data
   page.request.post(`${GATEWAY}${path}`, { data, headers: await authHeaders(page) })
 const apiDelete = async (page: import('@playwright/test').Page, path: string) =>
   page.request.delete(`${GATEWAY}${path}`, { headers: await authHeaders(page) })
-
-/**
- * 写权限判定必须**与前端 hasPermission 一致**。
- * `src/hooks/useRole.ts:16` 里 `role === 'admin'` 会被当作 super_admin 处理，
- * 所以本机 admin 账号（后端 role='admin'）是**有**写权限的。
- * 只判 `super_admin/operator` 会把这类账号整片 skip 掉 —— 既有的
- * tags.spec.ts 用的就是后一种写法，它对 admin 账号走的是 else 分支
- * 断言「按钮不可见」，而实际可见，属于假绿。
- */
-const canWrite = (role: string) =>
-  role === 'admin' || role === 'super_admin' || role === 'operator'
 
 /**
  * 音色库页（CP-TTS-VOICE）—— 真实打 api-gateway@8100，真实登录。
@@ -206,7 +195,13 @@ test.describe('音色库', () => {
       const row = authedPage.getByRole('row', { name: new RegExp(NAME(n)) })
       await row.getByRole('button', { name: '删除' }).click()
       await expect(authedPage.getByRole('heading', { name: '删除音色' })).toBeVisible()
-      await authedPage.getByRole('button', { name: '确认删除' }).click()
+      // 删除改走 ReasonDialog：必须填 ≥5 字符的删除原因，否则确认按钮保持禁用
+      // （原因会写进 admin_operation_logs，审计要能回答"谁删的、为什么删"）
+      const confirmBtn = authedPage.getByRole('button', { name: '确认' })
+      await expect(confirmBtn).toBeDisabled()
+      await authedPage.getByLabel('操作原因').fill('e2e 清理测试音色')
+      await expect(confirmBtn).toBeEnabled()
+      await confirmBtn.click()
 
       await expect(
         authedPage.getByRole('cell', { name: NAME(n) }),

@@ -48,8 +48,11 @@ export async function updateVoice(
   return unwrap<VoiceRow>(data)
 }
 
-export async function deleteVoice(voiceId: string): Promise<void> {
-  await apiClient.delete(`/api/v1/admin/tts/voices/${voiceId}`)
+export async function deleteVoice(voiceId: string, reason: string): Promise<void> {
+  // 删除音色会写审计日志（后端 admin_operation_logs，action=delete_voice）。
+  // 原先这里是无 body 的 DELETE —— 删掉默认音色会让全平台静默降级，
+  // 而审计日志里查不到是谁删的、为什么删。
+  await apiClient.delete(`/api/v1/admin/tts/voices/${voiceId}`, { data: { reason } })
 }
 
 /**
