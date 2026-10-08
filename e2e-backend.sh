@@ -26,12 +26,14 @@
 # 是为了不和本机的 :8000/:8008/:8010/:8011（embedding/tts/rerank）撞。
 #
 # 用法：
-#   bash e2e-backend.sh up       # 起（已起则跳过）+ 隔离自检
-#   bash e2e-backend.sh down     # 停
+#   bash e2e-backend.sh up       # 起（已起则跳过）+ 隔离自检；含蒸馏 worker
+#   bash e2e-backend.sh down     # 停（含 worker；生产 8100-8104 与生产 worker 不受影响）
 #   bash e2e-backend.sh reset    # 删库重建（用例之间要干净起点时用）
 #   bash e2e-backend.sh status
 #   bash e2e-backend.sh ensure   # e2e 前置检查，不在就拉起
 #   bash e2e-backend.sh verify   # 只跑隔离自检
+#   bash e2e-backend.sh worker status  # 只看 worker（会同时报出生产 worker 在不在）
+#   bash e2e-backend.sh worker down    # 只停 worker
 set -uo pipefail
 
 BACKEND=/Users/hornet/work/stashbox/backend
@@ -178,6 +180,125 @@ wait_ready() {
   return 1
 }
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Arq worker（蒸馏队列消费者）
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# 为什么必须有它：原来这个脚本只起 4 个 HTTP 服务，**不起 worker**。于是
+# 蒸馏任务即使成功入队也没人消费，文章永远停在 distilling —— 症状和
+# 「入队失败」几乎一样，极难分辨。
+#
+# 为什么必须按环境变量识别、不能按进程名：
+# `pkill -f "arq worker.WorkerSettings"` 会把**生产** worker 一起杀掉 ——
+# 本机和生产跑的是同一个命令串（只有环境不同）。这个坑踩过一次：重启隔离
+# worker 时顺手 pkill 了生产 worker，生产蒸馏停了十几分钟。生产环境未必
+# 有任务在跑（那次恰好没有），但下一次就未必。
+#
+# 所以下面所有"找出隔离 worker"的逻辑，都要求**环境里带 REDIS_URL 且指向
+# db ${E2E_REDIS_DB}** 这个独有标记；裸的进程名匹配一律不用。
+WORKER_PID_FILE="${RUN_DIR}/worker.pid"
+# `import stashbox.backend.*` 要的是**仓库的父目录**（.../work），不是仓库根 ——
+# 少退一层就会得到 .../work/stashbox，于是 ModuleNotFoundError: No module named
+# 'stashbox'。BACKEND=<repo>/backend，所以要退两层。
+WORKER_PKG_PARENT="$(dirname "$(dirname "${BACKEND}")")"
+
+# 隔离 worker 的独有环境标记（e2e 与生产的 REDIS_URL 不同）。
+worker_env_marker() { echo "REDIS_URL=redis://localhost:6379/${E2E_REDIS_DB}"; }
+
+# 列出**仅** e2e 自己的 worker pid；生产 worker 不匹配，绝不会被返回。
+find_isolated_workers() {
+  local pid marker
+  marker="$(worker_env_marker)"
+  for pid in $(pgrep -f "arq worker.WorkerSettings" 2>/dev/null); do
+    if ps eww -p "${pid}" 2>/dev/null | tr ' ' '\n' | grep -qx -- "${marker}"; then
+      echo "${pid}"
+    fi
+  done
+}
+
+# 优先用 pid 文件（最精确）；没有就退回按环境标记扫描，清掉孤儿进程。
+# 找不到时返回非 0 —— 调用方（status / up）要用退出码判断，别拿到空串当 pid 用。
+worker_pid() {
+  local pid found
+  if [[ -f "${WORKER_PID_FILE}" ]]; then
+    pid="$(cat "${WORKER_PID_FILE}" 2>/dev/null)"
+    if [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null \
+       && ps eww -p "${pid}" 2>/dev/null | tr ' ' '\n' | grep -qx -- "$(worker_env_marker)"; then
+      echo "${pid}"; return 0
+    fi
+    rm -f "${WORKER_PID_FILE}"
+  fi
+  found="$(find_isolated_workers | head -1)"
+  [[ -n "${found}" ]] || return 1
+  echo "${found}"
+}
+
+cmd_worker_up() {
+  local pid
+  if pid="$(worker_pid)"; then
+    echo "• e2e arq worker 已在跑 (pid=${pid}，db=${E2E_DB} redis=${E2E_REDIS_DB})"
+    return 0
+  fi
+  echo "▶ 起 e2e arq worker（db=${E2E_DB} redis=${E2E_REDIS_DB}）"
+  # PYTHONPATH 要同时含仓库**父目录**与 ai-service 目录：前者让 `stashbox.*`
+  # 绝对导入可用，后者让顶层模块（dispatcher / worker / tasks）可导入。
+  ( cd "${BACKEND}" && \
+    export "${ISO_ENV[@]}" && \
+    export PYTHONPATH="${WORKER_PKG_PARENT}:${BACKEND}/ai-service" && \
+    spawn_detached "${RUN_DIR}/worker.out" \
+      "${PY}" -u -m arq worker.WorkerSettings )
+  sleep 2
+  if pid="$(worker_pid)"; then
+    echo "${pid}" > "${WORKER_PID_FILE}"
+    echo "  worker pid=${pid} → 日志 ${RUN_DIR}/worker.out"
+  else
+    echo "✗ worker 没起来，看 ${RUN_DIR}/worker.out"
+    return 1
+  fi
+}
+
+cmd_worker_down() {
+  local pid found
+  found="$(find_isolated_workers)"
+  if [[ -z "${found}" && ! -f "${WORKER_PID_FILE}" ]]; then
+    echo "• e2e arq worker 未在跑（生产 worker 未受影响）"
+    rm -f "${WORKER_PID_FILE}"
+    return 0
+  fi
+  # pid 文件里的那个也要停（即使它已不在环境扫描结果里）
+  if [[ -f "${WORKER_PID_FILE}" ]]; then
+    pid="$(cat "${WORKER_PID_FILE}" 2>/dev/null)"
+    [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null && found="${found}"$'\n'"${pid}"
+  fi
+  for pid in $(echo "${found}" | sort -u); do
+    # 二次确认：命令行仍像 arq worker 才动手。pid 会被系统回收复用，
+    # 光凭 pid 文件就 kill 有可能打到后来占了这个 pid 的无关进程。
+    if ps -p "${pid}" -o command= 2>/dev/null | grep -q "arq worker.WorkerSettings"; then
+      kill "${pid}" 2>/dev/null && echo "  停 e2e arq worker (pid=${pid})"
+    fi
+  done
+  sleep 1
+  rm -f "${WORKER_PID_FILE}"
+  echo "• 已停（生产 arq worker 不受影响）"
+}
+
+cmd_worker_status() {
+  local pid
+  if pid="$(worker_pid)"; then
+    echo "e2e arq worker: 在跑 (pid=${pid}，db=${E2E_DB} redis=${E2E_REDIS_DB})"
+  else
+    echo "e2e arq worker: 未在跑"
+  fi
+  # 顺带报一下**生产** worker 的存在，让"少了一个"能一眼看出来 ——
+  # 但绝不碰它。
+  local ppid
+  for ppid in $(pgrep -f "arq worker.WorkerSettings" 2>/dev/null); do
+    if ! ps eww -p "${ppid}" 2>/dev/null | tr ' ' '\n' | grep -qx -- "$(worker_env_marker)"; then
+      echo "生产 arq worker: 在跑 (pid=${ppid})"
+    fi
+  done
+}
+
 ensure_db() {
   if [[ "$(psql_base postgres "SELECT 1 FROM pg_database WHERE datname='${E2E_DB}'")" != "1" ]]; then
     echo "▶ 建库 ${E2E_DB}"
@@ -317,6 +438,9 @@ cmd_up() {
   start_svc api-gateway     "${GW_PORT}"      "${BACKEND}"           "api-gateway.main:app"
   wait_ready "${USER_PORT}" "${CONTENT_PORT}" "${AI_PORT}" "${GW_PORT}" || return 1
   echo "  e2e 后端就绪: http://127.0.0.1:${GW_PORT}"
+  # worker 跟着一起起：蒸馏任务入队后没人消费的话，文章会永远停在
+  # distilling，而症状和"入队失败"几乎一样 —— 排查成本极高。
+  cmd_worker_up || { echo "✗ worker 没起来，蒸馏链路不可用"; return 1; }
   verify_isolation
 }
 
@@ -344,6 +468,7 @@ cmd_down() {
     [[ -n "${pid}" ]] && { kill "${pid}" 2>/dev/null; echo "  停 :${p} (pid=${pid})"; }
   done
   sleep 2
+  cmd_worker_down
   echo "• 已停（生产 8100-8104 不受影响）"
 }
 
@@ -372,5 +497,13 @@ case "${1:-up}" in
   reset)  cmd_reset ;;
   status) cmd_status ;;
   verify) verify_isolation ;;
-  *) echo "用法: $0 {up|down|reset|status|ensure|verify}"; exit 2 ;;
+  worker)
+    case "${2:-status}" in
+      up)     cmd_worker_up ;;
+      down)   cmd_worker_down ;;
+      status) cmd_worker_status ;;
+      *) echo "用法: $0 worker {up|down|status}"; exit 2 ;;
+    esac
+    ;;
+  *) echo "用法: $0 {up|down|reset|status|ensure|verify|worker up|down|status}"; exit 2 ;;
 esac
