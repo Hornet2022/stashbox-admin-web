@@ -50,11 +50,44 @@ mkdir -p "${RUN_DIR}" "${RUN_DIR}/audio"
 ISO_ENV=(
   "POSTGRES_DB=${E2E_DB}"
   "REDIS_DB=${E2E_REDIS_DB}"
+  # ⚠️ REDIS_URL 必须显式给，而且**不能省**。
+  #
+  # 两个子系统读 redis 配置的方式不一样，只有这里两个都对才谈得上隔离：
+  #   · 应用服务（user/content/ai/gateway）读 common/config.py，
+  #     由 REDIS_HOST / REDIS_PORT / REDIS_DB / REDIS_PASSWORD **拼装** redis_url，
+  #     不读 REDIS_URL（extra="ignore"）；
+  #   · Arq 队列（dispatcher.enqueue_job 与 worker.WorkerSettings）走
+  #     ai-service/arq_settings.py 的 load_arq_config()，**只读 REDIS_URL**，
+  #     不读 REDIS_DB —— 缺省硬编码 `redis://localhost:6379/0`。
+  #
+  # 所以只设 REDIS_DB=14 的结果是：服务读写 db 14，蒸馏任务却入队到 **db 0**，
+  # 也就是生产的队列；而 e2e 库里 distilled_articles 永远停在 queued/pending。
+  # 实测症状：POST /api/v1/distill/start 返回 200，但 **`job_id` 是空字符串**
+  # （入队没发生），随后 /api/v1/distill/{id} 一直 pending 到超时。
+  #
+  # 这正是本文件顶部记的那类事故的同一形状（上游没全指到 e2e 实例），
+  # 只是这次漏的是队列而不是 HTTP 上游。
+  "REDIS_URL=redis://localhost:6379/${E2E_REDIS_DB}"
   "PYTHONPATH=/Users/hornet/work"
   "USER_SERVICE_URL=http://127.0.0.1:${USER_PORT}"
   "CONTENT_SERVICE_URL=http://127.0.0.1:${CONTENT_PORT}"
   "AI_SERVICE_URL=http://127.0.0.1:${AI_PORT}"
   "STASHBOX_ALLOW_DEV_JWT=1"
+  # 打开 POST /api/v1/auth/token（dev token 端点），跨端用例要靠它。
+  #
+  # 为什么非开不可：cross-device.spec.ts 里的 DEVICE_USER_ID 硬编码为 1，
+  # 它断言的是「后台改 user 1 → App 端立刻看到」。而 App 的登录只有
+  # wechat-login 一条路，服务端按 `wx_<code>` **查/建**用户 —— 传什么 code
+  # 都只能拿到/造出 `wx_xxx` 的新用户，**永远映射不到 user 1**
+  # （e2e 库里 user 1 的 open_id 是 seed 建的 `admin_seed`）。
+  # 结果就是：App 登录后是个陌生账号，后台改 user 1 的配额它看不见，
+  # 跨端断言必假红，且红得毫无道理。
+  #
+  # 安卓 debug 包为此专门留了「联调登录」按钮，点的就是这个端点。
+  # 双重门控的另一侧也满足：e2e 网关读 backend/.env 的 ENVIRONMENT=dev，
+  # 不是 prod（api-gateway/main.py 里 env 变量 + 非 prod 两者缺一即 403）。
+  # 这套后端只监听 127.0.0.1、只连 stashbox_e2e 库，不对外暴露。
+  "STASHBOX_ALLOW_DEV_TOKEN=1"
   # 存储必须显式钉在 local。2026-10-02 起 storage 工厂的缺省从 local 改成 oss
   # （对齐 config.py / api-gateway，原先只有这一处是 local），于是 e2e 会去连
   # **生产** SeaweedFS —— 而 voice-library.spec.ts 会真上传参考音频，
@@ -66,6 +99,23 @@ ISO_ENV=(
   # 于是 e2e 造出来的试听产物 URL 指向**生产** gateway，必然 404
   # （e2e gateway 明明挂载成功、文件也在，只是没人去它那儿取）。
   "LOCAL_STORAGE_PUBLIC_URL=http://127.0.0.1:${GW_PORT}/audio"
+  # content-service 在本地模式下会**改写** audio_url 的 host：
+  # main.py 的 _to_article_response / audio-url 端点里，只要 storage_provider=local
+  # 且原 URL 含 localhost/127.0.0.1，就换成 `PUBLIC_GATEWAY_URL` + 原 path。
+  #
+  # 这个改写本身是对的（真机的 localhost 指向设备自己，连不到宿主），但它**丢掉原 URL
+  # 的端口**。e2e 里真机是靠 `adb reverse tcp:18100 tcp:18100` 访问隔离后端的 ——
+  # 也就是说对设备而言正确的地址恰恰就是 127.0.0.1:18100。改写一旦生效，真机拿到的
+  # 就变成别的端口，连不上。
+  #
+  # 不设时的实测后果：接口返回 http://192.168.3.100:8100/audio/...（.env 里的旧值，
+  # 本机 LAN IP 早已变成 172.16.5.28），真机 ExoPlayer 报
+  # `ConnectException: Failed to connect to /192.168.3.100:8100` → Source error。
+  # 所以这里必须显式指到 e2e 网关，让改写后的结果正好等于设备可达的地址。
+  "PUBLIC_GATEWAY_URL=http://127.0.0.1:${GW_PORT}"
+  # ENABLE_LOCAL_AUDIO_MOUNT=1：让 gateway 把 /audio/* 挂到 LOCAL_AUDIO_DIR，
+  # 否则上面拼出来的 URL 取不到文件。
+  "ENABLE_LOCAL_AUDIO_MOUNT=1"
 )
 
 export PGPASSWORD="${PGPASSWORD:-stashbox_dev}"
