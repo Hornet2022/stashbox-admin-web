@@ -141,8 +141,13 @@ describe('getAuthToken / setAuthToken / clearAuthToken', () => {
 })
 
 describe('常量', () => {
-  it('API_BASE_URL 默认 localhost:8100', () => {
-    // vitest 默认无 VITE_API_BASE_URL，应回落到默认
+  it('API_BASE_URL 在 dev 下回落 localhost:8100', () => {
+    // vitest 里 import.meta.env.DEV = true，且没注入 VITE_API_BASE_URL
+    // → 落到本机网关（跨域直连，gateway 的 CORS 白名单已放行）。
+    //
+    // ⚠️ 生产构建（DEV=false）走的是**同源**（空串）——
+    //    因为备案期间后台可能挂在公网 IP 上，写死域名会被
+    //    阿里云监测系统阻断（域名未备案）。详见 client.ts 的注释。
     expect(API_BASE_URL).toBe('http://localhost:8100')
   })
 

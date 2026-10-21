@@ -23,9 +23,36 @@ export type RetryableRequestConfig = AxiosRequestConfig & {
  *
  * baseURL 走 api-gateway（本地 http://localhost:8100），
  * 可用 VITE_API_BASE_URL 覆盖。
+ *
+ * ⚠️ **生产构建默认用同源（相对路径）**，而不是写死 https://api.stashbox.cn。
+ *
+ * 原因：后台可能被部署在**不同**的入口上：
+ *   · 正式域名      https://admin.stashbox.cn
+ *   · 备案期间临时   https://<公网IP>/        （IP 直连，见 deploy/systemd/nginx.conf）
+ * 写死绝对地址时，备案期间用 IP 访问会把 API 请求打到
+ * https://api.stashbox.cn（域名还没备案 → 被阿里云监测系统阻断）→ 登录直接失败。
+ * 同源相对路径在两种入口下都成立（nginx 都配了 /api/ → 网关）。
+ *
+ * 三种场景各自的取值：
+ *   · **生产构建**（不注入 VITE_API_BASE_URL）→ 同源（''），
+ *     域名 / IP 直连都能用
+ *   · **本地 dev**（不注入）→ http://localhost:8100，
+ *     跨域直连本地网关（gateway 的 CORS 白名单已放行 localhost:5173）
+ *   · **e2e**（注入 http://127.0.0.1:18100）→ 用注入值，
+ *     preview 与 API 不同源，必须绝对地址
+ *
+ * ⚠️ 所以「不注入」和「注入了什么值」要分开处理：
+ *    之前 `?? 'http://localhost:8100'` 的写法在生产构建时会把请求打到
+ *    localhost（浏览器里必然失败）；而一律用注入值又会让生产构建
+ *    写死成某个域名，备案期间用 IP 访问就废了。
  */
+const injectedBaseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
+
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8100'
+  // 没注入任何值 → 生产构建用同源，dev 用本机网关
+  injectedBaseUrl === '' && import.meta.env.DEV
+    ? 'http://localhost:8100'
+    : injectedBaseUrl
 
 export const ADMIN_API_PREFIX = '/api/v1/admin'
 
