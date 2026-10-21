@@ -13,11 +13,24 @@
 打印真实 total，看起来一切正常；本脚本还一路报「通过 ✅」。
 现在追加一层比对：前端实际传的 query 参数名 ⊆ 后端签名接受的参数名。
 
+2026-10-21 扩展（文档 R2）：把**安卓端**也纳入校验。
+
+之前这个脚本只扫 admin-web（`src/api/**`）。安卓那 11 个 Retrofit 接口
+完全不在校验范围内 —— 也就是说安卓侧的路径漂移可以长期存活，
+直到真机上调不通才发现。工程总览 §6 R2 记的就是这件事。
+
+安卓的写法不一样：
+- 路径在注解里：``@POST("api/v1/articles")``（**没有前导斜杠**）
+- 占位符是 Retrofit 的字面量：``api/v1/articles/{id}``（不是 ``${...}``）
+
+所以要单独一套归一化：补前导斜杠 + 把 ``{xxx}`` 也换成 ``{P}``，
+才能和网关的 ``{xxx} → {P}`` 对齐。
+
 用法：
   python3 scripts/check-endpoint-contract.py [网关config.py路径]
 
 默认网关路径：../stashbox/backend/api-gateway/config.py
-退出码：0 = 全部对齐；1 = 存在前端调用但网关未注册，或 query 参数名对不上。
+退出码：0 = 全部对齐；1 = 存在调用但网关未注册，或 query 参数名对不上。
 """
 import re
 import sys
@@ -42,6 +55,23 @@ BACKEND_GLOBS = [
 # FastAPI 依赖注入的参数名：不是 query param
 DEPENDENCY_NAMES = {"user", "db", "session", "request", "response", "raw_request"}
 
+# ── 安卓端 Retrofit 接口（2026-10-21 补上，文档 §6 R2）────────────────
+ANDROID_ROOT = ROOT.parent / "stashbox-android"
+ANDROID_API_GLOB = "app/src/main/kotlin/com/tingxia/audio/data/remote/*.kt"
+_RETROFIT_RE = re.compile(r'@(GET|POST|PUT|DELETE|PATCH)\(\s*"([^"]+)"')
+
+# 安卓侧走网关**兜底路由**也能到的前缀。
+# 兜底的判据在 api-gateway/main.py 的 _resolve_target()：
+#   segment in ("user", "subscription")  → user-service
+#   segment in ("articles", "tags", "callback") → content-service
+#   segment == "distill"                  → ai-service
+#   其余 → 404「接口不存在」
+# 注意 **"users"（复数）不在这个白名单里** —— /api/v1/users/... 必须显式注册，
+# 否则会拿到 404，而客户端的 404 分支会把它误报成「文章被删除」。
+ANDROID_FALLBACK_OK = re.compile(
+    r"^/api/v1/(articles|tags|callback|distill|user|subscription)(/|$)"
+)
+
 
 def load_frontend_calls() -> set[str]:
     calls: set[str] = set()
@@ -53,6 +83,29 @@ def load_frontend_calls() -> set[str]:
             for m in re.finditer(r"apiClient\.(get|post|put|delete)\(\s*[`']([^`']+)[`']", src):
                 path = re.sub(r"\$\{[^}]+\}", "{P}", m.group(2))
                 calls.add(f"{m.group(1)} {path}")
+    return calls
+
+
+def load_android_calls() -> set[str]:
+    """安卓端 Retrofit 接口调用 → "METHOD /path" 集合。
+
+    归一化两处：
+    - 补前导斜杠（Retrofit 的注解路径不带）
+    - ``{id}`` → ``{P}``（和网关那侧保持一致，否则同一个路径对不上）
+    """
+    calls: set[str] = set()
+    if not ANDROID_ROOT.exists():
+        return calls
+    for f in sorted(ANDROID_ROOT.glob(ANDROID_API_GLOB)):
+        if f.name.startswith("_"):
+            continue
+        src = f.read_text()
+        for m in _RETROFIT_RE.finditer(src):
+            path = m.group(2)
+            if not path.startswith("/"):
+                path = "/" + path
+            path = re.sub(r"\{[a-zA-Z_]+\}", "{P}", path)
+            calls.add(f"{m.group(1).lower()} {path}")
     return calls
 
 
@@ -237,7 +290,10 @@ def load_gateway_routes(gw_path: Path) -> set[str]:
     routes: set[str] = set()
     for block in re.split(r"Route\(", cfg)[1:]:
         strs = re.findall(r'"([^"]+)"', block[:220])
-        if len(strs) >= 2 and strs[0] in ("GET", "POST", "PUT", "DELETE") and strs[1].startswith("/api"):
+        # 方法白名单必须含 PATCH —— 网关**有**注册 PATCH 路由
+        # （如 Route("PATCH", "/api/v1/favorites/{favorite_id}", ...)），
+        # 漏了它会让"安卓调 PATCH"被误报成"未注册"。
+        if len(strs) >= 2 and strs[0] in ("GET", "POST", "PUT", "DELETE", "PATCH") and strs[1].startswith("/api"):
             routes.add(f"{strs[0].lower()} {re.sub(r'\{[a-z_]+\}', '{P}', strs[1])}")
     return routes
 
@@ -258,6 +314,19 @@ def main() -> int:
         path = x.split(" ", 1)[1]
         tag = "fallback 可达" if FALLBACK_OK.search(path) else "!! 未注册"
         print(f"  - {x}  （{tag}）")
+
+    # ---- 安卓端 Retrofit 调用比对（文档 §6 R2）----
+    android = load_android_calls()
+    android_missing = sorted(android - gw)
+    android_real_missing = [
+        x for x in android_missing if not ANDROID_FALLBACK_OK.search(x.split(" ", 1)[1])
+    ]
+    if android:
+        print(f"[contract] 安卓调用 {len(android)} 条")
+        for x in android_missing:
+            path = x.split(" ", 1)[1]
+            tag = "fallback 可达" if ANDROID_FALLBACK_OK.search(path) else "!! 未注册"
+            print(f"  - {x}  （{tag}）")
 
     # ---- query 参数名比对（bug #10）----
     front_params = load_frontend_params()
@@ -284,9 +353,14 @@ def main() -> int:
             "只会让筛选/分页悄悄失效。"
         )
 
-    if real_missing or param_errors:
+    if real_missing or param_errors or android_real_missing:
         if real_missing:
             print(f"[contract] 失败：{len(real_missing)} 条 admin 调用在网关无注册")
+        if android_real_missing:
+            print(
+                f"[contract] 失败：{len(android_real_missing)} 条安卓调用在网关无注册"
+                "（且不在兜底路由能到的前缀里）"
+            )
         if param_errors:
             print(f"[contract] 失败：{len(param_errors)} 条调用存在 query 参数名漂移")
         return 1

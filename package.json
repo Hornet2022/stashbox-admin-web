@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "typecheck": "tsc -b --force",
     "preview": "vite preview",
-    "contract": "python3 scripts/check-endpoint-contract.py",
+    "contract": "python3 scripts/check-endpoint-contract.py && python3 scripts/check_response_fields.py",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
