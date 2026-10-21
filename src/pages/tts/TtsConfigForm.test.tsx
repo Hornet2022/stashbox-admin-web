@@ -41,6 +41,11 @@ function renderForm(overrides: Partial<Parameters<typeof TtsConfigForm>[0]> = {}
     onToggleApiKey: vi.fn(),
     onSubmit: vi.fn(),
     onTest: vi.fn(),
+    // 探测音色（2026-10-21）
+    onProbeVoices: vi.fn(),
+    probing: false,
+    supportedVoices: [],
+    voiceProbeHint: null,
     ...overrides,
   }
   render(<TtsConfigForm {...props} />)
@@ -125,5 +130,64 @@ describe('TtsConfigForm', () => {
   it('provider hint 渲染', () => {
     renderForm({ provider: 'local' })
     expect(screen.getByText('macOS say + ffmpeg（零凭证、纯本地，仅 macOS）')).toBeInTheDocument()
+  })
+
+  // ── 探测音色（2026-10-21）────────────────────────────────────────
+  it('openai 的 voice 字段后有「探测可用音色」按钮', () => {
+    renderForm({ provider: 'openai' })
+    expect(screen.getByRole('button', { name: '探测可用音色' })).toBeInTheDocument()
+  })
+
+  it('点「探测可用音色」→ onProbeVoices 被调用', async () => {
+    const user = userEvent.setup()
+    const props = renderForm({ provider: 'openai' })
+    await user.click(screen.getByRole('button', { name: '探测可用音色' }))
+    expect(props.onProbeVoices).toHaveBeenCalled()
+  })
+
+  it('探测中按钮禁用且文案变「探测中…」', () => {
+    renderForm({ provider: 'openai', probing: true })
+    const btn = screen.getByRole('button', { name: '探测中…' })
+    expect(btn).toBeInTheDocument()
+    expect((btn as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('supportedVoices 非空 → 渲染成候选按钮', () => {
+    renderForm({
+      provider: 'openai',
+      supportedVoices: ['aiden', 'vivian'],
+    })
+    expect(screen.getByRole('button', { name: 'aiden' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'vivian' })).toBeInTheDocument()
+  })
+
+  it('点候选音色 → onFieldChange("openaiVoice", 音色名)', async () => {
+    const user = userEvent.setup()
+    const props = renderForm({
+      provider: 'openai',
+      supportedVoices: ['aiden', 'vivian'],
+    })
+    await user.click(screen.getByRole('button', { name: 'vivian' }))
+    expect(props.onFieldChange).toHaveBeenCalledWith('openaiVoice', 'vivian')
+  })
+
+  it('supportedVoices 为空 → 不渲染候选区', () => {
+    renderForm({ provider: 'openai', supportedVoices: [] })
+    expect(screen.queryByRole('button', { name: 'aiden' })).not.toBeInTheDocument()
+  })
+
+  it('voiceProbeHint 有值 → 渲染提示文案', () => {
+    renderForm({
+      provider: 'openai',
+      voiceProbeHint: '该服务接受任意音色名（不校验），无法探测可用列表。',
+    })
+    expect(
+      screen.getByText('该服务接受任意音色名（不校验），无法探测可用列表。'),
+    ).toBeInTheDocument()
+  })
+
+  it('探测按钮只在 openai provider 下出现（其它 provider 没有音色列表概念）', () => {
+    renderForm({ provider: 'doubao' })
+    expect(screen.queryByRole('button', { name: '探测可用音色' })).not.toBeInTheDocument()
   })
 })

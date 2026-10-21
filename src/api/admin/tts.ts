@@ -1,5 +1,5 @@
 import { apiClient } from '../client'
-import type { TtsConfig, TtsTestResult } from '../../types'
+import type { TtsConfig, TtsTestResult, TtsVoiceProbeResult } from '../../types'
 
 /**
  * TTS 配置端点 —— GET/PUT /api/v1/admin/tts/config + /test。
@@ -32,4 +32,24 @@ export async function updateTtsConfig(
 export async function testTts(config: Record<string, unknown>): Promise<TtsTestResult> {
   const { data } = await apiClient.post('/api/v1/admin/tts/test', config)
   return (data as { data?: TtsTestResult }).data ?? (data as TtsTestResult)
+}
+
+/**
+ * 探测该 TTS 模型支持哪些 voice（2026-10-21）。
+ *
+ * 背景：第三方 OpenAI 兼容服务的音色名跟 OpenAI 官方完全不一样
+ * （官方是 alloy/echo/fable…，实测那家是 aiden/dylan/eric…）。
+ * 代码里默认 voice 是 `alloy`，用户接非官方服务时必然 400，
+ * 而错误里其实带着答案，只是埋在 detail 里。
+ *
+ * 后端发一次**故意用错 voice** 的请求，服务把可用列表带在 400 里，
+ * 后端解析后结构化返回。解析不出来（服务不校验 voice）就返回空列表。
+ *
+ * 合并语义与 testTts 一致：空值 = 沿用已存配置。
+ */
+export async function probeTtsVoices(
+  config: Record<string, unknown>,
+): Promise<TtsVoiceProbeResult> {
+  const { data } = await apiClient.post('/api/v1/admin/tts/voices/probe', config)
+  return (data as { data?: TtsVoiceProbeResult }).data ?? (data as TtsVoiceProbeResult)
 }

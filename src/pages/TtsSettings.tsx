@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { getTtsConfig, testTts, updateTtsConfig } from '../api/admin'
+import { getTtsConfig, probeTtsVoices, testTts, updateTtsConfig } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
 import { toast } from '../store/toast'
@@ -45,6 +45,10 @@ export function TtsSettings() {
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<TtsTestResult | null>(null)
+  /** 探测可用音色（2026-10-21） */
+  const [probing, setProbing] = useState(false)
+  const [supportedVoices, setSupportedVoices] = useState<string[]>([])
+  const [voiceProbeHint, setVoiceProbeHint] = useState<string | null>(null)
 
   /** 后端 GET 配置 → 同步进表单（仅第一次 + reload 后） */
   useEffect(() => {
@@ -145,6 +149,13 @@ export function TtsSettings() {
       // 后端拿已保存配置去测，表单里刚填的错值能测出绿灯（2026-10 修）。
       const result = await testTts(buildPayload())
       setTestResult(result)
+      // 音色名填错是最常见的配置错误，而服务的报错里就带着可用列表。
+      // 后端把它结构化放在 supported_voices —— 这里直接显示成候选，
+      // 运营点一下就填进输入框，不用翻日志也不用一个个试。
+      if (result.supported_voices?.length) {
+        setSupportedVoices(result.supported_voices)
+        setVoiceProbeHint(null)
+      }
       // CP-TTS-TEST-ERR：按 error_kind 给具体引导 toast（不再只说"失败"两字）
       const t = toastForTtsTestResult(result)
       toast(t.message, t.kind)
@@ -154,6 +165,35 @@ export function TtsSettings() {
       toast(`测试调用失败：${toErrorMessage(err, 'TTS 服务（OpenAI 协议 / 豆包 / edge-tts / IndexTTS）')}`, 'error')
     } finally {
       setTesting(false)
+    }
+  }
+
+  /**
+   * 探测该模型支持哪些音色（2026-10-21）。
+   *
+   * 用**表单当前值**去探（和 buildPayload 同一份）—— 否则探的是已存配置，
+   * 运营改完 base_url 再探，探的还是旧地址，等于白探。
+   */
+  const handleProbeVoices = async () => {
+    setProbing(true)
+    try {
+      const result = await probeTtsVoices(buildPayload())
+      setSupportedVoices(result.supported_voices ?? [])
+      setVoiceProbeHint(result.hint ?? null)
+      if (result.supported_voices?.length) {
+        toast(`探测到 ${result.supported_voices.length} 个可用音色`, 'success')
+      } else {
+        // 探不出来**不是错误**（可能那个服务根本不校验 voice），
+        // 用 info 而不是 error —— 红色 toast 会让人以为配置坏了。
+        toast(result.hint ?? '没能探测到音色列表', 'info')
+      }
+    } catch (err) {
+      console.warn('[CP TTS-Config] probeTtsVoices failed:', toErrorMessage(err))
+      setSupportedVoices([])
+      setVoiceProbeHint(null)
+      toast(`探测失败：${toErrorMessage(err)}`, 'error')
+    } finally {
+      setProbing(false)
     }
   }
 
@@ -182,6 +222,10 @@ export function TtsSettings() {
         onToggleApiKey={() => setShowApiKey((v) => !v)}
         onSubmit={handleSave}
         onTest={handleTest}
+        onProbeVoices={handleProbeVoices}
+        probing={probing}
+        supportedVoices={supportedVoices}
+        voiceProbeHint={voiceProbeHint}
       />
 
       <TtsTestPanel result={testResult} />

@@ -301,6 +301,26 @@ export interface TtsTestResult {
   hint?: string | null
   /** 原始异常字符串（已脱敏），技术排查用 */
   detail?: string | null
+  /**
+   * 该 TTS 模型支持的音色列表（2026-10-21）。
+   *
+   * 运营配 TTS 最常踩的坑就是 voice 名不对：第三方 OpenAI 兼容服务
+   * 的音色名跟 OpenAI 官方（alloy/echo/fable…）完全不一样。
+   * 服务的 400 报错里通常就带着可用列表，这里把它结构化带出来，
+   * 前端直接显示成可点击的候选，省得翻日志或一个个试。
+   */
+  supported_voices?: string[]
+}
+
+/** POST /api/v1/admin/tts/voices/probe 响应 —— 探测音色列表 */
+export interface TtsVoiceProbeResult {
+  provider: string
+  /** 探测到的音色；服务不校验 voice 时为空数组 */
+  supported_voices: string[]
+  /** ok=false 表示没探出来（不是"探测失败"，是"这个服务探不出来"） */
+  ok: boolean
+  hint?: string | null
+  detail?: string | null
 }
 
 /** PUT /api/v1/admin/tts/config 请求体 —— 留空/不传的字段视作「不动」 */

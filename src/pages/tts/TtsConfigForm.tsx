@@ -25,6 +25,13 @@ export interface TtsConfigFormProps {
   onSubmit: (e: FormEvent<HTMLFormElement>) => void
   onTest: () => void
   testing: boolean
+  /** 探测音色（2026-10-21） */
+  onProbeVoices: () => void
+  probing: boolean
+  /** 探测到的音色；空数组 = 还没探 / 探不出来 */
+  supportedVoices: string[]
+  /** 探测结果的提示语（探不出来时说明原因） */
+  voiceProbeHint: string | null
 }
 
 /** 表单所有字段的状态（受父组件 useState 控制） */
@@ -62,6 +69,10 @@ export function TtsConfigForm({
   onSubmit,
   onTest,
   testing,
+  onProbeVoices,
+  probing,
+  supportedVoices,
+  voiceProbeHint,
 }: TtsConfigFormProps) {
   return (
     <section className="mt-6 overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800/50">
@@ -142,6 +153,13 @@ export function TtsConfigForm({
                 />
               </Field>
               <Field label="Voice">
+                {/*
+                  ⚠️ Field 内部是 <label>，**不能在里面放 button** ——
+                     label 里的可点元素会被 label 的点击行为吞掉，
+                     而且 a11y 上是 label 嵌套交互元素（不合规）。
+                     所以 Voice 这一项用 div 自己包 label，input 单独留在
+                     Field 里，探测按钮与候选列表放在 Field 外面。
+                */}
                 <input
                   type="text"
                   value={data.openaiVoice}
@@ -150,6 +168,51 @@ export function TtsConfigForm({
                   className={`t-input ${inputClass}`}
                 />
               </Field>
+              {/*
+                探测音色（2026-10-21）。
+
+                为什么需要：第三方 OpenAI 兼容服务的音色名跟 OpenAI 官方
+                （alloy/echo/fable…）**完全不一样**。代码默认 voice 是
+                `alloy`，用户接非官方服务必然 400，而服务报错里其实
+                带着可用列表，只是埋在 detail 里。
+
+                探测 = 发一次故意用错 voice 的请求，让服务把列表说出来。
+                候选可直接点，点完就填进输入框。
+              */}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onProbeVoices}
+                  disabled={probing}
+                  className={buttonGhostClass}
+                >
+                  {probing ? '探测中…' : '探测可用音色'}
+                </button>
+                {voiceProbeHint && (
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {voiceProbeHint}
+                  </span>
+                )}
+              </div>
+              {supportedVoices.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {supportedVoices.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => onFieldChange('openaiVoice', v)}
+                      className={`rounded border px-2 py-0.5 font-mono text-xs transition-colors ${
+                        data.openaiVoice === v
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                          : 'border-neutral-300 bg-white text-neutral-700 hover:border-emerald-400 hover:text-emerald-700 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-300'
+                      }`}
+                      title={`点击填入 ${v}`}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              )}
             </>
           )}
 
