@@ -29,10 +29,18 @@ import { PUSH_STATUS_LABELS } from '../constants/labels'
 /**
  * 推送队列页 —— GET /api/v1/admin/push-notifications（v1 需求文档落地版）。
  *
- * - 状态 tab（pending/sent/failed）真实生效
+ * - 状态 tab（pending/sending/sent/failed）真实生效
  * - user_id / tag_slug 过滤 + limit/offset 分页
- * - failed 行可重推（POST .../retry，reason ≥5 写审计）
+ * - failed / pending / sending 行可重推（POST .../retry，reason ≥5 写审计）
  * - admin / operator 可重推；其余角色只读
+ *
+ * ## 2026-10-21：重推真的会推
+ *
+ * 以前「重推」端点只是把后端状态改成 'sent'，**一个请求都不发** ——
+ * 运营在这里看到"已发送"，用户手机上什么都没有。
+ * 现在后端真的去投递，并按**真实结果**回报状态：
+ * 没配推送通道 / 用户没注册设备 / 网关报错 → failed + 失败原因。
+ * 所以这个页面的「重推」可能是失败结果，toast 按真实状态给 feedback。
  */
 
 const columns = ['ID', '用户 ID', '标题', '内容', '状态', '失败原因', '创建时间', '发送时间', '操作']
@@ -40,6 +48,7 @@ const columns = ['ID', '用户 ID', '标题', '内容', '状态', '失败原因'
 const TABS = [
   { key: '', label: '全部' },
   { key: 'pending', label: '待发送' },
+  { key: 'sending', label: '投递中' },
   { key: 'sent', label: '已发送' },
   { key: 'failed', label: '失败' },
 ] as const
@@ -114,7 +123,17 @@ export function PushNotifications() {
     setRetrySubmitting(true)
     try {
       const result = await retryPushNotification(retryTarget.id, reason)
-      toast(`已重推 #${result.id}（状态 ${result.status}）`, result.status === 'sent' ? 'success' : 'info')
+      // 投递是真的会发生，也可能失败（没配通道 / 没设备 / 网关报错）。
+      // 所以 toast 必须按**后端回报的真实状态**给 feedback ——
+      // 一律报"成功"就又回到了"看起来是绿的、实际上没做"的老问题。
+      if (result.status === 'sent') {
+        toast(`已重推 #${result.id}，投递成功`, 'success')
+      } else {
+        toast(
+          `重推 #${result.id} 未送达：${result.error || result.status}`,
+          'error',
+        )
+      }
       setRetryTarget(null)
       reload()
     } catch {
@@ -221,7 +240,7 @@ export function PushNotifications() {
                     {formatTime(item.sent_at)}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
-                    {item.status === 'failed' && canOperate ? (
+                    {item.status !== 'sent' && canOperate ? (
                       <button
                         type="button"
                         className={buttonGhostClass}

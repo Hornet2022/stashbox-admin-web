@@ -81,12 +81,19 @@ describe('PushNotifications', () => {
     })
   })
 
-  it('failed 行有"重推"按钮，非 failed 行显示 —', async () => {
+  it('未投递成功的行有"重推"按钮，已投递成功(sent)的行显示 —', async () => {
+    // 2026-10-21：重推真的投递了，所以 pending / sending / failed 都该能重推；
+    // 只有 sent 不行（那会真的给用户再发一遍）。
     renderPage()
     await waitFor(() => {
       expect(screen.getByText('apns timeout')).toBeInTheDocument()
     })
+    // id=2 是 failed → 可重推
     expect(screen.getByRole('button', { name: '重推推送 2' })).toBeInTheDocument()
+    // id=1 是 pending → 也可重推
+    expect(screen.getByRole('button', { name: '重推推送 1' })).toBeInTheDocument()
+    // id=3 是 sent → 不给重推
+    expect(screen.queryByRole('button', { name: '重推推送 3' })).not.toBeInTheDocument()
   })
 
   it('重推流程：ReasonDialog → retryPushNotification(id, reason) → reload', async () => {

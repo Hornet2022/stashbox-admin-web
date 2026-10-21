@@ -126,6 +126,9 @@ const RESULT_LABELS_OK: Record<string, EnumLabel> = {
 /** 推送队列状态 */
 export const PUSH_STATUS_LABELS: Record<string, EnumLabel> = {
   pending: { label: '待发送', tone: 'amber' },
+  // 2026-10-21：投递中的中间态。worker 认领了这条通知、正在往设备发，
+  // 但还没拿到结果 —— 不给它一个标签的话，Badge 会退化成显示原始英文。
+  sending: { label: '投递中', tone: 'amber' },
   queued: { label: '排队中', tone: 'amber' },
   sent: { label: '已发送', tone: 'sage' },
   failed: { label: '发送失败', tone: 'clay' },
