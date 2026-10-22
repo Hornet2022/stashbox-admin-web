@@ -153,6 +153,21 @@ apiClient.interceptors.response.use(
       toast(`服务异常（${status}）`, 'error')
     } else if (typeof status === 'number' && status >= 400) {
       toast(toErrorMessage(error), 'error')
+    } else if (status === undefined) {
+      // **网络层失败**：没拿到任何 response —— 网关没起 / 断网 / 跨域被拦 /
+      // CORS 预检失败。axios 把这类错误交给拦截器时没有 status。
+      //
+      // 2026-10-22 走查发现：这里原来**什么都不弹**。于是 8 处写操作
+      // （发起盲测 / 提交评分 / 提交标注 / 重推 / 保存 tier / 池清理 /
+      // 抽查回写）的 catch 里那句注释「拦截器已 toast」是**假的** ——
+      // 网关一挂，按钮转一圈恢复原状，界面一个字都不变，
+      // 用户既不知道成功没成功，也不知道失败了。
+      //
+      // TtsBlindTest 那一页连 useApi 兜底都没有 → 这条路径上真的什么都没有。
+      //
+      // 在拦截器里统一补一次（而不是在 8 个 catch 里各补一遍）：
+      // 一次改，所有写操作都受益，也不会漏。
+      toast(toErrorMessage(error), 'error')
     }
 
     return Promise.reject(error)
@@ -174,7 +189,7 @@ export function isEndpointMissing(error: unknown): boolean {
  *
  * CP-ERROR-MSG-v3：
  *   - ECONNABORTED（axios.timeout 触发）→ "请求超时（Xs）— <context> 可能卡死 或 未启动"
- *   - 其他网络断开（gateway 未启 / 跨域）→ "无法连接 api-gateway（localhost:8100），请检查网关是否启动"
+ *   - 其他网络断开（gateway 未启 / 跨域）→ "无法连接 api-gateway（<当前 baseURL>），请检查网关是否启动"
  * 不再回落到笼统的"功能待上线"，避免运维误判。
  *
  * 注意：v2 在文案里硬编码 "IndexTTS / 阿里云 maas"（TTS provider 名），
@@ -252,7 +267,11 @@ export function toErrorMessage(error: unknown, context?: string): string {
     const sec = Math.round((typeof actual === 'number' && actual > 0 ? actual : API_TIMEOUT_SEC * 1000) / 1000)
     return `请求超时（${sec}s）—— ${target}可能卡死或未启动，请检查后重试`
   }
-  return '无法连接 api-gateway（http://localhost:8100），请检查网关是否启动'
+  // 网关不可达。**地址不能写死 localhost:8100** ——
+  // 生产构建的 baseURL 是同源（''，见本文件顶部说明），
+  // 写死 localhost 会让运维去查一台根本不存在的机器。
+  const where = API_BASE_URL ? API_BASE_URL : '当前站点'
+  return `无法连接 api-gateway（${where}），请检查网关是否启动`
 }
 
 /**
