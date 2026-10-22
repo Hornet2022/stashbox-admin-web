@@ -81,10 +81,13 @@ describe('login', () => {
     expect(sessionStorage.getItem('admin_role')).toBe(r.role)
   })
 
-  it('role 缺省 → 兜底 "admin"', async () => {
+  it('role 缺省 → 兜底最小权限 "operator"，不是 "admin"', async () => {
     mockedPost.mockResolvedValue({ data: { code: 0, data: { token: 'x' } } })
     const r = await login('a@b.com', 'pw')
-    expect(r.role).toBe('admin')
+    // 兜底成 'admin' 的话，hasPermission('admin', ['super_admin']) 为 true
+    // → 所有写按钮都亮出来 → 点下去后端全 403，用户只看到一排点不动的按钮。
+    // 拿不到 role 时当自己是 operator：少几个按钮，比多一排坏按钮强。
+    expect(r.role).toBe('operator')
     expect(r.userId).toBe(0)
   })
 
