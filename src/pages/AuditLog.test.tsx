@@ -15,8 +15,9 @@ vi.mock('../api/admin', () => ({
 }))
 
 vi.mock('../hooks/useRole', () => ({
-  useRole: () => 'super_admin',
+  useRole: () => 'admin',
   hasPermission: () => true,
+  STAFF_ROLES: ['admin', 'operator'],
 }))
 
 import * as adminModule from '../api/admin'

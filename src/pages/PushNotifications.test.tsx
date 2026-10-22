@@ -40,7 +40,7 @@ const sampleRows = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useAuthStore.setState({ isAuthenticated: true, role: 'super_admin', userId: 1 })
+  useAuthStore.setState({ isAuthenticated: true, role: 'admin', userId: 1 })
   mockedList.mockResolvedValue(sampleRows)
 })
 
@@ -121,7 +121,7 @@ describe('PushNotifications', () => {
   })
 
   it('operator 可重推；admin 升级兼容也可；无权限角色只读', async () => {
-    useAuthStore.setState({ role: 'viewer' })
+    useAuthStore.setState({ role: null })
     renderPage()
     await waitFor(() => {
       expect(screen.getByText('apns timeout')).toBeInTheDocument()

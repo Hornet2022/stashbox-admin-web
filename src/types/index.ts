@@ -30,7 +30,18 @@ export interface PageResult<T> {
   pageSize?: number
 }
 
-export type AdminRole = 'admin' | 'super_admin' | 'operator' | 'viewer'
+/**
+ * 后台角色 —— **只有后端真实存在的两档**。
+ *
+ * 后端 `common/auth_admin.py::ADMIN_TIERS = {admin, operator}`，
+ * 且两者权限完全相同（所有 admin 端点用 `require_admin_or_operator`）。
+ *
+ * 原来这里还列了 `super_admin` / `viewer` —— 后端**根本没有**这两个角色值
+ * （`require_admin` 定义了但全仓零路由使用）。留着它们等于在前端编了一套
+ * 后端不存在的等级，读代码的人会以为 admin 比 operator 权限大。
+ * 要分 admin-only 端点时，先在后端真的用上 `require_admin`，再来这里加一档。
+ */
+export type AdminRole = 'admin' | 'operator'
 
 /** GET /api/v1/admin/stats */
 /** GET /api/v1/admin/stats 响应 —— 与 content-service/admin_router.py 实际返回对齐

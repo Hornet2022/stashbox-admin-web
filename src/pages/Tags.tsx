@@ -3,7 +3,7 @@ import { useState, useRef, type FormEvent } from 'react'
 import { createTag, deleteAdminTag, downloadCsv, exportErrorMessage, listTags } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
-import { useRole, hasPermission } from '../hooks/useRole'
+import { useRole, hasPermission, STAFF_ROLES } from '../hooks/useRole'
 import { toast } from '../store/toast'
 import { Modal } from '../components/ui'
 import {
@@ -50,7 +50,7 @@ const columns = ['ID', '名称', '订阅数', '创建时间', '操作']
 
 export function Tags() {
   const role = useRole()
-  const canOperate = hasPermission(role, ['super_admin', 'operator'])
+  const canOperate = hasPermission(role, STAFF_ROLES)
   const { data, loading, error, missing, reload } = useApi(listTags, 'tags')
 
   const [open, setOpen] = useState(false)

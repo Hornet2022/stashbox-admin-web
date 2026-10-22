@@ -55,7 +55,7 @@ export function Evaluations() {
   const [page, setPage] = useState(0)
   const [annotateTarget, setAnnotateTarget] = useState<Evaluation | null>(null)
 
-  // CP-NEW.17：operator + super_admin 可标注，其他角色只读
+  // CP-NEW.17：admin + operator 均可标注（后端 require_admin_or_operator，两档同权）
   const canAnnotate = useCanAnnotate()
 
   const filterKey = useMemo(
@@ -362,7 +362,7 @@ function EvaluationRow({
           className={buttonGhostClass}
           onClick={onAnnotate}
           disabled={!canAnnotate}
-          title={canAnnotate ? '提交评测员标注' : '权限不足：仅 super_admin / operator 可标注'}
+          title={canAnnotate ? '提交评测员标注' : '权限不足：仅运营人员（admin / operator）可标注'}
         >
           {canAnnotate ? '标注' : '—'}
         </button>

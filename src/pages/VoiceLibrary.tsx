@@ -10,7 +10,7 @@ import {
 } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
-import { useRole, hasPermission } from '../hooks/useRole'
+import { useRole, hasPermission, STAFF_ROLES } from '../hooks/useRole'
 import { toast } from '../store/toast'
 import { Modal } from '../components/ui'
 import {
@@ -88,7 +88,7 @@ const EMPTY_FORM: FormState = {
 
 export function VoiceLibrary() {
   const role = useRole()
-  const canOperate = hasPermission(role, ['super_admin', 'operator'])
+  const canOperate = hasPermission(role, STAFF_ROLES)
   const { data, loading, error, missing, reload } = useApi(listVoices, 'tts-voices')
   const rows = data?.items ?? []
 

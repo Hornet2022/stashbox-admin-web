@@ -1,20 +1,31 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useRole, hasPermission } from './useRole'
+import { useRole, hasPermission, STAFF_ROLES } from './useRole'
 import { useAuthStore } from '../store/auth'
 
 /**
- * useRole + hasPermission 单测 —— CP-NEW.12。
+ * useRole + hasPermission 单测 —— CP-NEW.12，2026-10-22 按后端口径重写。
  *
- * 契约：
- * - useRole(): 阅读 auth store 的 role 返回 AdminRole | null
- * - hasPermission(role, required): admin 向上升级为 super_admin 等价后判断
- *   · admin + required含 super_admin → true（升级兼容）
- *   · admin + required 不含 super_admin → false
- *   · super_admin + required含 super_admin → true
- *   · super_admin + required 不含 super_admin → false（不向下兼容）
- *   · operator + required含 operator → true
- *   · null + 任意 → false
+ * ## 契约（现在）
+ * - useRole(): 读 auth store 的 role，返回 AdminRole | null
+ * - hasPermission(role, allowed): 纯集合判定 —— role 在 allowed 里就是 true
+ * - STAFF_ROLES = ['admin', 'operator']：后端 `require_admin_or_operator`
+ *   的前端对应（两档**同权**）
+ *
+ * ## 为什么重写（原来那份把虚构的阶梯写死了）
+ * 后端真实角色只有 `admin` / `operator` 两档，且**同权**
+ * （`common/auth_admin.py::ADMIN_TIERS`，所有 admin 端点用
+ * `require_admin_or_operator`）。而旧测试锁的是四档阶梯
+ * （admin / super_admin / operator / viewer）+ 「admin 向上升级」，
+ * 里面甚至断言 `hasPermission('admin', ['admin'])` 是 **false** ——
+ * 一个 admin 角色在「admin 权限」面前反而没有权限。
+ *
+ * 那套阶梯后端**根本不存在**（`super_admin` / `viewer` 没有对应值，
+ * `require_admin` 定义了但全仓零路由使用）。留着它，前端就在演一套
+ * 后端没有的角色体系 —— 将来后端真的用上 `require_admin` 时，
+ * 前端会毫无预警地放行。
+ *
+ * 所以类型收窄成两档，判据退化成纯集合判定。
  */
 
 beforeEach(() => {
@@ -33,42 +44,49 @@ describe('useRole', () => {
     expect(result.current).toBe('admin')
   })
 
-  it('role=super_admin 时 useRole 返回 super_admin', () => {
-    useAuthStore.setState({ role: 'super_admin' })
+  it('role=operator 时 useRole 返回 operator', () => {
+    useAuthStore.setState({ role: 'operator' })
     const { result } = renderHook(() => useRole())
-    expect(result.current).toBe('super_admin')
+    expect(result.current).toBe('operator')
   })
 })
 
 describe('hasPermission', () => {
   it('null role → 始终 false', () => {
     expect(hasPermission(null, ['admin'])).toBe(false)
-    expect(hasPermission(null, ['super_admin'])).toBe(false)
+    expect(hasPermission(null, STAFF_ROLES)).toBe(false)
     expect(hasPermission(null, [])).toBe(false)
   })
 
-  it('admin 向上升级为 super_admin 等价：required含 super_admin → true', () => {
-    expect(hasPermission('admin', ['super_admin'])).toBe(true)
-    expect(hasPermission('admin', ['super_admin', 'operator'])).toBe(true)
+  it('admin 在 allowed 里 → true', () => {
+    expect(hasPermission('admin', ['admin'])).toBe(true)
+    expect(hasPermission('admin', STAFF_ROLES)).toBe(true)
   })
 
-  it('admin 角色：required 不含 super_admin → false（不向下兼容）', () => {
-    expect(hasPermission('admin', ['admin'])).toBe(false)
-    expect(hasPermission('admin', ['operator'])).toBe(false)
-    expect(hasPermission('admin', ['viewer'])).toBe(false)
-    expect(hasPermission('admin', [])).toBe(false)
-  })
-
-  it('super_admin 仅匹配 required 含 super_admin', () => {
-    expect(hasPermission('super_admin', ['super_admin'])).toBe(true)
-    expect(hasPermission('super_admin', ['super_admin', 'admin'])).toBe(true)
-    expect(hasPermission('super_admin', ['admin'])).toBe(false)
-    expect(hasPermission('super_admin', ['operator'])).toBe(false)
-  })
-
-  it('operator 仅匹配 required 含 operator', () => {
+  it('operator 在 allowed 里 → true', () => {
     expect(hasPermission('operator', ['operator'])).toBe(true)
-    expect(hasPermission('operator', ['super_admin'])).toBe(false)
+    expect(hasPermission('operator', STAFF_ROLES)).toBe(true)
+  })
+
+  it('不在 allowed 里 → false（admin 也不例外）', () => {
+    // 旧契约里 admin 对 ['admin'] 是 false（"admin 向上升级"那套）。
+    // 现在没有等级概念：admin 就是 admin，不在集合里就是 false。
+    expect(hasPermission('admin', ['operator'])).toBe(false)
+    expect(hasPermission('admin', [])).toBe(false)
     expect(hasPermission('operator', ['admin'])).toBe(false)
+    expect(hasPermission('operator', [])).toBe(false)
+  })
+})
+
+describe('STAFF_ROLES', () => {
+  it('与后端 ADMIN_TIERS 一致：两档且同权', () => {
+    // 后端 common/auth_admin.py::ADMIN_TIERS = {"admin", "operator"}
+    expect([...STAFF_ROLES].sort()).toEqual(['admin', 'operator'])
+  })
+
+  it('admin 与 operator 权限相同（都能写）', () => {
+    expect(hasPermission('admin', STAFF_ROLES)).toBe(
+      hasPermission('operator', STAFF_ROLES),
+    )
   })
 })

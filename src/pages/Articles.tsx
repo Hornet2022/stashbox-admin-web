@@ -10,7 +10,7 @@ import {
 } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
-import { useRole, hasPermission } from '../hooks/useRole'
+import { useRole, hasPermission, STAFF_ROLES } from '../hooks/useRole'
 import { toast } from '../store/toast'
 import { ErrorNotice, buttonGhostClass, footerCountClass } from '../components/ui'
 import { ArticlesToolbar } from './articles/ArticlesToolbar'
@@ -53,7 +53,7 @@ async function runExport(kind: Parameters<typeof downloadCsv>[0], label: string)
  */
 export function Articles() {
   const role = useRole()
-  const canOperate = hasPermission(role, ['super_admin', 'operator'])
+  const canOperate = hasPermission(role, STAFF_ROLES)
 
   // —— 筛选 ——
   const [status, setStatus] = useState('')

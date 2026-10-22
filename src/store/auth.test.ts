@@ -43,8 +43,8 @@ describe('useAuthStore', () => {
   })
 
   it('setAuth 同步写 sessionStorage（role / userId）', () => {
-    useAuthStore.getState().setAuth('super_admin', 7)
-    expect(sessionStorage.getItem(ROLE_KEY)).toBe('super_admin')
+    useAuthStore.getState().setAuth('admin', 7)
+    expect(sessionStorage.getItem(ROLE_KEY)).toBe('admin')
     expect(sessionStorage.getItem(USER_ID_KEY)).toBe('7')
   })
 

@@ -70,7 +70,7 @@ const sampleAgreement = { agreement: 0.85, evaluator_count: 4, annotated_count: 
 beforeEach(() => {
   vi.clearAllMocks()
   // super_admin 可标注
-  useAuthStore.setState({ isAuthenticated: true, role: 'super_admin', userId: 1 })
+  useAuthStore.setState({ isAuthenticated: true, role: 'admin', userId: 1 })
   mockedList.mockResolvedValue(sampleEvals)
   mockedAgreement.mockResolvedValue(sampleAgreement)
 })

@@ -37,14 +37,14 @@ beforeEach(() => {
 describe('login', () => {
   it('标准响应：token + role + user_id', async () => {
     mockedPost.mockResolvedValue({
-      data: { code: 0, data: { token: 'jwt-1', role: 'super_admin', user_id: 7 } },
+      data: { code: 0, data: { token: 'jwt-1', role: 'admin', user_id: 7 } },
     })
     const r = await login('a@b.com', 'pw')
     expect(mockedPost).toHaveBeenCalledWith('/api/v1/admin/auth/login', {
       email: 'a@b.com',
       password: 'pw',
     }, { __retryOn5xx: true })
-    expect(r).toEqual({ role: 'super_admin', userId: 7, email: undefined })
+    expect(r).toEqual({ role: 'admin', userId: 7, email: undefined })
     expect(mockedSetAuthToken).toHaveBeenCalledWith('jwt-1')
   })
 
@@ -74,7 +74,7 @@ describe('login', () => {
   })
 
   it('无 token → 不调 setAuthToken', async () => {
-    mockedPost.mockResolvedValue({ data: { code: 0, data: { role: 'viewer' } } })
+    mockedPost.mockResolvedValue({ data: { code: 0, data: { role: 'operator' } } })
     const r = await login('a@b.com', 'pw')
     expect(mockedSetAuthToken).not.toHaveBeenCalled()
     // 兜底 role 默认值检查（无 token 无 user 时仍写 sessionStorage）
@@ -84,7 +84,7 @@ describe('login', () => {
   it('role 缺省 → 兜底最小权限 "operator"，不是 "admin"', async () => {
     mockedPost.mockResolvedValue({ data: { code: 0, data: { token: 'x' } } })
     const r = await login('a@b.com', 'pw')
-    // 兜底成 'admin' 的话，hasPermission('admin', ['super_admin']) 为 true
+    // 兜底成 'admin' 的话，写动作闸门 hasPermission(role, STAFF_ROLES) 一律放行
     // → 所有写按钮都亮出来 → 点下去后端全 403，用户只看到一排点不动的按钮。
     // 拿不到 role 时当自己是 operator：少几个按钮，比多一排坏按钮强。
     expect(r.role).toBe('operator')

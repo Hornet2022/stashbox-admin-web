@@ -31,7 +31,7 @@ const mockedResults = vi.mocked(btModule.getBlindTestResults)
 beforeEach(() => {
   sessionStorage.clear()
   // mock 鉴权：super_admin 可打分
-  useAuthStore.setState({ isAuthenticated: true, role: 'super_admin', userId: 1 })
+  useAuthStore.setState({ isAuthenticated: true, role: 'admin', userId: 1 })
   vi.clearAllMocks()
 })
 

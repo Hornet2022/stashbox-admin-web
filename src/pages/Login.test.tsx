@@ -72,7 +72,7 @@ describe('Login', () => {
 
   it('登录成功 → 写 setAuth(role, userId) 到 store', async () => {
     const user = userEvent.setup()
-    mockedLogin.mockResolvedValue({ role: 'super_admin', userId: 7, email: 'a@b.com' })
+    mockedLogin.mockResolvedValue({ role: 'admin', userId: 7, email: 'a@b.com' })
     renderLogin()
     await user.type(screen.getByLabelText(/邮箱/i), 'a@b.com')
     await user.type(screen.getByLabelText(/密码/i), 'pw')
@@ -80,7 +80,7 @@ describe('Login', () => {
 
     await waitFor(() => {
       const s = useAuthStore.getState()
-      expect(s.role).toBe('super_admin')
+      expect(s.role).toBe('admin')
       expect(s.userId).toBe(7)
       expect(s.isAuthenticated).toBe(true)
     })
@@ -133,7 +133,7 @@ describe('Login', () => {
     mockedLogin.mockImplementation(
       () =>
         new Promise((resolve) => {
-          release = () => resolve({ role: 'super_admin', userId: 1 })
+          release = () => resolve({ role: 'admin', userId: 1 })
         })
     )
     renderLogin()

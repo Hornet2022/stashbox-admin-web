@@ -25,10 +25,12 @@ import type { AdminRole } from '../types'
  *
  * 听匣 Design System：安静 / 留白 / 工具感。分组标题小字大写，间距宽松。
  *
- * 权限矩阵（CP-NEW.1 拍板）：
- * - 听感运营整区 super_admin（A3 标注 / A6 抽查 / A8 盲测打分等写动作也一并锁）
- * - A/B 报表（/ab-report）全员可见（实验进展要让运营知会），caveats 强提示
- * - 其他沿用现状
+ * 权限口径（2026-10-22 对齐后端）：
+ * - 后端角色只有 `admin` / `operator` 两档，且**同权**
+ *   （所有 admin 端点用 `require_admin_or_operator`）——
+ *   所以侧边栏不再有「按角色藏页面」这回事，登录就能看全部；
+ * - 写动作（标注 / 打分 / 重试 / 删除 / 配额调整）的权限在**页面内**
+ *   用 `canOperate` 判断，与页面可见性解耦。
  */
 
 export type SidebarGroupKey = '总览' | '内容运营' | '用户与系统' | '听感运营'
@@ -37,8 +39,16 @@ export interface NavItem {
   path: string
   label: string
   group: SidebarGroupKey
-  /** 仅该角色可见（CP-NEW.17 留作窄门标记，绝大多数页面留空） */
-  minRole?: AdminRole
+  /**
+   * ⚠️ 这里**曾经**有个 `minRole?: AdminRole` 字段，但它是**死字段**：
+   * 所有 navItem 都没设它 → 过滤恒为全通过 → 什么也没挡住。
+   * 而它表达的那套「admin / super_admin / operator / viewer」等级，
+   * 后端**根本不存在**（后端只有 admin / operator 两档，且同权）。
+   *
+   * 留着它 = 前端摆着一套后端没有的角色阶梯，读代码的人会以为
+   * 「super_admin 页面 operator 看不到」，实际根本不是那回事。
+   * 所以字段整个删掉，连同下面的过滤逻辑。
+   */
   icon: React.ReactNode
 }
 
@@ -46,7 +56,7 @@ export interface NavItem {
  *
  * CP-NEW.17：去掉所有 minRole 锁，operator 角色可以"读为主"访问全部后台。
  * 写动作（retry/delete/update/quota-adjust/cleanup）的权限在页面内通过
- * `hasPermission(role, ['super_admin'])` 单独判断，与 sidebar 可见性解耦。
+ * `canOperate(role)` 单独判断，与 sidebar 可见性解耦。
  */
 export const navItems: NavItem[] = [
   // —— 总览 ——
@@ -62,9 +72,7 @@ export const navItems: NavItem[] = [
   { path: '/users',             label: '用户管理', group: '用户与系统', icon: <Users size={16} /> },
   { path: '/settings/llm',      label: 'LLM 配置', group: '用户与系统', icon: <Settings size={16} /> },
   { path: '/settings/tts',      label: 'TTS 配置', group: '用户与系统', icon: <Settings size={16} /> },
-  // CP-TTS-VOICE：音色库。刻意**不加 minRole** —— 侧边栏 minRole 目前是死字段，
-  // Sidebar.operator.test.tsx 有静态测试强制 navItems 保持不设该字段；
-  // 写操作权限在页面内用 hasPermission 判断（与 Tags 页同口径）。
+  // CP-TTS-VOICE：音色库。写操作权限在页面内用 canOperate 判断（与 Tags 页同口径）。
   { path: '/settings/voices',   label: '音色库',   group: '用户与系统', icon: <Mic size={16} /> },
   { path: '/audit-log',         label: '审计日志', group: '用户与系统', icon: <ClipboardList size={16} /> },
 
@@ -81,18 +89,17 @@ export const navItems: NavItem[] = [
 /** group 渲染顺序 */
 const GROUP_ORDER: SidebarGroupKey[] = ['总览', '内容运营', '用户与系统', '听感运营']
 
-/** 角色过滤：CP-NEW.17 全后台可见（读为主），仅 minRole 单独判定
+/**
+ * 可见项：**登录就全可见**（读为主）。
  *
  * - 未登录 → 不显示任何项
- * - admin / super_admin / operator → 全可见
- * - viewer → 仅看得到没有 minRole 锁的页面（理论上不应该出现）
+ * - 登录（admin 或 operator）→ 全部可见
+ *
+ * 写动作的权限不在这里判 —— 在页面内用 `canOperate` 判。
  */
 function visibleItems(role: AdminRole | null): NavItem[] {
   if (!role) return []
-  return navItems.filter((item) => {
-    if (!item.minRole) return true
-    return role === item.minRole
-  })
+  return navItems
 }
 
 /** 把可见项按 group 聚合 */

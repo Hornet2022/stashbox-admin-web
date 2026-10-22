@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { adjustQuota, downloadCsv, exportErrorMessage, listUsers } from '../api/admin'
 import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
-import { hasPermission, useRole } from '../hooks/useRole'
+import { hasPermission, useRole, STAFF_ROLES } from '../hooks/useRole'
 import { toast } from '../store/toast'
 import { ErrorNotice, buttonGhostClass, footerCountClass } from '../components/ui'
 import { UsersToolbar } from './users/UsersToolbar'
@@ -48,7 +48,11 @@ export function Users() {
   // GET /admin/users 后端是放行 operator 的（user-service: _ALLOWED_ADMIN_ROLES），
   // 于是 operator 登录后点侧栏「用户管理」被弹回总览，同一份数据后端明明给读。
   // 现在与其余 4 个运营页（Tags/Articles/VoiceLibrary/PushNotifications）保持一致。
-  const canWrite = hasPermission(role, ['super_admin', 'operator'])
+  //
+  // 2026-10-22：前端角色收窄成后端真实存在的两档（admin / operator）后，
+  // 判据统一到 `hasPermission(role, STAFF_ROLES)` ——
+  // 与后端 `require_admin_or_operator` 一一对应。
+  const canWrite = hasPermission(role, STAFF_ROLES)
   useEffect(() => {
     if (role !== null && !canWrite) {
       // 文案里不写 super_admin —— 后端没有这个角色值，写出来会被当成

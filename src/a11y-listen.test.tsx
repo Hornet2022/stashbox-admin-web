@@ -69,10 +69,10 @@ vi.mock('./api/admin/tts-blind-test', () => ({
 }))
 
 vi.mock('./hooks/useRole', () => ({
-  useRole: () => 'super_admin',
+  useRole: () => 'admin',
   hasPermission: () => true,
+  STAFF_ROLES: ['admin', 'operator'],
   useCanAnnotate: () => true,
-  useCanWrite: () => true,
 }))
 
 import { FewShotPool } from './pages/FewShotPool'
@@ -84,7 +84,7 @@ import { Consents } from './pages/Consents'
 import { TtsBlindTest } from './pages/TtsBlindTest'
 
 beforeEach(() => {
-  useAuthStore.setState({ isAuthenticated: true, role: 'super_admin', userId: 1 })
+  useAuthStore.setState({ isAuthenticated: true, role: 'admin', userId: 1 })
   sessionStorage.clear()
 })
 

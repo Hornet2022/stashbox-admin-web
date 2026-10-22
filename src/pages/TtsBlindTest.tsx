@@ -70,7 +70,7 @@ export function TtsBlindTest() {
   // 音频 URL 无法凭空恢复，所以诚实的做法是说明情况 + 给一条出路，而不是渲染空白。
   const stepper = useStepper(0, STEPS.length)
 
-  // CP-NEW.17：operator + super_admin 可打分；admin/viewer 只读
+  // CP-NEW.17：admin + operator 均可打分（后端 require_admin_or_operator，两档同权）
   const canAnnotate = useCanAnnotate()
 
   // 步骤 1：发起
@@ -349,7 +349,7 @@ export function TtsBlindTest() {
               className={buttonPrimaryClass}
               onClick={handleSubmitScores}
               disabled={!allScored || submitting || !canAnnotate}
-              title={canAnnotate ? '提交评测员盲测打分' : '权限不足：仅 super_admin / operator 可打分'}
+              title={canAnnotate ? '提交评测员盲测打分' : '权限不足：仅运营人员（admin / operator）可打分'}
             >
               {submitting ? '提交中…' : '提交评分'}
             </button>
@@ -454,7 +454,7 @@ function SampleRow({
             step={0.5}
             value={score ?? ''}
             disabled={!canScore}
-            title={canScore ? '1-5 分' : '权限不足：仅 super_admin / operator 可打分'}
+            title={canScore ? '1-5 分' : '权限不足：仅运营人员（admin / operator）可打分'}
             onChange={(e) => {
               const v = Number(e.target.value)
               if (Number.isFinite(v) && v >= 1 && v <= 5) onScore(v)

@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { Sidebar, navItems } from './Sidebar'
+import { Sidebar } from './Sidebar'
+// Vite 的 ?raw：把源文件当字符串导入（vite/client 提供了类型声明，
+// 不需要把 node 类型加进 app 的 tsconfig）
+import sidebarSource from './Sidebar.tsx?raw'
 import { useAuthStore } from '../store/auth'
 
 /**
@@ -60,7 +63,7 @@ describe('Sidebar —— CP-NEW.17 operator 全后台可见', () => {
   })
 
   it('super_admin 角色 → 可见全部 13 个后台页面', () => {
-    useAuthStore.setState({ role: 'super_admin', isAuthenticated: true, userId: 1 })
+    useAuthStore.setState({ role: 'admin', isAuthenticated: true, userId: 1 })
     renderSidebar()
     expect(screen.getByText('听感池')).toBeInTheDocument()
     expect(screen.getByText('模型路由')).toBeInTheDocument()
@@ -74,9 +77,23 @@ describe('Sidebar —— CP-NEW.17 operator 全后台可见', () => {
     expect(screen.getByText('A/B 报表')).toBeInTheDocument()
   })
 
-  it('navItems 配置不再有 minRole 锁', () => {
-    // 静态校验：所有 navItem 都没有 minRole 字段
-    const locked = navItems.filter((i) => i.minRole !== undefined)
-    expect(locked).toHaveLength(0)
+  it('minRole 死字段已彻底移除', () => {
+    // 2026-10-22：minRole 原来是个**死字段** —— 所有 navItem 都没设它，
+    // 过滤恒为全通过，什么也没挡住。而它表达的那套角色等级
+    // （admin / super_admin / operator / viewer）后端**根本不存在**
+    // （后端只有 admin / operator 两档，且同权）。
+    //
+    // 所以字段整个删掉了，连同过滤逻辑。
+    // 这条改成**源码级**断言：Sidebar.tsx 里不许再出现 minRole ——
+    // 否则它会以「留作窄门标记」的名义被加回来，变成一个永远不挡人的门槛。
+    // 先把注释剥掉 —— 注释里可以**提到** minRole（解释它为什么被删），
+    // 断言要管的是「代码里不许再出现这个字段」。
+    const code = sidebarSource
+      .replace(/\/\*[\s\S]*?\*\//g, '')  // 块注释
+      .replace(/\/\/.*$/gm, '')             // 行注释
+    // ⚠️ 用词边界：裸 /minRole/ 会匹配到 **AdminRole** 里的子串
+    // （"Ad" + "minRole"），那是误报。
+    expect(code).not.toMatch(/\bminRole\b/)
+    expect(code).not.toMatch(/item\.minRole/)
   })
 })

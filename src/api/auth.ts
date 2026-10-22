@@ -49,8 +49,8 @@ export async function login(email: string, password: string): Promise<LoginResul
   // 但一旦 user 缺失（响应结构漂移 / 网关改包信封 / 后端改字段），
   // role 会**静默**变成 'admin'。
   //
-  // 而 hasPermission('admin', ['super_admin']) 返回 **true**（admin 向上升级）
-  // → 所有写按钮都亮出来，而后端 require_admin_or_operator 会 403 →
+  // 而写动作的闸门是 `canOperate`（admin / operator 都算）→
+  // 兜底成 'admin' 时所有写按钮都亮出来，而后端若因别的原因 403 →
   // 用户看到一排可点的危险按钮，点下去全部 403，且没有解释。
   //
   // 兜底成最小权限：拿不到就当自己是 operator —— 少几个按钮，

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { listPushNotifications, retryPushNotification } from '../api/admin'
 import { useApi } from '../hooks/useApi'
-import { useRole, hasPermission } from '../hooks/useRole'
+import { useRole, hasPermission, STAFF_ROLES } from '../hooks/useRole'
 import { toast } from '../store/toast'
 import {
   Badge,
@@ -57,7 +57,7 @@ const PAGE_SIZE = 50
 
 export function PushNotifications() {
   const role = useRole()
-  const canOperate = hasPermission(role, ['super_admin', 'operator'])
+  const canOperate = hasPermission(role, STAFF_ROLES)
 
   const [status, setStatus] = useState('')
   const [userIdFilter, setUserIdFilter] = useState('')
