@@ -251,6 +251,25 @@ export interface TtsConfig {
   indextts_ref_text?: string | null
   api_key_set: boolean
   api_key_last4?: string | null
+  /**
+   * 分 provider 的「这把 key 有没有」（后端 2026-10-22 加）。
+   *
+   * 为什么单独给：`api_key_set` 是「任意一把密钥存在」，而配置页里
+   * openai / 豆包两段各有自己的 key 输入框，共用一个标志会**说谎** ——
+   * 豆包 env 里配了 key 时，openai 那一栏显示「已保存，留空则不变」，
+   * 其实根本没保存。前端按当前 provider 取对应那个标志。
+   */
+  openai_api_key_set?: boolean
+  openai_api_key_last4?: string | null
+  doubao_api_key_set?: boolean
+  doubao_api_key_last4?: string | null
+  /**
+   * 后端的「存下来了，但有副作用」提示。
+   *
+   * 最典型的是「显式清掉了当前 provider 唯一那把 key」：配置确实存好了，
+   * 但下一次合成会 401 —— 这条必须让运营看见，不能只弹一句「保存成功」。
+   */
+  warning?: string | null
   /** db = system_config 表里配了；env = 回落环境变量/默认值 */
   source?: string | null
   updated_at?: string | null
@@ -329,13 +348,15 @@ export interface TtsConfigUpdatePayload {
   // edge
   edge_voice?: string | null
   // openai 协议
-  openai_api_key?: string
+  // 密钥字段是**三态**（后端 2026-10-22 定）：
+  //   不传 / undefined → 不动；"" → 不动（用户没重新输入）；null → **清除**
+  openai_api_key?: string | null
   openai_base_url?: string | null
   openai_model?: string | null
   openai_voice?: string | null
   // doubao
-  doubao_api_key?: string
-  doubao_token?: string
+  doubao_api_key?: string | null
+  doubao_token?: string | null
   doubao_app_id?: string | null
   doubao_voice?: string | null
   doubao_resource_id?: string | null

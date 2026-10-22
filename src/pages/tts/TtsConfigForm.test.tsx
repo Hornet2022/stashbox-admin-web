@@ -32,13 +32,16 @@ function renderForm(overrides: Partial<Parameters<typeof TtsConfigForm>[0]> = {}
   const props = {
     provider: 'indextts' as const,
     data: emptyFields,
-    apiKeySet: false,
+    // 分 provider 的「这把 key 有没有」（后端 2026-10-22 加，共用的 apiKeySet 会串台）
+    openaiApiKeySet: false,
+    doubaoApiKeySet: false,
     showApiKey: false,
     saving: false,
     testing: false,
     onProviderChange: vi.fn(),
     onFieldChange: vi.fn(),
     onToggleApiKey: vi.fn(),
+    onClearApiKey: vi.fn(),
     onSubmit: vi.fn(),
     onTest: vi.fn(),
     // 探测音色（2026-10-21）
@@ -85,9 +88,16 @@ describe('TtsConfigForm', () => {
     expect(screen.getByPlaceholderText('alloy')).toBeInTheDocument()
   })
 
-  it('openai + apiKeySet=true → placeholder 提示已保存', () => {
-    renderForm({ provider: 'openai', apiKeySet: true })
+  it('openai + openaiApiKeySet=true → placeholder 提示已保存', () => {
+    renderForm({ provider: 'openai', openaiApiKeySet: true })
     expect(screen.getByPlaceholderText('已保存，留空则不变')).toBeInTheDocument()
+  })
+
+  it('豆包那把 key 不该让 openai 那一栏显示「已保存」', () => {
+    // 共用 apiKeySet 的老做法会串台：豆包 env 有 key → openai 栏也显示已保存，
+    // 而 openai 其实根本没存 —— 运营因此以为「不用管」。
+    renderForm({ provider: 'openai', openaiApiKeySet: false, doubaoApiKeySet: true })
+    expect(screen.getByPlaceholderText('sk-...')).toBeInTheDocument()
   })
 
   it('doubao provider → API key + Token + App ID + Voice + Resource ID', () => {
@@ -189,5 +199,35 @@ describe('TtsConfigForm', () => {
   it('探测按钮只在 openai provider 下出现（其它 provider 没有音色列表概念）', () => {
     renderForm({ provider: 'doubao' })
     expect(screen.queryByRole('button', { name: '探测可用音色' })).not.toBeInTheDocument()
+  })
+
+  // ── 清除已保存的 Key（2026-10-22）───────────────────────────────
+  it('openai 存了 key → 渲染「清除已保存的 Key」按钮', () => {
+    renderForm({ provider: 'openai', openaiApiKeySet: true })
+    expect(screen.getByRole('button', { name: '清除已保存的 Key' })).toBeInTheDocument()
+  })
+
+  it('openai 没存 key → 不渲染清除按钮', () => {
+    renderForm({ provider: 'openai', openaiApiKeySet: false })
+    expect(screen.queryByRole('button', { name: '清除已保存的 Key' })).not.toBeInTheDocument()
+  })
+
+  it('点「清除已保存的 Key」→ onClearApiKey("openai")', async () => {
+    const user = userEvent.setup()
+    const props = renderForm({ provider: 'openai', openaiApiKeySet: true })
+    await user.click(screen.getByRole('button', { name: '清除已保存的 Key' }))
+    expect(props.onClearApiKey).toHaveBeenCalledWith('openai')
+  })
+
+  it('confirmClear=openai → 按钮变成「确认清除？」', () => {
+    renderForm({ provider: 'openai', openaiApiKeySet: true, confirmClear: 'openai' })
+    expect(screen.getByRole('button', { name: '确认清除？' })).toBeInTheDocument()
+  })
+
+  it('豆包存了 key → 清除按钮回调带 doubao', async () => {
+    const user = userEvent.setup()
+    const props = renderForm({ provider: 'doubao', doubaoApiKeySet: true })
+    await user.click(screen.getByRole('button', { name: '清除已保存的 Key' }))
+    expect(props.onClearApiKey).toHaveBeenCalledWith('doubao')
   })
 })

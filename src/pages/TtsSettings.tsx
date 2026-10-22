@@ -49,6 +49,15 @@ export function TtsSettings() {
   const [probing, setProbing] = useState(false)
   const [supportedVoices, setSupportedVoices] = useState<string[]>([])
   const [voiceProbeHint, setVoiceProbeHint] = useState<string | null>(null)
+  /**
+   * 「清除已存 key」的两步确认（2026-10-22）。
+   *
+   * 为什么要两步：清掉一把**正在用**的 key 会让下一次合成直接 401 ——
+   * 这类不可逆操作不该点一下就生效。
+   * 用两次点击而不是 window.confirm：原生弹窗在这个项目里没有先例，
+   * 也测不了（jsdom 里 confirm 不会被用户确认）。
+   */
+  const [confirmClear, setConfirmClear] = useState<'openai' | 'doubao' | null>(null)
 
   /** 后端 GET 配置 → 同步进表单（仅第一次 + reload 后） */
   useEffect(() => {
@@ -121,8 +130,15 @@ export function TtsSettings() {
     setSaving(true)
     try {
       const payload = buildPayload()
-      await updateTtsConfig(payload)
-      toast('保存成功', 'success')
+      const res = await updateTtsConfig(payload)
+      // 后端会在「存下来了、但有副作用」时带 warning（例如清掉了当前 provider
+      // 唯一那把 key → 下一次合成会 401）。这时**不能**只弹「保存成功」——
+      // 那会把「雷」留给下一次蒸馏，运营根本不知道自己埋了什么。
+      if (res.warning) {
+        toast(res.warning, 'info')
+      } else {
+        toast('保存成功', 'success')
+      }
       // 清空 key 输入
       setFields((prev) => ({
         ...prev,
@@ -136,6 +152,49 @@ export function TtsSettings() {
     } catch (err) {
       console.warn('[CP TTS-Config] updateTtsConfig failed:', toErrorMessage(err))
       toast(`保存失败：${toErrorMessage(err)}`, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /**
+   * 清除已存的那把 key（2026-10-22）。
+   *
+   * 语义：**显式传 null = 清除**（后端三态里的第三态）。
+   * 「留空 = 不改动」必须保留 —— 用户没重新输入 key 时不能把已存的抹掉。
+   *
+   * 豆包那把**一次清掉 api_key 与 token 两个字段**：它们是同一份凭证的两种
+   * 形态（新版 API key / 旧版 TOKEN），只清一半会留下一个「看起来还在、
+   * 其实用不了」的状态。
+   */
+  const handleClearApiKey = async (target: 'openai' | 'doubao') => {
+    if (confirmClear !== target) {
+      setConfirmClear(target)
+      return
+    }
+    setConfirmClear(null)
+    setSaving(true)
+    try {
+      const payload =
+        target === 'openai'
+          ? { provider, openai_api_key: null }
+          : { provider, doubao_api_key: null, doubao_token: null }
+      const res = await updateTtsConfig(payload)
+      if (res.warning) {
+        toast(res.warning, 'info')
+      } else {
+        toast('已清除保存的 Key', 'success')
+      }
+      setFields((prev) => ({
+        ...prev,
+        openaiApiKey: '',
+        doubaoApiKey: '',
+        doubaoToken: '',
+      }))
+      reload()
+    } catch (err) {
+      console.warn('[CP TTS-Config] clear api key failed:', toErrorMessage(err))
+      toast(`清除失败：${toErrorMessage(err)}`, 'error')
     } finally {
       setSaving(false)
     }
@@ -213,13 +272,19 @@ export function TtsSettings() {
       <TtsConfigForm
         provider={provider}
         data={fields}
-        apiKeySet={data?.api_key_set ?? false}
+        openaiApiKeySet={data?.openai_api_key_set ?? false}
+        doubaoApiKeySet={data?.doubao_api_key_set ?? false}
         showApiKey={showApiKey}
         saving={saving}
         testing={testing}
-        onProviderChange={setProvider}
+        onProviderChange={(p) => {
+          setProvider(p)
+          setConfirmClear(null)
+        }}
         onFieldChange={updateField}
         onToggleApiKey={() => setShowApiKey((v) => !v)}
+        onClearApiKey={handleClearApiKey}
+        confirmClear={confirmClear}
         onSubmit={handleSave}
         onTest={handleTest}
         onProbeVoices={handleProbeVoices}

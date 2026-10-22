@@ -10,18 +10,25 @@ import type { FormEvent } from 'react'
  * 行为契约：
  * - provider select 切换：清空无关字段（保留当前 provider 的字段）
  * - api_key 留空 = 不改动已存的那把 key（PUT 语义）
- * - 显式传 null/"" = 显式清空回 env（api_key/token 例外）
+ * - **显式 null = 清除**已存的那把 key（后端 2026-10-22 起支持，此前清不掉）
  * - 保存时按当前 provider 拼 payload，调 updateTtsConfig，热生效
  */
 export interface TtsConfigFormProps {
   provider: TtsProvider
   data: TtsConfigFields
-  apiKeySet: boolean
+  /** openai 那把 key 有没有（后端分 provider 的标志，不用共用的 api_key_set） */
+  openaiApiKeySet: boolean
+  /** 豆包那把 key 有没有 */
+  doubaoApiKeySet: boolean
   showApiKey: boolean
   saving: boolean
   onProviderChange: (p: TtsProvider) => void
   onFieldChange: (field: keyof TtsConfigFields, value: string) => void
   onToggleApiKey: () => void
+  /** 清除已存的那把 key（provider 决定清哪一把） */
+  onClearApiKey: (provider: 'openai' | 'doubao') => void
+  /** 两步确认：正等着用户再点一次的那个 provider（null = 没在等） */
+  confirmClear?: 'openai' | 'doubao' | null
   onSubmit: (e: FormEvent<HTMLFormElement>) => void
   onTest: () => void
   testing: boolean
@@ -60,12 +67,15 @@ export type TtsPayload = TtsConfigUpdatePayload
 export function TtsConfigForm({
   provider,
   data,
-  apiKeySet,
+  openaiApiKeySet,
+  doubaoApiKeySet,
   showApiKey,
   saving,
   onProviderChange,
   onFieldChange,
   onToggleApiKey,
+  onClearApiKey,
+  confirmClear,
   onSubmit,
   onTest,
   testing,
@@ -120,7 +130,7 @@ export function TtsConfigForm({
                     type={showApiKey ? 'text' : 'password'}
                     value={data.openaiApiKey}
                     onChange={(e) => onFieldChange('openaiApiKey', e.target.value)}
-                    placeholder={apiKeySet ? '已保存，留空则不变' : 'sk-...'}
+                    placeholder={openaiApiKeySet ? '已保存，留空则不变' : 'sk-...'}
                     autoComplete="new-password"
                     className={`t-input ${inputClass}`}
                   />
@@ -134,6 +144,33 @@ export function TtsConfigForm({
                   </button>
                 </div>
               </Field>
+              {/*
+                清除已存的那把 key（2026-10-22）。
+
+                为什么需要这个按钮：**留空 = 不改动**是前端契约（用户没重新输入
+                时不能把 key 抹了），于是「清掉一把已经不用的 key」就没有任何入口 ——
+                DB 里那把早已失效的 key 一直躺着，配置页还显示「已保存」，
+                纯属误导。
+
+                放在 Field **外面**：Field 渲染的是 <label>，label 里的可点元素
+                会被 label 的点击行为吞掉（a11y 上也不该嵌套）。
+              */}
+              {openaiApiKeySet && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className={buttonGhostClass}
+                    onClick={() => onClearApiKey('openai')}
+                  >
+                    {confirmClear === 'openai' ? '确认清除？' : '清除已保存的 Key'}
+                  </button>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {confirmClear === 'openai'
+                      ? '再点一次确认。清除后当前 provider 若没有别的 key，合成会 401。'
+                      : '已保存一把 Key。换成别的 provider 后它就没用了，可以清掉。'}
+                  </span>
+                </div>
+              )}
               <Field label="Base URL">
                 <input
                   type="text"
@@ -224,7 +261,7 @@ export function TtsConfigForm({
                     type={showApiKey ? 'text' : 'password'}
                     value={data.doubaoApiKey}
                     onChange={(e) => onFieldChange('doubaoApiKey', e.target.value)}
-                    placeholder={apiKeySet ? '已保存，留空则不变' : '从火山方舟控制台获取'}
+                    placeholder={doubaoApiKeySet ? '已保存，留空则不变' : '从火山方舟控制台获取'}
                     autoComplete="new-password"
                     className={`t-input ${inputClass}`}
                   />
@@ -238,6 +275,22 @@ export function TtsConfigForm({
                   </button>
                 </div>
               </Field>
+              {doubaoApiKeySet && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className={buttonGhostClass}
+                    onClick={() => onClearApiKey('doubao')}
+                  >
+                    {confirmClear === 'doubao' ? '确认清除？' : '清除已保存的 Key'}
+                  </button>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {confirmClear === 'doubao'
+                      ? '再点一次确认。清除后当前 provider 若没有别的 key，合成会 401。'
+                      : '已保存一把 Key（API key 与旧版 Token 一起清）。'}
+                  </span>
+                </div>
+              )}
               <Field label="Token（旧版兼容，可留空）">
                 <input
                   type="password"
