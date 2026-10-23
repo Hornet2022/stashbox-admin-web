@@ -29,6 +29,7 @@ if (!target) {
 
 const VIEWPORTS = [
   { name: '大屏 1920x1080', width: 1920, height: 1080 },
+  { name: '2K 显示器 1920x1300', width: 1920, height: 1300 },
   { name: '桌面 1440x900', width: 1440, height: 900 },
   { name: '笔记本 1366x768', width: 1366, height: 768 },
   { name: '笔记本 1280x720', width: 1280, height: 720 },
