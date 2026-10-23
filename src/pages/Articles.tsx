@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import {
   createArticle,
+  createArticleFromDocument,
   deleteAdminArticle,
   downloadCsv,
   exportErrorMessage,
@@ -16,7 +17,7 @@ import { ErrorNotice, buttonGhostClass, footerCountClass } from '../components/u
 import { ArticlesToolbar } from './articles/ArticlesToolbar'
 import { ArticlesTable } from './articles/ArticlesTable'
 import { ArticleActionModal } from './articles/ArticleActionModal'
-import { CreateArticleDrawer } from './articles/CreateArticleDrawer'
+import { CreateArticleDrawer, MAX_DOCUMENT_BYTES, type CreateMode } from './articles/CreateArticleDrawer'
 import type { ActionKind } from './articles/constants'
 import type { ArticleRow } from '../types'
 
@@ -103,16 +104,22 @@ export function Articles() {
 
   // —— 新建 Drawer ——
   const [createOpen, setCreateOpen] = useState(false)
+  const [createMode, setCreateMode] = useState<CreateMode>('url')
   const [createUrl, setCreateUrl] = useState('')
   const [createTitle, setCreateTitle] = useState('')
+  const [createFile, setCreateFile] = useState<File | null>(null)
+  const [createText, setCreateText] = useState('')
   const [createSubmitting, setCreateSubmitting] = useState(false)
   const [createModalError, setCreateModalError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
 
   const closeCreateDrawer = () => {
     setCreateOpen(false)
+    setCreateMode('url')
     setCreateUrl('')
     setCreateTitle('')
+    setCreateFile(null)
+    setCreateText('')
     setCreateSubmitting(false)
     setCreateModalError(null)
     setShowSuccess(false)
@@ -181,7 +188,12 @@ export function Articles() {
    */
   const handleSubmitCreate = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!createUrl.trim()) {
+    // —— 分模式的入参校验 ——
+    //
+    // 三种模式互斥（Drawer 用分段控件保证），但**每种模式的必填项不同**，
+    // 校验必须跟着模式走 —— 否则切到「上传文件」模式后提交一个空 URL，
+    // 报的还是「URL 不能为空」，运营完全看不懂。
+    if (createMode === 'url' && !createUrl.trim()) {
       setCreateModalError('URL 不能为空')
       // 触发 Drawer 内 input 的 shake
       const wrap = document.querySelector('.t-input-wrap') as HTMLElement | null
@@ -203,10 +215,35 @@ export function Articles() {
       }
       return
     }
+    if (createMode === 'file' && !createFile) {
+      setCreateModalError('请选择一个文档文件')
+      return
+    }
+    if (createMode === 'file' && createFile && createFile.size > MAX_DOCUMENT_BYTES) {
+      setCreateModalError(
+        `文件太大了（${Math.floor(createFile.size / 1024 / 1024)}MB），上限 10MB`,
+      )
+      return
+    }
+    if (createMode === 'text' && !createText.trim()) {
+      setCreateModalError('正文不能为空')
+      return
+    }
+
     setCreateSubmitting(true)
     setCreateModalError(null)
     try {
-      await createArticle(createUrl.trim(), createTitle.trim() || undefined)
+      if (createMode === 'url') {
+        await createArticle(createUrl.trim(), createTitle.trim() || undefined)
+      } else {
+        // 文件与文本**二选一**（服务端也这么判）——
+        // 这里按模式只发一个，避免服务端以「二选一」为由打回。
+        await createArticleFromDocument(
+          createMode === 'file' ? createFile : null,
+          createMode === 'text' ? createText : null,
+          createTitle.trim() || undefined,
+        )
+      }
       setShowSuccess(true)
       setTimeout(() => {
         closeCreateDrawer()
@@ -292,14 +329,20 @@ export function Articles() {
 
       <CreateArticleDrawer
         open={createOpen}
+        mode={createMode}
         url={createUrl}
         title={createTitle}
+        file={createFile}
+        text={createText}
         submitting={createSubmitting}
         error={createModalError}
         showSuccess={showSuccess}
         onClose={closeCreateDrawer}
+        onModeChange={setCreateMode}
         onUrlChange={setCreateUrl}
         onTitleChange={setCreateTitle}
+        onFileChange={setCreateFile}
+        onTextChange={setCreateText}
         onSubmit={handleSubmitCreate}
       />
     </div>

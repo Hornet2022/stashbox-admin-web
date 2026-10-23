@@ -37,6 +37,7 @@ vi.mock('./api/admin', () => ({
   getLlmConfig: vi.fn().mockResolvedValue({}),
   getTtsConfig: vi.fn().mockResolvedValue({}),
   createArticle: vi.fn(),
+  createArticleFromDocument: vi.fn(),
   forceRetryArticle: vi.fn(),
   invalidateAudio: vi.fn(),
   deleteAdminArticle: vi.fn(),

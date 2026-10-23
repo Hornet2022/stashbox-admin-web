@@ -33,6 +33,7 @@ import {
   adjustQuota,
   listArticles,
   createArticle,
+  createArticleFromDocument,
   forceRetryArticle,
   invalidateAudio,
   deleteAdminArticle,
@@ -104,6 +105,35 @@ describe('articles 端点', () => {
       source: 'url',
       title: 'Title A',
     })
+  })
+
+  it('createArticleFromDocument → POST /admin/articles/document（admin 侧文档录入）', async () => {
+    const file = new File(['# 标题\n\n正文'], 'doc.md', { type: 'text/markdown' })
+    await createArticleFromDocument(file, null, '运营标题')
+
+    expect(mockedPost).toHaveBeenCalledTimes(1)
+    const [path, body, config] = mockedPost.mock.calls[0]
+    expect(path).toBe('/api/v1/admin/articles/document')
+    expect(body).toBeInstanceOf(FormData)
+    // 文件与文本**二选一** —— 这里只发了文件
+    expect((body as FormData).get('file')).toBeTruthy()
+    expect((body as FormData).get('text')).toBeNull()
+    expect((body as FormData).get('title')).toBe('运营标题')
+    // ⚠️ 必须显式覆盖 Content-Type：axios 实例默认带 application/json，
+    // 而 axios 的 transformRequest 在 content-type 是 json 时会把 FormData
+    // **转成 JSON**（File 变 {}），服务端收到的是没有文件的 JSON 且不报错。
+    expect((config as { headers?: Record<string, string> }).headers).toMatchObject({
+      'Content-Type': 'multipart/form-data',
+    })
+  })
+
+  it('createArticleFromDocument → 粘贴文本时不发 file（服务端判据是二选一）', async () => {
+    await createArticleFromDocument(null, '粘过来的正文', undefined)
+    const [, body] = mockedPost.mock.calls[0]
+    expect((body as FormData).get('file')).toBeNull()
+    expect((body as FormData).get('text')).toBe('粘过来的正文')
+    // 空标题不该发出去（服务端 Form 字段留着空串反而多一份噪音）
+    expect((body as FormData).get('title')).toBeNull()
   })
 
   it('forceRetryArticle → POST /admin/articles/{id}/force-retry', async () => {
