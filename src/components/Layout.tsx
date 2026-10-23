@@ -58,9 +58,51 @@ export function Layout() {
             <Outlet />
           </div>
         </main>
+
+        {/* 备案号页脚（法定义务，2026-10-23 加）
+            《互联网信息服务管理办法》要求网站底部显著标明工信部备案号并链到
+            beian.miit.gov.cn；阿里云《备案驳回FAQ》把「已备案成功但底部没挂
+            备案号」「挂了但没链工信部」都列为明确驳回理由 —— 公安联网备案的
+            审核是同一性质的人工核查。
+
+            admin.stashbox.cn 与 stashbox.cn 属同一网站，页脚要一起挂。
+            号码由 stashbox 仓的 deploy/fill-filing-numbers.py 注入
+            （唯一真相源是 infra/web/filing.json）—— 号码为空时整行不显示。 */}
+        <FilingFooter />
       </div>
     </div>
   )
 }
 
 export default Layout
+
+
+/**
+ * 备案号页脚。
+ *
+ * 空号时**整行不渲染** —— 页面不能出现一个看着像真号、实际是占位的字符串。
+ */
+function FilingFooter() {
+  // 号码由**构建期**注入（VITE_ICP_NUMBER / VITE_PSB_NUMBER），
+  // 真相源是 stashbox 仓的 infra/web/filing.json —— 两个仓各写一份号码
+  // 迟早只改一处，公安备案审核时就会以「网站底部没有备案号」被驳回。
+  // 注入由 stashbox 仓的 deploy/fill-filing-numbers.py 负责。
+  const icp = import.meta.env.VITE_ICP_NUMBER ?? ''
+  const psb = import.meta.env.VITE_PSB_NUMBER ?? ''
+  if (!icp && !psb) return null
+  return (
+    <footer className="shrink-0 border-t border-neutral-200 px-4 py-3 text-center text-xs leading-5 text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
+      {icp && (
+        <a href="https://beian.miit.gov.cn" target="_blank" rel="noreferrer noopener">
+          {icp}
+        </a>
+      )}
+      {icp && psb && <span className="mx-2 opacity-50">·</span>}
+      {psb && (
+        <a href="https://beian.mps.gov.cn" target="_blank" rel="noreferrer noopener">
+          {psb}
+        </a>
+      )}
+    </footer>
+  )
+}
