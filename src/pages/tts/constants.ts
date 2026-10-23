@@ -21,6 +21,14 @@ export const DEFAULT_VALUES = {
   openaiBaseUrl: 'https://api.openai.com/v1',
   openaiModel: 'tts-1',
   openaiVoice: 'alloy',
+  /**
+   * 风格控制 prompt 的默认留空 —— 空 = 不发这个字段（后端只在非空时才发）。
+   *
+   * 为什么不预填一句：这句话会**逐字**发给上游、作用于每一段，
+   * 等于替运营决定了整篇文章的语气。默认不填，运营自己写。
+   */
+  openaiInstructions: '',
+  openaiLanguage: '',
   doubaoVoice: 'BV001_streaming',
   doubaoResourceId: 'seed-tts-2.0',
   localVoice: 'Tingting',

@@ -54,6 +54,20 @@ export function CurrentConfigCard({
               )}
             </dd>
 
+            {data?.provider === 'openai' && (
+              <>
+                {/*
+                  风格控制 prompt —— 要能一眼看见**当前生效**的是哪一句。
+                  它逐字发给每一段，写错了整篇的语气就跟着错，
+                  而音频本身不会告诉你「这是被 prompt 改过的」。
+                */}
+                <dt className="text-sm text-neutral-400 dark:text-neutral-500">风格控制</dt>
+                <dd className="text-sm text-neutral-600 dark:text-neutral-300">
+                  {data.openai_instructions || '—（未设置）'}
+                </dd>
+              </>
+            )}
+
             <dt className="text-sm text-neutral-400 dark:text-neutral-500">API key</dt>
             <dd className="text-sm text-neutral-600 dark:text-neutral-300">
               {data ? apiKeyStatus : '—'}

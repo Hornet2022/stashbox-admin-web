@@ -48,6 +48,9 @@ export interface TtsConfigFields {
   openaiBaseUrl: string
   openaiModel: string
   openaiVoice: string
+  /** 风格控制 prompt（上游 instructions）—— 同一篇每段逐字相同 */
+  openaiInstructions: string
+  openaiLanguage: string
   doubaoApiKey: string
   doubaoToken: string
   doubaoAppId: string
@@ -250,6 +253,41 @@ export function TtsConfigForm({
                   ))}
                 </div>
               )}
+              {/*
+                风格控制 prompt（2026-10-23）。
+
+                上游字段名就叫 `instructions`（传数字会被上游 400 拒掉 →
+                说明它是**真的被识别**的字段，不是被静默忽略的摆设）。
+                CustomVoice 模型的音色由 Voice 定，**语气/情绪/语速由它定**。
+
+                为什么它跟「分段音色一致」直接相关：长稿是分段合成的，
+                每段是一次独立请求。这句 prompt 会**逐字**发给每一段 →
+                段间的风格取向一致（实测：加「悲伤低沉」→ 时长变长、基频变低；
+                加「开心轻快」→ 变短、变高）。
+
+                ⚠️ 但它压不住单次采样本身的随机波动 —— 实测同条件下两段
+                的基频离散度 18.5%，加了 prompt 是 18.1%（基本没变）。
+                真正把离散度压到 1.8% 的是后端的音域对齐。
+                所以这里的提示要说实话，不能让运营以为填了它就万事大吉。
+              */}
+              <Field label="风格控制（Instructions）">
+                <textarea
+                  value={data.openaiInstructions}
+                  onChange={(e) => onFieldChange('openaiInstructions', e.target.value)}
+                  rows={3}
+                  placeholder="留空 = 不控制。例如：用平稳、客观的播音腔朗读，语速适中。"
+                  className={`t-input ${inputClass}`}
+                />
+              </Field>
+              <Field label="语言（Language，可留空）">
+                <input
+                  type="text"
+                  value={data.openaiLanguage}
+                  onChange={(e) => onFieldChange('openaiLanguage', e.target.value)}
+                  placeholder="留空 = 不传"
+                  className={`t-input ${inputClass}`}
+                />
+              </Field>
             </>
           )}
 

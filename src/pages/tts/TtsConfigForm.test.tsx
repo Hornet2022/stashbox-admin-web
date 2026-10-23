@@ -15,6 +15,8 @@ const emptyFields: TtsConfigFields = {
   openaiBaseUrl: '',
   openaiModel: '',
   openaiVoice: '',
+  openaiInstructions: '',
+  openaiLanguage: '',
   doubaoApiKey: '',
   doubaoToken: '',
   doubaoAppId: '',
@@ -199,6 +201,24 @@ describe('TtsConfigForm', () => {
   it('探测按钮只在 openai provider 下出现（其它 provider 没有音色列表概念）', () => {
     renderForm({ provider: 'doubao' })
     expect(screen.queryByRole('button', { name: '探测可用音色' })).not.toBeInTheDocument()
+  })
+
+  // ── 风格控制 instructions（2026-10-23）──────────────────────────
+  it('openai provider → 渲染「风格控制」输入框', () => {
+    renderForm({ provider: 'openai' })
+    expect(screen.getByLabelText('风格控制（Instructions）')).toBeInTheDocument()
+  })
+
+  it('编辑风格控制 → onFieldChange("openaiInstructions", 内容)', async () => {
+    const user = userEvent.setup()
+    const props = renderForm({ provider: 'openai' })
+    await user.type(screen.getByLabelText('风格控制（Instructions）'), '播')
+    expect(props.onFieldChange).toHaveBeenCalledWith('openaiInstructions', '播')
+  })
+
+  it('非 openai provider → 不渲染「风格控制」输入框', () => {
+    renderForm({ provider: 'doubao' })
+    expect(screen.queryByLabelText('风格控制（Instructions）')).not.toBeInTheDocument()
   })
 
   // ── 清除已保存的 Key（2026-10-22）───────────────────────────────

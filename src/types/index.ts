@@ -249,6 +249,14 @@ export interface TtsConfig {
   openai_base_url?: string | null
   openai_model?: string | null
   openai_voice?: string | null
+  /**
+   * 风格控制 prompt（上游字段名 `instructions`）。
+   *
+   * CustomVoice 模型靠它定语气/情绪/语速；同一篇每个分段都发**逐字相同**的
+   * 一份 → 段间风格取向一致。留空 = 不发这个字段。
+   */
+  openai_instructions?: string | null
+  openai_language?: string | null
   // doubao
   doubao_voice?: string | null
   doubao_resource_id?: string | null
@@ -365,6 +373,14 @@ export interface TtsConfigUpdatePayload {
   openai_base_url?: string | null
   openai_model?: string | null
   openai_voice?: string | null
+  /**
+   * 风格控制 prompt（上游字段名 `instructions`）。
+   *
+   * CustomVoice 模型靠它定语气/情绪/语速；同一篇每个分段都发**逐字相同**的
+   * 一份 → 段间风格取向一致。留空 = 不发这个字段。
+   */
+  openai_instructions?: string | null
+  openai_language?: string | null
   // doubao
   doubao_api_key?: string | null
   doubao_token?: string | null

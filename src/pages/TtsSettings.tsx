@@ -29,6 +29,8 @@ export function TtsSettings() {
     openaiBaseUrl: DEFAULT_VALUES.openaiBaseUrl,
     openaiModel: DEFAULT_VALUES.openaiModel,
     openaiVoice: DEFAULT_VALUES.openaiVoice,
+    openaiInstructions: DEFAULT_VALUES.openaiInstructions,
+    openaiLanguage: DEFAULT_VALUES.openaiLanguage,
     doubaoApiKey: '',
     doubaoToken: '',
     doubaoAppId: '',
@@ -69,6 +71,8 @@ export function TtsSettings() {
       openaiBaseUrl: data.openai_base_url ?? DEFAULT_VALUES.openaiBaseUrl,
       openaiModel: data.openai_model ?? DEFAULT_VALUES.openaiModel,
       openaiVoice: data.openai_voice ?? DEFAULT_VALUES.openaiVoice,
+      openaiInstructions: data.openai_instructions ?? DEFAULT_VALUES.openaiInstructions,
+      openaiLanguage: data.openai_language ?? DEFAULT_VALUES.openaiLanguage,
       doubaoVoice: data.doubao_voice ?? DEFAULT_VALUES.doubaoVoice,
       doubaoResourceId: data.doubao_resource_id ?? DEFAULT_VALUES.doubaoResourceId,
       localVoice: data.local_voice ?? DEFAULT_VALUES.localVoice,
@@ -107,6 +111,11 @@ export function TtsSettings() {
       payload.openai_base_url = fields.openaiBaseUrl.trim() || null
       payload.openai_model = fields.openaiModel.trim() || null
       payload.openai_voice = fields.openaiVoice.trim() || null
+      // 风格控制 prompt：空 → null = 清空（后端归一成「不发这个字段」）。
+      // ⚠️ 这里**不能**像 key 那样「留空即不改」—— 它是普通字段，
+      // 运营清空输入框就是要撤掉这句风格控制，留着旧值才是bug。
+      payload.openai_instructions = fields.openaiInstructions.trim() || null
+      payload.openai_language = fields.openaiLanguage.trim() || null
     } else if (provider === 'doubao') {
       if (fields.doubaoApiKey) payload.doubao_api_key = fields.doubaoApiKey
       if (fields.doubaoToken) payload.doubao_token = fields.doubaoToken
