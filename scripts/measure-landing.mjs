@@ -77,9 +77,18 @@ for (const vp of VIEWPORTS) {
         if (!cur || l.right > cur.right) byTop.set(k, l)
       }
       const lineRights = [...byTop.values()].map((l) => Math.round(l.right))
-      // 竖线位置：col 的 border-right 内侧
+      // 竖线位置：两种画法都要认 ——
+      // ① 伪元素画在两栏空隙中央（::after，right 是负值）
+      // ② 老式的 border-right（在栏的右边缘内侧）
       const style = getComputedStyle(col)
-      const lineX = Math.round(cb.right - parseFloat(style.borderRightWidth || '0'))
+      const after = getComputedStyle(col, '::after')
+      let lineX
+      if (after.content && after.content !== 'none' && parseFloat(after.width) > 0) {
+        const right = parseFloat(after.right)
+        lineX = Math.round(cb.right - right)   // right:-24px → 线在栏外侧 24px
+      } else {
+        lineX = Math.round(cb.right - parseFloat(style.borderRightWidth || '0'))
+      }
       return {
         colLeft: Math.round(cb.left),
         colRight: Math.round(cb.right),
