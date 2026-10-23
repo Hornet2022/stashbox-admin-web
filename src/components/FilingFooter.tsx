@@ -6,7 +6,10 @@
  * 网站底部未添加备案号」「添加了但未链接到工信部网站」都列为**明确驳回
  * 理由** —— 公安联网备案的审核是同一性质的人工核查，会打开首页看。
  *
- * 号码由**构建期**注入（`VITE_ICP_NUMBER` / `VITE_PSB_NUMBER`），
+ * 工信部要求页脚**同时**标明「网站名称」和备案号（两者都要与备案系统一致），
+ * 少一行就算备案信息不完整。
+ *
+ * 号码由**构建期**注入（`VITE_SITE_NAME` / `VITE_ICP_NUMBER` / `VITE_PSB_NUMBER`），
  * 真相源是 stashbox 仓的 `infra/web/filing.json` —— 两个仓各写一份号码
  * 迟早只改一处，审核时就会以「网站底部没有备案号」被驳回。
  * 注入由 stashbox 仓的 `deploy/fill-filing-numbers.py` 负责。
@@ -21,11 +24,13 @@
  * 是空的 —— 而那正是审核员第一眼看到的地方。
  */
 export function FilingFooter() {
+  const siteName = import.meta.env.VITE_SITE_NAME ?? ''
   const icp = import.meta.env.VITE_ICP_NUMBER ?? ''
   const psb = import.meta.env.VITE_PSB_NUMBER ?? ''
-  if (!icp && !psb) return null
+  if (!siteName && !icp && !psb) return null
   return (
     <footer className="shrink-0 border-t border-neutral-200 px-4 py-3 text-center text-xs leading-5 text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
+      {siteName && <p>网站名称：{siteName}</p>}
       {icp && (
         <a href="https://beian.miit.gov.cn" target="_blank" rel="noreferrer noopener">
           {icp}
