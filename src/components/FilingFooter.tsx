@@ -25,23 +25,36 @@
  */
 export function FilingFooter() {
   const siteName = import.meta.env.VITE_SITE_NAME ?? ''
+  const copyright = import.meta.env.VITE_COPYRIGHT ?? ''
   const icp = import.meta.env.VITE_ICP_NUMBER ?? ''
   const psb = import.meta.env.VITE_PSB_NUMBER ?? ''
-  if (!siteName && !icp && !psb) return null
+  const psbIcon = import.meta.env.VITE_PSB_ICON ?? ''
+  if (!siteName && !copyright && !icp && !psb) return null
   return (
-    <footer className="shrink-0 border-t border-neutral-200 px-4 py-3 text-center text-xs leading-5 text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
-      {siteName && <p>网站名称：{siteName}</p>}
-      {icp && (
-        <a href="https://beian.miit.gov.cn" target="_blank" rel="noreferrer noopener">
-          {icp}
-        </a>
+    <footer className="shrink-0 border-t border-neutral-200 px-4 py-3.5 text-center text-xs leading-5 text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
+      {copyright && <p className="text-sm text-neutral-600 dark:text-neutral-300">{copyright}</p>}
+      {(icp || psb) && (
+        <p className="mt-1">
+          {icp && (
+            <a href="https://beian.miit.gov.cn" target="_blank" rel="noreferrer noopener">
+              {icp}
+            </a>
+          )}
+          {icp && psb && <span className="mx-2.5 opacity-45">·</span>}
+          {psb && (
+            <a
+              className="inline-flex items-center gap-1 align-middle"
+              href="https://beian.mps.gov.cn"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              {psbIcon && <img src={psbIcon} alt="" aria-hidden="true" className="h-[15px] w-[15px]" />}
+              <span>{psb}</span>
+            </a>
+          )}
+        </p>
       )}
-      {icp && psb && <span className="mx-2 opacity-50">·</span>}
-      {psb && (
-        <a href="https://beian.mps.gov.cn" target="_blank" rel="noreferrer noopener">
-          {psb}
-        </a>
-      )}
+      {siteName && <p className="mt-0.5 text-[11px]">网站名称：{siteName}</p>}
     </footer>
   )
 }

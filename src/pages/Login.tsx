@@ -52,7 +52,11 @@ export function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-100 px-4 dark:bg-neutral-900">
+    // 外层是**竖向** flex：页脚要落在页面底部，不能和登录卡片并排
+    // （第一版把页脚直接放进原来的横向 flex 里 → 它变成了并排的 flex item，
+    //  跑到了卡片右边）。横向居中交给内层，页脚单独占一行。
+    <div className="flex min-h-screen flex-col bg-neutral-100 dark:bg-neutral-900">
+      <div className="flex flex-1 items-center justify-center px-4">
       {/* w-96 = 384px，比 iPhone SE/8 的 375px 还宽 → 整页横向溢出。
           改成 w-full + max-w-md，窄屏自适应、宽屏仍是 448px。 */}
       {/* t-content-in：这是全站唯一没有入场动效的整屏，也是**唯一一个
@@ -142,6 +146,7 @@ export function Login() {
         <p className="mt-4 text-xs text-neutral-400 dark:text-neutral-500">
           账号与会话记录都会写入审计日志
         </p>
+      </div>
       </div>
 
       {/* 备案号页脚 —— 登录页是独立路由（不走 Layout），不单独挂的话，
