@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { Drawer } from 'vaul'
 import { Header } from './Header'
 import { Sidebar, SidebarNav } from './Sidebar'
+import { FilingFooter } from './FilingFooter'
 
 /**
  * 后台主框架：左侧导航 + 顶部栏 + 内容区（Outlet）。
@@ -75,34 +76,3 @@ export function Layout() {
 }
 
 export default Layout
-
-
-/**
- * 备案号页脚。
- *
- * 空号时**整行不渲染** —— 页面不能出现一个看着像真号、实际是占位的字符串。
- */
-function FilingFooter() {
-  // 号码由**构建期**注入（VITE_ICP_NUMBER / VITE_PSB_NUMBER），
-  // 真相源是 stashbox 仓的 infra/web/filing.json —— 两个仓各写一份号码
-  // 迟早只改一处，公安备案审核时就会以「网站底部没有备案号」被驳回。
-  // 注入由 stashbox 仓的 deploy/fill-filing-numbers.py 负责。
-  const icp = import.meta.env.VITE_ICP_NUMBER ?? ''
-  const psb = import.meta.env.VITE_PSB_NUMBER ?? ''
-  if (!icp && !psb) return null
-  return (
-    <footer className="shrink-0 border-t border-neutral-200 px-4 py-3 text-center text-xs leading-5 text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
-      {icp && (
-        <a href="https://beian.miit.gov.cn" target="_blank" rel="noreferrer noopener">
-          {icp}
-        </a>
-      )}
-      {icp && psb && <span className="mx-2 opacity-50">·</span>}
-      {psb && (
-        <a href="https://beian.mps.gov.cn" target="_blank" rel="noreferrer noopener">
-          {psb}
-        </a>
-      )}
-    </footer>
-  )
-}

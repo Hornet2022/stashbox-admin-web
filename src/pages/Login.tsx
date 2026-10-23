@@ -1,3 +1,4 @@
+import { FilingFooter } from '../components/FilingFooter'
 import { useState, type FormEvent } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Navigate, useNavigate } from 'react-router-dom'
@@ -142,6 +143,10 @@ export function Login() {
           账号与会话记录都会写入审计日志
         </p>
       </div>
+
+      {/* 备案号页脚 —— 登录页是独立路由（不走 Layout），不单独挂的话，
+          审核员第一眼看到的登录页底部就是空的。 */}
+      <FilingFooter />
     </div>
   )
 }
