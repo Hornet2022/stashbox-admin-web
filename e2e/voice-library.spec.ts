@@ -292,7 +292,19 @@ test.describe('音色库', () => {
     expect(res.status(), `试听产物打不开: ${url}`).toBe(200)
     const buf = await res.body()
     expect(buf.length, '试听产物是空的').toBeGreaterThan(1000)
-    expect(buf.subarray(0, 4).toString('latin1'), '试听产物不是 wav（RIFF 头）').toBe('RIFF')
+
+    // 产物格式**取决于 provider**，不能写死 wav：
+    //   indextts（自建克隆）出 wav（RIFF 头）；openai 协议出 mp3（帧同步 0xFF Ex/Fx）
+    // ⚠️ 这条断言以前写死 'RIFF'，而生产 provider 是 openai → 试听产物是 mp3 → 必挂。
+    //   而且它一直**没被发现**：库里没有「婷婷」时整条用例被「跳过」，
+    //   等于「从没跑过」的断言没人验过。
+    const head = buf.subarray(0, 4)
+    const isWav = head.toString('latin1') === 'RIFF'
+    const isMp3 = head[0] === 0xff && (head[1] & 0xe0) === 0xe0
+    expect(
+      isWav || isMp3,
+      `试听产物不是已知音频格式（头 4 字节: ${head.toString('hex')}）`,
+    ).toBe(true)
     await popup!.close()
   })
 })
