@@ -122,6 +122,19 @@ describe('ReasonDialog', () => {
     expect(screen.getByText('删除原因写入审计')).toBeInTheDocument()
   })
 
+  it('reason 输入框有可访问名称（placeholder 不算 label）', () => {
+    render(
+      <ReasonDialog open title="t" onClose={() => {}} onConfirm={() => {}} />,
+    )
+    // placeholder 只是提示，读屏软件读不到 —— 必须另有 aria-label。
+    // e2e 的「删除音色」用例就是靠 getByLabel('操作原因') 定位这个框。
+    expect(screen.getByLabelText('操作原因')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/请输入操作原因/)).toHaveAttribute(
+      'aria-label',
+      '操作原因',
+    )
+  })
+
   it('reason 短于 minLength → confirm 按钮禁用 + 字符不足提示', async () => {
     const user = userEvent.setup()
     render(

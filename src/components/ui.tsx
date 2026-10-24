@@ -551,6 +551,10 @@ export function ReasonDialog({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder={placeholder}
+            // ⚠️ 必须给可访问名称：placeholder **不是** label，
+            // 屏幕阅读器读不到「这里要填原因」，靠 getByLabel('操作原因') 也定位不到。
+            // 三处用法（删除音色 / 重推失败推送 / 触发池清理）语义都是「操作原因」。
+            aria-label="操作原因"
             rows={3}
             className={`${inputClass} resize-none ${
               tooShort ? 'border-error/60 focus:border-error' : ''
