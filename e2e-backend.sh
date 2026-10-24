@@ -304,10 +304,37 @@ ensure_db() {
     echo "▶ 建库 ${E2E_DB}"
     psql_base postgres "CREATE DATABASE \"${E2E_DB}\" OWNER \"stashbox\"" >/dev/null
   fi
-  local have
-  have=$(psql_base "${E2E_DB}" "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='users'" 2>/dev/null)
-  if [[ "${have:-0}" == "0" ]]; then
-    echo "▶ 跑 alembic（含 seed，自带 admin 账号）"
+
+  # 迁移判据：**看 alembic 版本**，不是「users 表在不在」。
+  #
+  # 原来判的是「users 表存在吗」→ 存在就**永远不迁移**。
+  # 于是代码加了新迁移（0040 给 articles 加 manual_tags 列）后，
+  # e2e 库一直停在旧版本，而服务跑的是新代码 ⇒ 每个碰 articles 表的请求
+  # 都 500（`column articles.manual_tags does not exist`）——
+  # 症状像「服务坏了」，根因是「库没迁移」，而 `up` 还照常报 ✅ 就绪。
+  #
+  # 2026-10-25 实测：e2e 库落后 **7 个迁移**（0033 → 0040），
+  # 集成测试因此稳定红，而它们是 `skip_in_ci` 的 ⇒ CI 从不跑 ⇒ 没人发现。
+  #
+  # ⚠️ 「有表但没有 alembic_version」是另一回事：那不是 alembic 建的库，
+  # 跑 upgrade head 会在已有表上 CREATE TABLE 而失败 —— 这时要**跳过并说清**，
+  # 而不是把迁移错误当成「库坏了」。
+  local head cur have
+  head=$( cd "${BACKEND}" && PYTHONPATH=/Users/hornet/work "${PY}" -m alembic heads 2>/dev/null \
+          | tail -1 | awk '{print $1}' )
+  cur=$(psql_base "${E2E_DB}" "SELECT version_num FROM alembic_version LIMIT 1" 2>/dev/null)
+  if [[ -z "${cur}" ]]; then
+    have=$(psql_base "${E2E_DB}" "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='users'" 2>/dev/null)
+    if [[ "${have:-0}" == "0" ]]; then
+      echo "▶ 跑 alembic（含 seed，自带 admin 账号）"
+      ( cd "${BACKEND}" && PYTHONPATH=/Users/hornet/work POSTGRES_DB=${E2E_DB} REDIS_DB=${E2E_REDIS_DB} \
+        "${PY}" -m alembic upgrade head > "${RUN_DIR}/alembic.out" 2>&1 ) \
+        || { echo "✗ 迁移失败，见 ${RUN_DIR}/alembic.out"; return 1; }
+    else
+      echo "⚠ ${E2E_DB} 有表但没有 alembic_version —— 不是 alembic 建的库，跳过迁移"
+    fi
+  elif [[ "${cur}" != "${head}" ]]; then
+    echo "▶ 迁移 ${E2E_DB}：${cur} → ${head}"
     ( cd "${BACKEND}" && PYTHONPATH=/Users/hornet/work POSTGRES_DB=${E2E_DB} REDIS_DB=${E2E_REDIS_DB} \
       "${PY}" -m alembic upgrade head > "${RUN_DIR}/alembic.out" 2>&1 ) \
       || { echo "✗ 迁移失败，见 ${RUN_DIR}/alembic.out"; return 1; }
