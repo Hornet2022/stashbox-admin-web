@@ -21,6 +21,14 @@ import userEvent from '@testing-library/user-event'
 
 vi.mock('../api/admin', () => ({
   listArticles: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+  // 分类候选（抽屉打开时拉一次）
+  listTags: vi.fn().mockResolvedValue({
+    items: [
+      { id: 1, name: '科技', slug: 'tech' },
+      { id: 2, name: '财经', slug: 'finance' },
+    ],
+    total: 2,
+  }),
   createArticle: vi.fn().mockResolvedValue(undefined),
   createArticleFromDocument: vi.fn().mockResolvedValue(undefined),
   deleteAdminArticle: vi.fn(),
@@ -122,6 +130,35 @@ describe('新建文章抽屉 · 三种录入方式', () => {
     const [f, t] = mockedCreateDocument.mock.calls[0]
     expect(f).toBeNull()
     expect(t).toBe('粘过来的正文')
+  })
+
+
+  it('选中分类后提交时把分类带上（运营指定优先于模型猜的）', async () => {
+    const user = userEvent.setup()
+    render(<Articles />)
+    await openDrawer(user)
+
+    // 分类选择器：点「科技」选中
+    await user.click(await screen.findByRole('button', { name: '科技' }))
+    expect(screen.getByRole('button', { name: '科技' }).getAttribute('aria-pressed')).toBe('true')
+
+    await user.type(screen.getByPlaceholderText('https://...'), 'https://example.com/b')
+    await user.click(screen.getByRole('button', { name: '确认创建文章' }))
+
+    await waitFor(() => expect(mockedCreateArticle).toHaveBeenCalledTimes(1))
+    expect(mockedCreateArticle.mock.calls[0][2]).toEqual(['科技'])
+  })
+
+  it('再次点击取消选中', async () => {
+    const user = userEvent.setup()
+    render(<Articles />)
+    await openDrawer(user)
+
+    const chip = await screen.findByRole('button', { name: '科技' })
+    await user.click(chip)
+    expect(chip.getAttribute('aria-pressed')).toBe('true')
+    await user.click(chip)
+    expect(chip.getAttribute('aria-pressed')).toBe('false')
   })
 
   it('链接模式仍然只发 URL（回归护栏）', async () => {

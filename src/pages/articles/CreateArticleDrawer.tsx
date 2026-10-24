@@ -7,6 +7,8 @@ import {
   buttonPrimaryClass,
   inputClass,
 } from '../../components/ui'
+import { listTags } from '../../api/admin'
+import { useApi } from '../../hooks/useApi'
 
 /**
  * 新建文章 Drawer（vaul 抽屉，从右侧滑入）。
@@ -67,6 +69,8 @@ export interface CreateArticleDrawerProps {
   title: string
   file: File | null
   text: string
+  /** 运营指定的分类（中文标签名）。空 = 用 LLM 猜的。 */
+  tags: string[]
   submitting: boolean
   error: string | null
   showSuccess: boolean
@@ -76,6 +80,7 @@ export interface CreateArticleDrawerProps {
   onTitleChange: (v: string) => void
   onFileChange: (f: File | null) => void
   onTextChange: (v: string) => void
+  onTagsChange: (t: string[]) => void
   onSubmit: (e: FormEvent<HTMLFormElement>) => void
 }
 
@@ -92,6 +97,7 @@ export function CreateArticleDrawer({
   title,
   file,
   text,
+  tags,
   submitting,
   error,
   showSuccess,
@@ -101,10 +107,16 @@ export function CreateArticleDrawer({
   onTitleChange,
   onFileChange,
   onTextChange,
+  onTagsChange,
   onSubmit,
 }: CreateArticleDrawerProps) {
   const urlRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // 分类候选（tags 表的全量）。只在抽屉打开时拉 —— 分类很少变，
+  // 每次打开拉一次是几 KB，不值得为此做缓存。
+  const { data: tagData } = useApi(listTags, 'tags', open)
+  const tagOptions = (tagData?.items ?? []).map((t) => t.name)
 
   const handleUrlChange = (value: string) => {
     onUrlChange(value)
@@ -215,6 +227,55 @@ export function CreateArticleDrawer({
                 className={inputClass}
               />
             </Field>
+
+            {/* 分类 —— 运营录入的内容**只靠订阅分发**（2026-10-24 产品拍板）。
+                「订阅了分类就可以看到，没订阅就看不到」⇒ 分类必须可靠。
+                而原先分类只有一条来源：蒸馏时 LLM 猜的 —— 实测 GitHub 开源库的
+                稿子 tags 是空的（代码库主题大概率不在候选里）⇒ 没有分类 =
+                永远进不了任何人的订阅流 = **死内容**，而且没有任何报错。
+                ⇒ 这里让运营自己指定；服务端优先用运营指定的。
+
+                ⚠️ **不用 `Field` 组件**：它渲染成 `<label>` 包住 children，
+                而 `<label>` 会**劫持内部按钮的可访问名** —— 按钮的名字会变成
+                标签文案（"分类（可选…）"），读屏与测试都认不出「科技」这个按钮。
+                交互元素不能被 label 包。 */}
+            <div>
+              <span className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">
+                分类（可选，决定谁能订阅到）
+              </span>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {tagOptions.length === 0 && (
+                  <span className="text-xs text-neutral-400">
+                    还没有分类 —— 先到「标签管理」建一个
+                  </span>
+                )}
+                {tagOptions.map((name) => {
+                  const active = tags.includes(name)
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() =>
+                        onTagsChange(
+                          active ? tags.filter((t) => t !== name) : [...tags, name],
+                        )
+                      }
+                      className={`rounded-full border px-3 py-1 text-xs transition ${
+                        active
+                          ? 'border-warm-ochre bg-warm-ochre/15 text-ink'
+                          : 'border-neutral-200 text-neutral-500 hover:border-neutral-300 dark:border-neutral-600 dark:text-neutral-400'
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="mt-1 text-xs text-neutral-400">
+                不选 = 由模型自动判断分类（可能判不出来，那这篇就没人订阅得到）。
+              </p>
+            </div>
             {error && (
               <p className="rounded-md border border-error/30 bg-error/10 px-3 py-2 text-sm dark:border-error/40 dark:bg-error/10 dark:text-[#E0A0A0]">
                 {error}

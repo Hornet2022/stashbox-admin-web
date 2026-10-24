@@ -38,11 +38,30 @@ export async function listArticles(params: {
  * Pydantic 静默忽略未声明字段，运营看到「创建成功」但库里没有标题。
  * 现在 schema 补上了（optional，老客户端行为不变）。
  */
-export async function createArticle(url: string, title?: string): Promise<void> {
+/**
+ * 运营手动录入文章。
+ *
+ * `tags` = **运营指定的分类**（中文标签名，如 "科技"）。
+ *
+ * ⚠️ 2026-10-24 产品拍板后新增：运营录入的内容**只靠订阅分发**
+ * （「订阅了分类就可以看到，没订阅就看不到」），所以分类必须**可靠** ——
+ * 而原先分类只有一条来源：蒸馏时 LLM 猜的。实测 GitHub 开源库的稿子
+ * tags 就是**空的**（代码库主题大概率不在候选里）⇒ 没有分类 = 永远进不了
+ * 任何人的订阅流 = **死内容**，而且没有任何报错。
+ *
+ * ⇒ 运营可以在这里指定分类；服务端优先用运营指定的（`articles.manual_tags`）。
+ * 不传 = 沿用 LLM 猜的（老行为不变）。
+ */
+export async function createArticle(
+  url: string,
+  title?: string,
+  tags?: string[],
+): Promise<void> {
   await apiClient.post('/api/v1/admin/articles', {
     url,
     source: 'url',
     title,
+    tags: tags && tags.length ? tags : undefined,
   })
 }
 
@@ -74,6 +93,7 @@ export async function createArticleFromDocument(
   file: File | null,
   text: string | null,
   title?: string,
+  tags?: string[],
 ): Promise<void> {
   const form = new FormData()
   if (file) {
@@ -84,6 +104,13 @@ export async function createArticleFromDocument(
   }
   if (title && title.trim() !== '') {
     form.append('title', title.trim())
+  }
+  // 分类：multipart 里**重复字段**（tags=科技&tags=财经）
+  // ⇒ 服务端的 `tags: list[str] = Form(...)` 收得到。
+  if (tags) {
+    for (const t of tags) {
+      if (t.trim()) form.append('tags', t.trim())
+    }
   }
   await apiClient.post('/api/v1/admin/articles/document', form, {
     headers: { 'Content-Type': 'multipart/form-data' },

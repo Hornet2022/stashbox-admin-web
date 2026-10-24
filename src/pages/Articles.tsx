@@ -109,6 +109,7 @@ export function Articles() {
   const [createTitle, setCreateTitle] = useState('')
   const [createFile, setCreateFile] = useState<File | null>(null)
   const [createText, setCreateText] = useState('')
+  const [createTags, setCreateTags] = useState<string[]>([])
   const [createSubmitting, setCreateSubmitting] = useState(false)
   const [createModalError, setCreateModalError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -120,6 +121,7 @@ export function Articles() {
     setCreateTitle('')
     setCreateFile(null)
     setCreateText('')
+    setCreateTags([])
     setCreateSubmitting(false)
     setCreateModalError(null)
     setShowSuccess(false)
@@ -234,7 +236,11 @@ export function Articles() {
     setCreateModalError(null)
     try {
       if (createMode === 'url') {
-        await createArticle(createUrl.trim(), createTitle.trim() || undefined)
+        await createArticle(
+          createUrl.trim(),
+          createTitle.trim() || undefined,
+          createTags,
+        )
       } else {
         // 文件与文本**二选一**（服务端也这么判）——
         // 这里按模式只发一个，避免服务端以「二选一」为由打回。
@@ -242,6 +248,7 @@ export function Articles() {
           createMode === 'file' ? createFile : null,
           createMode === 'text' ? createText : null,
           createTitle.trim() || undefined,
+          createTags,
         )
       }
       setShowSuccess(true)
@@ -334,6 +341,7 @@ export function Articles() {
         title={createTitle}
         file={createFile}
         text={createText}
+        tags={createTags}
         submitting={createSubmitting}
         error={createModalError}
         showSuccess={showSuccess}
@@ -343,6 +351,7 @@ export function Articles() {
         onTitleChange={setCreateTitle}
         onFileChange={setCreateFile}
         onTextChange={setCreateText}
+        onTagsChange={setCreateTags}
         onSubmit={handleSubmitCreate}
       />
     </div>
