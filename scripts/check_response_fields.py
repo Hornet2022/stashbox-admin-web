@@ -210,6 +210,27 @@ def main() -> int:
     ap.add_argument("--verbose", "-v", action="store_true")
     args = ap.parse_args()
 
+    # ── 跨仓检查：缺一边的仓就**跳过**，而不是报错退出 ──────────────────
+    #
+    # 2026-10-25 实测踩过：这个脚本要比对「安卓 Retrofit DTO 的字段」
+    # 与「后端 Pydantic 响应模型的字段」，**两个仓的源码都要在**。
+    # 而 CI 只 checkout 了 admin-web 一个仓 ⇒ 之前这段直接
+    #     print("没解析到安卓 Retrofit 接口 —— 路径不对？"); return 1
+    # ⇒ CI 连续红（2026-10-24/25 多次推送全是红的，信号失效没人看）。
+    #
+    # 「路径不对？」这个诊断在 CI 语境下是**误导**：
+    # 路径确实不对，但不对的原因是「只检出了 1/2 个仓」，不是脚本坏了。
+    #
+    # ⇒ 与同目录的 check-endpoint-contract.py 保持一致的做法：
+    #   缺仓 → 打印「跳过，非错误」→ return 0。
+    #   真要跑这个检查，在双仓都在的机器上执行 `pnpm run contract`。
+    if not BACKEND.exists():
+        print(f"[fields] 后端仓不存在：{BACKEND}（跳过，非错误）")
+        return 0
+    if not ANDROID.exists():
+        print(f"[fields] 安卓仓不存在：{ANDROID}（跳过，非错误）")
+        return 0
+
     be_models = backend_models()
     be_routes = backend_routes(be_models)
     ap_dtos = android_dtos()
