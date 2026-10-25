@@ -328,4 +328,17 @@ describe('Dashboard', () => {
     expect(screen.getByText('上月没有活跃样本（不是 0%）')).toBeInTheDocument()
     expect(screen.queryByText('0%')).not.toBeInTheDocument()
   })
+
+  it('后端还没提供 retention 字段时不能说成「没有活跃样本」', async () => {
+    // 后端未部署 / 部署顺序错了 ⇒ stats 里根本没有 retention 字段。
+    // 这跟「上月没有活跃样本」是两回事：说成后者会让人以为用户都没来，
+    // 而真实原因是「这个指标压根没上线」。
+    mockedGetStats.mockResolvedValue({ ...sampleStats })
+    renderDashboard()
+    await waitFor(() => {
+      expect(screen.getByText('月留存')).toBeInTheDocument()
+    })
+    expect(screen.getByText('后端尚未提供该指标')).toBeInTheDocument()
+    expect(screen.queryByText('上月没有活跃样本（不是 0%）')).not.toBeInTheDocument()
+  })
 })

@@ -289,10 +289,15 @@ export function Dashboard() {
  * 而后者根本不能拿来判断产品好坏（样本量锚点是分位数的可信度锚点，
  * 这条规矩在这个仓里已经用过一次，见 DistillDuration 的样本数列）。
  *
- * ## 「没有样本」不是「0%」
+ * ## 「没有样本」不是「0%」，「后端没这字段」也不是「没有样本」
  *
  * 后端 `rate=null` 表示上月**没有活跃样本**，不是留存率为 0。
  * 渲染成 0% 会显示一个假的坏消息 —— 所以这里显示「—」并把话说清楚。
+ *
+ * ⚠️ 而 `retention` 整个字段**不存在**（后端还没发这版 / 部署顺序错了）
+ * 是**第三种**状态，和「没有样本」完全是两回事：
+ * 说成「上月没有活跃样本」会让人以为「用户都没来」——
+ * 而真实原因是「这个指标压根没上线」。两种状态必须分开说。
  *
  * ## 目标线 50% 来自仓内既有定义
  *
@@ -310,7 +315,15 @@ function RetentionCard({
 }) {
   const rate = retention?.rate
   const hasSample = rate !== null && rate !== undefined
-  const tone: StatTone = !hasSample ? 'warn' : rate >= RETENTION_TARGET ? 'good' : 'bad'
+  // 字段整个不存在 = 后端还没提供这个指标（不是「没样本」）。
+  const notProvided = retention === undefined || retention === null
+  const tone: StatTone = notProvided
+    ? 'neutral'
+    : !hasSample
+      ? 'warn'
+      : rate >= RETENTION_TARGET
+        ? 'good'
+        : 'bad'
 
   return (
     <StatCard
@@ -319,9 +332,11 @@ function RetentionCard({
       tone={tone}
       loading={loading}
       footnote={
-        hasSample
-          ? `${retention?.retained} / ${retention?.cohort_size} 人 · 目标 ≥ ${Math.round(RETENTION_TARGET * 100)}%`
-          : '上月没有活跃样本（不是 0%）'
+        notProvided
+          ? '后端尚未提供该指标'
+          : hasSample
+            ? `${retention?.retained} / ${retention?.cohort_size} 人 · 目标 ≥ ${Math.round(RETENTION_TARGET * 100)}%`
+            : '上月没有活跃样本（不是 0%）'
       }
     />
   )
