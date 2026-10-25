@@ -13,8 +13,9 @@ test.describe('dashboard', () => {
       authedPage.getByText('内容生产与消费的当前水位。先看需要处理的，再看存量。')
     ).toBeVisible()
 
-    // 指标卡。⚠️ 这里是 8 张不是 7 张 —— 早就补过一张「蒸馏成功率」，
+    // 指标卡。⚠️ 这里是 9 张不是 7 张 —— 早就补过一张「蒸馏成功率」，
     // 用例里的清单一直没收，于是先在少的那张上就挂了。
+    // 2026-10-25 又加了「月留存」（后端 admin/stats 的 retention 字段）。
     // 卡片按「需要处理 / 规模存量」分成两组（8 张等权重的卡等于没有层级），
     // 其中两张改了名：蒸馏队列中→等待蒸馏、活跃音频→可用音频。
     const labels = [
@@ -26,6 +27,7 @@ test.describe('dashboard', () => {
       '已收听',
       '可用音频',
       '本月营收',
+      '月留存',
     ]
     for (const label of labels) {
       await expect(authedPage.getByText(label, { exact: true })).toBeVisible()

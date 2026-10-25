@@ -287,4 +287,45 @@ describe('Dashboard', () => {
     expect(screen.getByText('新增用户 今日较昨日')).toBeInTheDocument()
     expect(screen.getByText('+50%')).toBeInTheDocument()
   })
+
+  // 2026-10-25：月留存卡
+  it('月留存显示比率并带上样本量', async () => {
+    mockedGetStats.mockResolvedValue({
+      ...sampleStats,
+      retention: {
+        month: '2026-09',
+        cohort_size: 12,
+        retained: 7,
+        rate: 7 / 12,
+        current_month: '2026-10',
+      },
+    })
+    renderDashboard()
+    await waitFor(() => {
+      expect(screen.getByText('月留存')).toBeInTheDocument()
+    })
+    expect(screen.getByText('58%')).toBeInTheDocument()
+    // 样本量必须露出来：没有分母的留存率不可信
+    expect(screen.getByText('7 / 12 人 · 目标 ≥ 50%')).toBeInTheDocument()
+  })
+
+  it('月留存没有样本时显示「—」而不是 0%', async () => {
+    // rate=null = 上月没有活跃样本；渲染成 0% 会显示一个假的坏消息
+    mockedGetStats.mockResolvedValue({
+      ...sampleStats,
+      retention: {
+        month: '2026-09',
+        cohort_size: 0,
+        retained: 0,
+        rate: null,
+        current_month: '2026-10',
+      },
+    })
+    renderDashboard()
+    await waitFor(() => {
+      expect(screen.getByText('月留存')).toBeInTheDocument()
+    })
+    expect(screen.getByText('上月没有活跃样本（不是 0%）')).toBeInTheDocument()
+    expect(screen.queryByText('0%')).not.toBeInTheDocument()
+  })
 })

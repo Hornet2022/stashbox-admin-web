@@ -230,8 +230,26 @@ export function Dashboard() {
       </Section>
 
       <Section title="规模与存量">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {/* 2026-10-25：加了「月留存」⇒ 6 张卡。
+            栅格跟着改成三列（3×2），而不是保留 lg:grid-cols-5 让第 6 张卡
+            孤零零占第二行的 1/5 宽。
+
+            为什么是「三列」而不是「六列」：
+            ① 5cc6fe1 已经定了原则 —— 同一页两组卡要用**同一密度**
+               （原文：「两组用不同密度会拉平代码注释里写明的『先看需要处理的，
+               再看存量』的层级」）。「需要关注」那组是 lg:grid-cols-3，
+               这里跟着它走，两组才是同密度。
+            ② 1280px 下六列每张只剩 ~190px，而卡片的脚注普遍是十几字
+               （如「状态已推进到「已收听」的文章」），会折成三行。
+
+            e2e/responsive.spec.ts 那条列数断言同步改成了 3（不是放宽 ——
+            它仍然硬钉列数，只是钉的是新的事实）。 */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {overviewCards.map(renderCard)}
+          {/* 月留存单独一张卡：它的值是「比率 + 分母」两件事，
+              塞进通用卡片机制里会丢掉分母（样本量）——
+              而没有样本量的留存率是不可信的。 */}
+          <RetentionCard retention={stats?.retention} loading={loading} />
         </div>
       </Section>
 
@@ -255,8 +273,61 @@ export function Dashboard() {
   )
 }
 
-/* ── 小节标题 ──────────────────────────────────────────────────── */
+/* ── 月留存 ──────────────────────────────────────────────────── */
 
+/**
+ * 月留存卡（2026-10-25 补）。
+ *
+ * ## 为什么单独一张卡，不走通用卡片机制
+ *
+ * 通用卡片（CardSpec）只渲染 `stats[field]` 这一个标量。
+ * 而留存的正确呈现需要**两件事**：
+ *   · 比率（rate）
+ *   · **样本量**（cohort_size / retained）
+ *
+ * 只显示比率的话，5% 的留存和「上月只有 1 个人活跃」的 5% 长得一模一样 ——
+ * 而后者根本不能拿来判断产品好坏（样本量锚点是分位数的可信度锚点，
+ * 这条规矩在这个仓里已经用过一次，见 DistillDuration 的样本数列）。
+ *
+ * ## 「没有样本」不是「0%」
+ *
+ * 后端 `rate=null` 表示上月**没有活跃样本**，不是留存率为 0。
+ * 渲染成 0% 会显示一个假的坏消息 —— 所以这里显示「—」并把话说清楚。
+ *
+ * ## 目标线 50% 来自仓内既有定义
+ *
+ * `docs/技术方案_v1.md` §11.6 CP6 验收标准「月留存 ≥ 50%」，
+ * 不是这里拍脑袋定的阈值。
+ */
+const RETENTION_TARGET = 0.5
+
+function RetentionCard({
+  retention,
+  loading,
+}: {
+  retention: DashboardStats['retention']
+  loading: boolean
+}) {
+  const rate = retention?.rate
+  const hasSample = rate !== null && rate !== undefined
+  const tone: StatTone = !hasSample ? 'warn' : rate >= RETENTION_TARGET ? 'good' : 'bad'
+
+  return (
+    <StatCard
+      label="月留存"
+      value={hasSample ? `${Math.round(rate * 100)}%` : '—'}
+      tone={tone}
+      loading={loading}
+      footnote={
+        hasSample
+          ? `${retention?.retained} / ${retention?.cohort_size} 人 · 目标 ≥ ${Math.round(RETENTION_TARGET * 100)}%`
+          : '上月没有活跃样本（不是 0%）'
+      }
+    />
+  )
+}
+
+/* ── 小节标题 ──────────────────────────────────────────────────── */
 function Section({
   title,
   caption,

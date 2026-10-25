@@ -84,6 +84,27 @@ export interface DashboardStats {
   }
   /** 异常告警（None 或带 code/message） */
   warning?: { code: string; message: string; threshold: number; actual: number } | null
+  /**
+   * 月留存（2026-10-25 补）。
+   *
+   * 口径见后端 `backend/common/retention.py`：活跃 = 自然月内有任意一条埋点
+   * 且 `user_id > 0`；分母 = 上月活跃人数，分子 = 两月都活跃的人数。
+   *
+   * ⚠️ `rate` 是 **null** 而不是 0 —— 「0% 留存」和「上月没有活跃样本」
+   * 是两回事，混成 0 会让看板显示一个假的坏消息。
+   */
+  retention?: {
+    /** 被考察的月份（上月），如 "2026-09" */
+    month: string
+    /** 上月活跃用户数（分母） */
+    cohort_size: number
+    /** 其中本月仍活跃的人数（分子） */
+    retained: number
+    /** retained / cohort_size；分母为 0 时为 null */
+    rate: number | null
+    /** 现在的自然月 */
+    current_month: string
+  }
   /** 缓存生成时间（ISO8601），前端可显示"X 秒前更新" */
   generated_at?: string
 }

@@ -136,10 +136,13 @@ test.describe('窄屏布局', () => {
     const wide = await wideGrid.evaluate((el) =>
       Array.from(el.children).map((c) => Math.round(c.getBoundingClientRect().left)),
     )
-    // 1280 ≥ lg(1024)，所以命中的是 lg:grid-cols-5。
-    // 这一条真正防的是「改回 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5」
-    // 之类把首列数弄错的回退 —— 列数变了，卡的宽度就跟着变。
-    expect(new Set(wide).size).toBe(5)
+    // 2026-10-25：概览组加了「月留存」卡（6 张），栅格跟着改成三列
+    // （3×2），与同一页「需要关注」组同密度 —— 5cc6fe1 定的原则。
+    //
+    // ⚠️ 这一条**仍然硬钉列数**（不是放宽）：它防的是
+    // 「改回 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5」之类把列数弄错的回退 ——
+    // 列数变了，卡的宽度就跟着变。
+    expect(new Set(wide).size).toBe(3)
   })
 
   test('同意记录：刷新键在 375px 紧跟 tab 组，右端留白而非贴边', async ({ authedPage: page }) => {
