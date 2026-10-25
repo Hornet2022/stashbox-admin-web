@@ -29,6 +29,7 @@
 #   bash e2e-backend.sh up       # 起（已起则跳过）+ 隔离自检；含蒸馏 worker
 #   bash e2e-backend.sh down     # 停（含 worker；生产 8100-8104 与生产 worker 不受影响）
 #   bash e2e-backend.sh reset    # 删库重建（用例之间要干净起点时用）
+#   bash e2e-backend.sh clean    # 清测试产物但**保留基线**（音色/种子用户/三态种子文章）
 #   bash e2e-backend.sh status
 #   bash e2e-backend.sh ensure   # e2e 前置检查，不在就拉起
 #   bash e2e-backend.sh verify   # 只跑隔离自检
@@ -507,6 +508,90 @@ cmd_reset() {
   cmd_up
 }
 
+# ---------------------------------------------------------------------------
+# clean：清测试产物，但保留基线。
+#
+# 与 reset 的区别：reset 是删库重建（音色/用户/种子文章全没）；
+# clean 只清**测试产物**（集成测试建的文章、蒸馏音频、队列残留），
+# 基线（婷婷音色 + e2e 种子用户 + ready/failed/pending 三态种子文章）留着。
+#
+# 为什么需要它：集成测试每建一篇文章就**真的**派一个蒸馏任务（真 LLM + 真 TTS，
+# 单篇 100~250s）。跑几轮之后隔离库里攒下几十篇文章、几百 MB 音频，arq 队列
+# 里还压着没跑完的任务 ⇒ 后面每次集成测试都要先排十几分钟的队。
+# 2026-10-25 实测：有个任务在队列里排了 1381 秒，测试等不到就误报超时
+#（症状像「链路坏了」，实际只是排在别人后面）。
+#
+# 真正的删除逻辑在 backend/scripts/clean_e2e_artifacts.py —— 它自己会校验
+# 「目标确实是隔离栈」（库名不含 e2e 就拒、redis db 0 拒、STORAGE_PROVIDER
+# 非 local 拒、音频目录指向 dev 栈就拒）。这里只负责编排：
+# 停 worker → 清理 → 重新播种 → 拉回 worker → 隔离自检。
+# ---------------------------------------------------------------------------
+cmd_clean() {
+  local dry=0
+  case "${1:-}" in
+    "") ;;
+    --dry-run) dry=1 ;;
+    # ⚠️ 参数打错字**必须报错**，不能当成"没传参数" ⇒
+    #    `clean --dryrun` 会静默变成**真删**（还删得很干净、看起来还成功）。
+    #    破坏性命令的默认值只能是"最保守的那个"。
+    *) echo "用法: $0 clean [--dry-run]"; exit 2 ;;
+  esac
+
+  echo "▶ 清 e2e 测试产物（保留基线：音色 / 种子用户 / 三态种子文章）"
+
+  # 停 worker：清理期间还有任务在跑的话，它会往刚删掉的文章上写回蒸馏产物行，
+  # 变成「文章没了、产物还在」的孤儿行。停的是**隔离** worker
+  #（按 REDIS_URL 标记筛），生产 worker 不受影响。
+  #
+  # dry-run 不停：什么都没删，就不该动 worker 的状态（停了又不拉回来 = 悄悄
+  # 改了别人的运行态；这种「顺手改一下」的副作用最难查）。
+  local worker_was=0
+  if [[ ${dry} == "0" ]] && worker_pid >/dev/null 2>&1; then
+    worker_was=1
+  fi
+  if [[ ${dry} == "0" ]]; then
+    cmd_worker_down
+  fi
+
+  local -a clean_args=()
+  [[ ${dry} == "1" ]] && clean_args+=("--dry-run")
+
+  # ⚠️ 展开空数组时必须用 `${arr[@]+"${arr[@]}"}` 这个写法。
+  #
+  # 本机是 **bash 3.2**（macOS 自带），它的 `set -u` 下展开空数组会直接报
+  #   clean_args[@]: unbound variable
+  # 而 bash 4.4+ 修好了（空数组展开不再报错）。于是同一行代码在 macOS 上
+  # 必炸、在 CI 的 ubuntu（bash 5）上没事 —— 只在本地跑脚本的人才会踩到。
+  # `${arr[@]+...}` 是 POSIX 写法，两个版本都对：数组为空时整个词消失。
+  #
+  # 用和服务**同一份** ISO_ENV：清理脚本按运行时生效配置定位目标，
+  # 环境不一致的话它会清到别的地方去（脚本自己会拒，但报错比直接跑更难懂）。
+  ( cd "${BACKEND}" && \
+    export "${ISO_ENV[@]}" && \
+    "${PY}" -u scripts/clean_e2e_artifacts.py ${clean_args[@]+"${clean_args[@]}"} ) \
+    || { echo "✗ 清理失败"; return 1; }
+
+  if [[ ${dry} == "1" ]]; then
+    echo "• dry-run：什么都没删"
+    return 0
+  fi
+
+  # 重新播种基线（幂等：seed SQL 全是 WHERE NOT EXISTS）。
+  seed_data || { echo "✗ 基线数据播种失败，见 ${RUN_DIR}/seed.out"; return 1; }
+
+  # worker 恢复原状：原本在跑就拉回来，原本就没跑就别自作主张起一个。
+  if [[ ${worker_was} == "1" ]]; then
+    cmd_worker_up || { echo "✗ worker 没起来，蒸馏链路不可用"; return 1; }
+  fi
+
+  # 隔离自检：确认这轮操作没把隔离栈指到生产。
+  if [[ "$(port_code "${GW_PORT}")" == "200" ]]; then
+    verify_isolation
+  else
+    echo "• 网关 :${GW_PORT} 没在跑，跳过隔离自检（跑 'bash e2e-backend.sh up' 会自检）"
+  fi
+}
+
 cmd_status() {
   local p
   for p in "${USER_PORT}" "${CONTENT_PORT}" "${AI_PORT}" "${GW_PORT}"; do
@@ -522,6 +607,7 @@ case "${1:-up}" in
   ensure) cmd_ensure ;;
   down)   cmd_down ;;
   reset)  cmd_reset ;;
+  clean)  cmd_clean "${2:-}" ;;
   status) cmd_status ;;
   verify) verify_isolation ;;
   worker)
@@ -532,5 +618,5 @@ case "${1:-up}" in
       *) echo "用法: $0 worker {up|down|status}"; exit 2 ;;
     esac
     ;;
-  *) echo "用法: $0 {up|down|reset|status|ensure|verify|worker up|down|status}"; exit 2 ;;
+  *) echo "用法: $0 {up|down|reset|clean|status|ensure|verify|worker up|down|status}"; exit 2 ;;
 esac
