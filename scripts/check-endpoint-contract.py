@@ -298,6 +298,93 @@ def load_gateway_routes(gw_path: Path) -> set[str]:
     return routes
 
 
+# ---------------------------------------------------------------------------
+# 网关**自己**挂上去的路由（app.include_router(...)）
+# ---------------------------------------------------------------------------
+#
+# 为什么必须单独处理：
+#
+# 网关的路由有**两个**来源，只看第一个会漏掉一整类：
+#   ① `api-gateway/config.py` 的 ROUTES 表 —— 代理到下游服务；
+#   ② `app.include_router(X)` —— 把某个 router **直接挂在网关自己身上**，
+#      由网关自己处理（例：`common/event_collect.py` 的
+#      `router = APIRouter(prefix="/api/v1/events")` → `POST /api/v1/events/collect`，
+#      它需要网关自己的 DB 会话，所以不能代理给下游）。
+#
+# 实测踩过（2026-10-25）：安卓端新增埋点上报后，本脚本报
+#   「post /api/v1/events/collect（!! 未注册）」
+# 而端点**明明是通的** —— ��是本脚本只认 ROUTES 表。
+#
+# ⇒ 这里补上 ② 的解析。它是**文本解析**（不是 import 网关），
+# 所以不需要后端的 venv —— 与本脚本「纯 stdlib、CI 单仓也能跑」的定位一致。
+
+_GW_MAIN = BACKEND / "api-gateway" / "main.py"
+
+_IMPORT_AS_RE = re.compile(
+    r"^from\s+([\w.]+)\s+import\s+(\w+)(?:\s+as\s+(\w+))?\s*$", re.M
+)
+
+
+def _module_file(dotted: str) -> Path | None:
+    """`stashbox.backend.common.event_collect` → `<backend>/common/event_collect.py`。
+
+    逐级去掉前缀去试：仓库根包名（`stashbox`）与 `backend` 这类
+    「不是源码目录」的段名在不同布局下不一样，所以不写死。
+    """
+    parts = dotted.split(".")
+    for cut in range(len(parts)):
+        rel = Path(*parts[cut:])
+        cand = BACKEND / rel.parent / f"{rel.name}.py"
+        if cand.exists():
+            return cand
+    return None
+
+
+def load_gateway_mounted_routes() -> set[str]:
+    """网关用 `app.include_router(...)` 直接挂上去的路由 → "METHOD /path" 集合。"""
+    if not _GW_MAIN.exists():
+        return set()
+    src = _GW_MAIN.read_text()
+    mounted: set[str] = set()
+
+    for inc in re.finditer(r"app\.include_router\(\s*(\w+)\s*(?:,\s*prefix\s*=\s*[\"']([^\"']+)[\"'])?", src):
+        alias, extra_prefix = inc.group(1), inc.group(2) or ""
+        # 反查这个别名是从哪个模块的哪个符号 import 来的
+        imp = None
+        for m in _IMPORT_AS_RE.finditer(src):
+            sym, as_name = m.group(2), m.group(3)
+            if as_name == alias or (as_name is None and sym == alias):
+                imp = (m.group(1), sym)
+                break
+        if not imp:
+            continue
+        module_path = _module_file(imp[0])
+        if module_path is None:
+            continue
+        mod_src = module_path.read_text()
+        symbol = imp[1]
+
+        # router 自身的 prefix：APIRouter(prefix="/api/v1/events")
+        pm = re.search(
+            rf"{re.escape(symbol)}\s*=\s*APIRouter\((.*?)\)", mod_src, re.S
+        )
+        router_prefix = ""
+        if pm:
+            am = re.search(r"""prefix\s*=\s*["']([^"']+)["']""", pm.group(1))
+            router_prefix = am.group(1) if am else ""
+
+        for rm in re.finditer(
+            rf'@{re.escape(symbol)}\.(get|post|put|delete|patch)\(\s*"([^"]+)"',
+            mod_src,
+        ):
+            method = rm.group(1).upper()
+            path = router_prefix + extra_prefix + rm.group(2)
+            if not path.startswith("/"):
+                path = "/" + path
+            mounted.add(f"{method.lower()} {re.sub(r'\{[a-z_]+\}', '{P}', path)}")
+    return mounted
+
+
 def main() -> int:
     gw_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_GW
     if not gw_path.exists():
@@ -305,7 +392,7 @@ def main() -> int:
         return 0
 
     front = load_frontend_calls()
-    gw = load_gateway_routes(gw_path)
+    gw = load_gateway_routes(gw_path) | load_gateway_mounted_routes()
     missing = sorted(front - gw)
     real_missing = [x for x in missing if not FALLBACK_OK.search(x.split(" ", 1)[1])]
 
