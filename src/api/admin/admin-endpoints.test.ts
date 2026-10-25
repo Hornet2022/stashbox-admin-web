@@ -100,11 +100,31 @@ describe('articles 端点', () => {
 
   it('createArticle → POST /admin/articles（admin 入口：不扣运营配额、不挂运营名下）', async () => {
     await createArticle('https://example.com/a', 'Title A')
-    expect(mockedPost).toHaveBeenCalledWith('/api/v1/admin/articles', {
-      url: 'https://example.com/a',
-      source: 'url',
-      title: 'Title A',
-    })
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/api/v1/admin/articles',
+      {
+        url: 'https://example.com/a',
+        source: 'url',
+        title: 'Title A',
+      },
+      // ⚠️ timeout 必须**显式**给（2026-10-25 修）：
+      // 这条路径的抓取在服务端**同步**完成（`_prefetch_for_capture` → budget=30s），
+      // 整条降级链最坏 ~40.6s（实测）。而 axios 全局 timeout 只有 15s
+      // ⇒ 运营点「录入」大概率超时，但服务端其实已经把文章建好了，
+      // 运营看到红字再点一次，库里就多一条重复文章。
+      //
+      // 这条断言就是防止「有人后来把 timeout 删掉/改小」，又把它变回一个
+      // **必然超时**的按钮 —— 那种 bug 从界面上完全看不出来。
+      expect.objectContaining({ timeout: 60_000 }),
+    )
+  })
+
+  it('createArticle → timeout 必须 ≥ 网关上游超时（60s），否则客户端比网关先放弃', async () => {
+    await createArticle('https://example.com/b')
+    const [, , config] = mockedPost.mock.calls[0]
+    const timeout = (config as { timeout?: number }).timeout ?? 0
+    // 全局默认是 15000（见 client.ts）—— 不显式覆盖就落回这个值。
+    expect(timeout).toBeGreaterThanOrEqual(60_000)
   })
 
   it('createArticleFromDocument → POST /admin/articles/document（admin 侧文档录入）', async () => {

@@ -62,7 +62,16 @@ export async function createArticle(
     source: 'url',
     title,
     tags: tags && tags.length ? tags : undefined,
-  })
+  },
+  // ⚠️ 必须单独放宽：这条路径的抓取在**服务端同步完成**
+  // （`_prefetch_for_capture` → `fetcher.fetch(budget=30s)`），不是「收下 URL 立刻返回」。
+  // 剪藏整条降级链最坏 ~40.6s（实测），而 axios 全局 timeout 只有 15s
+  // ⇒ 运营点「录入」大概率超时，但服务端其实已经把文章建好了 ——
+  // 运营看到红字就再点一次，于是库里多一条重复文章。
+  //
+  // 60s 与网关的 STASHBOX_GATEWAY_UPSTREAM_TIMEOUT（默认 60）对齐：
+  // 客户端比网关还短的话，超时文案（"可能已提交"）根本没机会发出来。
+  { timeout: 60_000 })
 }
 
 /**
