@@ -31,6 +31,8 @@ export function TtsSettings() {
     openaiVoice: DEFAULT_VALUES.openaiVoice,
     openaiInstructions: DEFAULT_VALUES.openaiInstructions,
     openaiLanguage: DEFAULT_VALUES.openaiLanguage,
+    openaiRefAudio: '',
+    openaiRefText: '',
     doubaoApiKey: '',
     doubaoToken: '',
     doubaoAppId: '',
@@ -73,6 +75,8 @@ export function TtsSettings() {
       openaiVoice: data.openai_voice ?? DEFAULT_VALUES.openaiVoice,
       openaiInstructions: data.openai_instructions ?? DEFAULT_VALUES.openaiInstructions,
       openaiLanguage: data.openai_language ?? DEFAULT_VALUES.openaiLanguage,
+      openaiRefAudio: data.openai_ref_audio ?? '',
+      openaiRefText: data.openai_ref_text ?? '',
       doubaoVoice: data.doubao_voice ?? DEFAULT_VALUES.doubaoVoice,
       doubaoResourceId: data.doubao_resource_id ?? DEFAULT_VALUES.doubaoResourceId,
       localVoice: data.local_voice ?? DEFAULT_VALUES.localVoice,
@@ -116,6 +120,9 @@ export function TtsSettings() {
       // 运营清空输入框就是要撤掉这句风格控制，留着旧值才是bug。
       payload.openai_instructions = fields.openaiInstructions.trim() || null
       payload.openai_language = fields.openaiLanguage.trim() || null
+      // 参考音频/参考文本：克隆的原料，也是「从当前配置导入音色」的来源
+      payload.openai_ref_audio = fields.openaiRefAudio.trim() || null
+      payload.openai_ref_text = fields.openaiRefText.trim() || null
     } else if (provider === 'doubao') {
       if (fields.doubaoApiKey) payload.doubao_api_key = fields.doubaoApiKey
       if (fields.doubaoToken) payload.doubao_token = fields.doubaoToken

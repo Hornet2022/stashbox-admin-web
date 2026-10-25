@@ -4,6 +4,8 @@ import type {
   VoiceCreatePayload,
   VoiceListResult,
   VoicePreviewResult,
+  VoiceRedistillPayload,
+  VoiceRedistillResult,
   VoiceRow,
   VoiceUpdatePayload,
 } from '../../types'
@@ -110,4 +112,26 @@ export function fileToBase64(file: File): Promise<string> {
     reader.onerror = () => reject(new Error('读取文件失败'))
     reader.readAsDataURL(file)
   })
+}
+
+/**
+ * 把目标音色设为默认，并重渲存量文章。
+ *
+ * 为什么需要它：音色是**合成期参数** —— 换了默认音色，已落盘的音频**不会变**。
+ * 而批量重跑脚本的默认筛选是「`tts_voice_id` 为空」⇒ 线上存量文章全都有音色
+ * ⇒ 脚本默认跑 0 篇 ⇒ 「后台能换音色，但没有一条路能把存量换成新音色」。
+ *
+ * ⚠️ 语义提醒：本操作会把该音色**设为全局默认** ⇒ 之后所有新剪藏都用它。
+ * 这是「换默认音色」本来的含义，不是这个接口引入的副作用。
+ */
+export async function redistillWithVoice(
+  voiceId: string,
+  payload: VoiceRedistillPayload,
+): Promise<VoiceRedistillResult> {
+  const { data } = await apiClient.post(
+    `/api/v1/admin/tts/voices/${voiceId}/re-distill`,
+    payload,
+    { timeout: 120_000 },
+  )
+  return unwrap<VoiceRedistillResult>(data)
 }

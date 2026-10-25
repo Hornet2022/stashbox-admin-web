@@ -51,6 +51,14 @@ export interface TtsConfigFields {
   /** 风格控制 prompt（上游 instructions）—— 同一篇每段逐字相同 */
   openaiInstructions: string
   openaiLanguage: string
+  /**
+   * 托管端点零样本克隆的参考音频（URL/路径）与参考文本。
+   *
+   * ⚠️ 原先参考音频只有 indextts_* 那组（本地 oMLX），而生产 provider 是
+   * openai ⇒ 全局兜底读不到、后台「从当前配置导入音色」按钮也必然 400。
+   */
+  openaiRefAudio: string
+  openaiRefText: string
   doubaoApiKey: string
   doubaoToken: string
   doubaoAppId: string
@@ -253,6 +261,36 @@ export function TtsConfigForm({
                   ))}
                 </div>
               )}
+              {/*
+                零样本克隆的参考音频（2026-10-25）。
+
+                为什么托管端点也需要：生产 provider 是 openai（托管端点），
+                它的 `voice` 是**预设音色名**，同一个人不保证稳定 —— 之前
+                「分段像换人」的根因就在这里。解法是零样本克隆：给一段参考音频
+                + 它的逐字转写，上游照着克隆。
+
+                这两个字段同时是**冷启动入口**：音色库为空时，
+                「从当前配置导入」按钮读的就是它们（原先只读 indextts_*，
+                而生产 provider 是 openai ⇒ 那个按钮必然 400，是死按钮）。
+              */}
+              <Field label="参考音频（零样本克隆，克隆时必填）">
+                <input
+                  type="text"
+                  value={data.openaiRefAudio}
+                  onChange={(e) => onFieldChange('openaiRefAudio', e.target.value)}
+                  placeholder="https://.../ref.wav 或本机绝对路径"
+                  className={`t-input ${inputClass}`}
+                />
+              </Field>
+              <Field label="参考文本（必须与参考音频内容逐字一致）">
+                <input
+                  type="text"
+                  value={data.openaiRefText}
+                  onChange={(e) => onFieldChange('openaiRefText', e.target.value)}
+                  placeholder="今天天气不错，我们一起来看看这条新闻讲了什么内容。"
+                  className={`t-input ${inputClass}`}
+                />
+              </Field>
               {/*
                 风格控制 prompt（2026-10-23）。
 

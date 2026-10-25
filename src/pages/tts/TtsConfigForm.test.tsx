@@ -16,6 +16,8 @@ const emptyFields: TtsConfigFields = {
   openaiModel: '',
   openaiVoice: '',
   openaiInstructions: '',
+  openaiRefAudio: '',
+  openaiRefText: '',
   openaiLanguage: '',
   doubaoApiKey: '',
   doubaoToken: '',

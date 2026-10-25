@@ -6,6 +6,7 @@ import {
   importVoiceFromConfig,
   listVoices,
   previewVoice,
+  redistillWithVoice,
   updateVoice,
 } from '../api/admin'
 import { toErrorMessage } from '../api/client'
@@ -50,7 +51,7 @@ import type { VoiceRow } from '../types'
  * 所以第一次用要点右上角「从当前配置导入」。
  */
 
-const columns = ['音色', '标识', '状态', '参考音频', '更新时间', '操作']
+const columns = ['音色', '标识', '状态', '被选用户', '参考音频', '更新时间', '操作']
 
 // 长度上限，**必须与服务端对齐**
 // （backend/common/tts_voice_service.py 的 MAX_SLUG_LEN 等）。
@@ -103,6 +104,9 @@ export function VoiceLibrary() {
 
   const [previewing, setPreviewing] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
+  /** 「设为默认并重渲存量」的目标音色（null = 不弹窗） */
+  const [redistillTarget, setRedistillTarget] = useState<VoiceRow | null>(null)
+  const [redistillSubmitting, setRedistillSubmitting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   /** 暂存上传的 base64，与 refAudioUrl 二选一 */
   const pendingB64 = useRef<string | null>(null)
@@ -230,7 +234,18 @@ export function VoiceLibrary() {
           is_active: form.isActive,
           sort_order: Number(form.sortOrder) || 0,
         })
-        toast(`已创建音色「${form.displayName.trim()}」`, 'success')
+        // ⚠️ 新建的音色**默认不生效**：is_default 默认 false、也没有用户选它
+        // ⇒ 解析链回落到默认音色 ⇒ 这个音色不会被用上，而界面曾经毫无提示。
+        // 现在明确说出来，并告诉管理员下一步该做什么。
+        if (form.isDefault) {
+          toast(`已创建音色「${form.displayName.trim()}」，并已设为全局默认音色`, 'success')
+        } else {
+          toast(
+            `已创建音色「${form.displayName.trim()}」，但它尚未生效：需要勾选「设为全局默认音色」，` +
+              '或由用户在 App 里选中，才会用于新剪藏的文章',
+            'info',
+          )
+        }
       }
       pendingB64.current = null
       closeModal()
@@ -270,6 +285,32 @@ export function VoiceLibrary() {
     }
   }
 
+  /**
+   * 「设为默认并重渲存量」。
+   *
+   * 为什么需要它：音色是**合成期参数** —— 换了默认音色，已落盘的音频**不会变**。
+   * 而批量重跑脚本的默认筛选是「tts_voice_id 为空」⇒ 线上存量文章全都有音色
+   * ⇒ 脚本默认跑 0 篇 ⇒ 「后台能换音色，但没有一条路能把存量换成新音色」。
+   */
+  const handleRedistill = async (reason: string) => {
+    if (!redistillTarget) return
+    setRedistillSubmitting(true)
+    try {
+      const res = await redistillWithVoice(redistillTarget.id, { reason })
+      toast(
+        `已把「${redistillTarget.display_name}」设为默认音色，` +
+          `重渲 ${res.queued}/${res.matched} 篇存量文章（蒸馏是分钟级的，进度看文章状态）`,
+        'success',
+      )
+      setRedistillTarget(null)
+      setRedistillSubmitting(false)
+      reload()
+    } catch (err) {
+      toast(toErrorMessage(err), 'error')
+      setRedistillSubmitting(false)
+    }
+  }
+
   const handleImport = async () => {
     setImporting(true)
     try {
@@ -305,7 +346,7 @@ export function VoiceLibrary() {
               className={buttonGhostClass}
               onClick={handleImport}
               disabled={importing}
-              title="把当前 TTS 配置里的 indextts_ref_audio 收编成音色库第一条（首次使用需点一次）"
+              title="把当前 TTS 配置里的参考音频（indextts_ref_audio / openai_ref_audio）收编成音色库第一条（首次使用需点一次）"
             >
               {importing ? '导入中…' : '从当前配置导入'}
             </button>
@@ -381,7 +422,18 @@ export function VoiceLibrary() {
                   </td>
                   <td className={cellMutedClass}>{v.slug}</td>
                   <td className={cellTextClass}>
-                    {v.is_default ? '默认' : '—'}
+                    {v.is_default ? '默认' : v.is_effective ? '生效中' : '未启用'}
+                    {!v.is_default && !v.is_effective && (
+                      <span
+                        className="ml-2 rounded bg-warning/15 px-1.5 py-0.5 text-xs text-warning-ink dark:bg-warning/15 dark:text-[#E8CFAE]"
+                        title="既不是全局默认音色，也没有用户选中它 ⇒ 不会被用于新剪藏的文章"
+                      >
+                        未启用
+                      </span>
+                    )}
+                  </td>
+                  <td className={cellMutedClass}>
+                    {v.selected_users > 0 ? `${v.selected_users} 人` : '—'}
                   </td>
                   <td className={`${cellMutedClass} max-w-xs truncate`} title={v.ref_audio_url}>
                     {v.ref_audio_url}
@@ -407,6 +459,19 @@ export function VoiceLibrary() {
                           onClick={() => openEdit(v)}
                         >
                           编辑
+                        </button>
+                        <button
+                          type="button"
+                          className={buttonGhostClass}
+                          onClick={() => setRedistillTarget(v)}
+                          disabled={!v.is_active}
+                          title={
+                            v.is_active
+                              ? '把这个音色设为全局默认，并把存量文章重渲成它（已生成的音频不会自动变）'
+                              : '已下架的音色不能设为默认'
+                          }
+                        >
+                          设为默认并重渲
                         </button>
                         <button
                           type="button"
@@ -563,6 +628,22 @@ export function VoiceLibrary() {
           </div>
         </form>
       </Modal>
+
+      {/* 「设为默认并重渲存量」：reason 同样写进审计日志（谁、为什么换音色）。 */}
+      <ReasonDialog
+        open={!!redistillTarget}
+        title="设为默认音色并重渲存量文章"
+        description={[
+          `确认把音色「${redistillTarget?.display_name}」设为全局默认音色？`,
+          '之后所有新剪藏的文章都会用这个音色。',
+          '已生成的音频不会自动变 —— 会把「当前音色 ≠ 这个音色」的存量文章重新入队蒸馏（单篇几分钟，进度看文章状态）。',
+        ].join('\n')}
+        confirmLabel="设为默认并重渲"
+        confirmTone="primary"
+        submitting={redistillSubmitting}
+        onClose={() => setRedistillTarget(null)}
+        onConfirm={handleRedistill}
+      />
 
       {/* 破坏性操作统一走 ReasonDialog：强制 ≥5 字符并写入审计日志。
           原先是一个不带原因的确认框 —— 后端也不收 reason，删掉默认音色后

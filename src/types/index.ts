@@ -257,6 +257,14 @@ export interface TtsConfig {
    */
   openai_instructions?: string | null
   openai_language?: string | null
+  /**
+   * 托管端点（openai）零样本克隆用的参考音频 + 参考文本。
+   *
+   * ⚠️ 原先参考音频只有 indextts_* 那组（本地 oMLX），而生产 provider 是
+   * openai ⇒ 全局兜底读不到、后台「从当前配置导入音色」按钮也必然 400。
+   */
+  openai_ref_audio?: string | null
+  openai_ref_text?: string | null
   // doubao
   doubao_voice?: string | null
   doubao_resource_id?: string | null
@@ -381,6 +389,14 @@ export interface TtsConfigUpdatePayload {
    */
   openai_instructions?: string | null
   openai_language?: string | null
+  /**
+   * 托管端点（openai）零样本克隆用的参考音频 + 参考文本。
+   *
+   * ⚠️ 原先参考音频只有 indextts_* 那组（本地 oMLX），而生产 provider 是
+   * openai ⇒ 全局兜底读不到、后台「从当前配置导入音色」按钮也必然 400。
+   */
+  openai_ref_audio?: string | null
+  openai_ref_text?: string | null
   // doubao
   doubao_api_key?: string | null
   doubao_token?: string | null
@@ -417,6 +433,42 @@ export interface VoiceRow {
   is_active: boolean
   sort_order: number
   updated_at: string | null
+  /**
+   * 被多少用户选中。
+   *
+   * 为什么要有：音色库页原来只能看到「这个音色存在」，看不到「有人用吗」。
+   * 生产实测 1 条音色、2 行用户偏好但 voice_id 全为 NULL —— 管理员
+   * 完全看不出「用户其实没在选音色」。
+   */
+  selected_users: number
+  /**
+   * 是否**真的**会用于新剪藏的文章（默认音色，或有用户选了它）。
+   *
+   * ⚠️ 这条把「新建音色默认不生效」那个坑显式化：新建时 is_default
+   * 默认 false、也没人选它 ⇒ 解析链回落到默认音色 ⇒ 建完**根本不会被用上**，
+   * 而界面毫无提示。现在列表里直接标「未启用」。
+   */
+  is_effective: boolean
+}
+
+/** 「设为默认并重渲存量文章」的请求体 */
+export interface VoiceRedistillPayload {
+  reason: string
+  article_ids?: string[] | null
+  limit?: number
+}
+
+export interface VoiceRedistillItem {
+  article_id: string
+  current_voice_id: string | null
+  queued: boolean
+}
+
+export interface VoiceRedistillResult {
+  voice_id: string
+  matched: number
+  queued: number
+  items: VoiceRedistillItem[]
 }
 
 export interface VoiceListResult {
