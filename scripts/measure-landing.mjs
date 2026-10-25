@@ -83,12 +83,20 @@ for (const vp of VIEWPORTS) {
       // ② 老式的 border-right（在栏的右边缘内侧）
       const style = getComputedStyle(col)
       const after = getComputedStyle(col, '::after')
-      let lineX
-      if (after.content && after.content !== 'none' && parseFloat(after.width) > 0) {
+      // 竖线在不在？（2026-10-24：手机端改三行布局后**没有竖线**了 ——
+      // 竖线是「栏间分隔线」，三行布局用横线分隔。）
+      // ⚠️ 之前这里在「没有竖线」时会把**栏的右边缘**当成线，
+      //    于是整行文字（贴到栏右边缘）被判成「压线 0px」——假警报。
+      // ⇒ 竖线不存在时 lineX = null，下面不判压线。
+      const hasLine =
+        after.content && after.content !== 'none' &&
+        parseFloat(after.width) > 0 && after.display !== 'none'
+      let lineX = null
+      if (hasLine) {
         const right = parseFloat(after.right)
         lineX = Math.round(cb.right - right)   // right:-24px → 线在栏外侧 24px
-      } else {
-        lineX = Math.round(cb.right - parseFloat(style.borderRightWidth || '0'))
+      } else if (parseFloat(style.borderRightWidth || '0') > 0) {
+        lineX = Math.round(cb.right - parseFloat(style.borderRightWidth))
       }
       return {
         colLeft: Math.round(cb.left),
@@ -96,9 +104,13 @@ for (const vp of VIEWPORTS) {
         paddingRight: style.paddingRight,
         borderRight: style.borderRightWidth,
         lineX,
+        hasLine,
         lineRights,
-        // 文字右端到竖线的最小距离（负数 = 压线）
-        minGap: lineRights.length ? Math.min(...lineRights.map((r) => lineX - r)) : null,
+        // 文字右端到竖线的最小距离（负数 = 压线）。
+        // **没有竖线时不判**（lineX 为 null）—— 手机端三行布局没有竖线。
+        minGap: lineX == null || !lineRights.length
+          ? null
+          : Math.min(...lineRights.map((r) => lineX - r)),
       }
     })
 
@@ -149,9 +161,10 @@ for (const vp of VIEWPORTS) {
     console.log(`    ${sec.sel.padEnd(28)} h=${String(sec.h).padStart(4)}  top=${String(sec.top).padStart(4)}  pad=${sec.padT}/${sec.padB} margin=${sec.marginT}/${sec.marginB} font=${sec.font}`)
   })
   m.cols.forEach((c, i) => {
-    const gap = c.minGap == null ? 'n/a' : c.minGap + 'px'
+    const gap = c.minGap == null ? 'n/a（无竖线）' : c.minGap + 'px'
     const flag = c.minGap != null && c.minGap < 4 ? ' ⚠ 压线' : ''
-    console.log(`  栏${i + 1}: 文字右端 ${JSON.stringify(c.lineRights)} 竖线x=${c.lineX} 最小间距 ${gap}${flag}`)
+    const lineDesc = c.hasLine ? `竖线x=${c.lineX}` : '无竖线'
+    console.log(`  栏${i + 1}: 文字右端 ${JSON.stringify(c.lineRights)} ${lineDesc} 最小间距 ${gap}${flag}`)
   })
   if (shots) {
     await page.screenshot({ path: `/tmp/shot-${vp.width}x${vp.height}.png` })
