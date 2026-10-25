@@ -119,6 +119,19 @@ ISO_ENV=(
   # ENABLE_LOCAL_AUDIO_MOUNT=1：让 gateway 把 /audio/* 挂到 LOCAL_AUDIO_DIR，
   # 否则上面拼出来的 URL 取不到文件。
   "ENABLE_LOCAL_AUDIO_MOUNT=1"
+  # STASHBOX_E2E_FETCH_MOCK=1：抓取走**内存夹具页**，不发任何真实请求。
+  #
+  # 为什么需要：2026-10-03 起剪藏/D9 改成「先抓后扣」—— 抓不到正文就当场报错、
+  # 不建文章。而 e2e 栈跑在本机、抓取器有 SSRF 防护（挡回环/私网）
+  # ⇒ 夹具里那些假 URL（mp.weixin.qq.com/s/e2e_xxx）**必然 502**。
+  # 实测 2026-10-25：admin-web 跨端用例与后端真机 e2e 都栽在这上面。
+  #
+  # 为什么是 mock 而不是「放宽 SSRF」：mock transport **不发真实请求**，
+  # 压根不经过 DNS 校验 ⇒ 不削弱任何安全防护；而且 mock 模式下只装载
+  # 带 transport 注入点的 fetcher ⇒ **不可能有真实请求发出去**。
+  #
+  # ⚠️ 硬门控在代码侧：ENVIRONMENT=prod 时设这个变量会**直接抛错退出**。
+  "STASHBOX_E2E_FETCH_MOCK=1"
 )
 
 export PGPASSWORD="${PGPASSWORD:-stashbox_dev}"
@@ -390,6 +403,18 @@ FROM (VALUES
 ) AS t(id, url, title, source, status, raw_content, audio_url)
 CROSS JOIN (SELECT id FROM users WHERE open_id = 'e2e_seed_user' LIMIT 1) u
 WHERE NOT EXISTS (SELECT 1 FROM articles a WHERE a.id = t.id);
+
+-- 一个**非系统**标签。
+--
+-- 为什么必须有：标签管理页的「删除」按钮只给**非系统**标签渲染
+-- （src/pages/Tags.tsx:248-258，系统标签那一行显示的是「受保护」文字）。
+-- 而库里的 4 个系统标签（tech/finance/life/news）全是 is_system=true
+-- ⇒ 删除按钮一个都不渲染 ⇒ 「删除标签」那条 e2e 用例永远红。
+-- 2026-10-25 实测：playwright e2e 43 条里就有这一条因此失败。
+INSERT INTO tags (slug, name, category, is_system, creator_id, created_at)
+SELECT 'e2e-custom', 'e2e 自定义标签', 'subject', false, u.id, now()
+FROM (SELECT id FROM users WHERE open_id = 'e2e_seed_user' LIMIT 1) u
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE slug = 'e2e-custom');
 SQL
   local rc=$?
   if [[ ${rc} != "0" ]]; then

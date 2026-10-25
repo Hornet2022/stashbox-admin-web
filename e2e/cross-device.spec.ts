@@ -5,7 +5,10 @@ import { test, expect } from './fixtures'
 import { GATEWAY } from './gateway'
 import {
   DEVICE_USER_ID,
+  PKG_CANDIDATES,
   adb,
+  deviceAppBackendKind,
+  deviceAppReady,
   deviceOnline,
   dumpUi,
   findContaining,
@@ -33,11 +36,37 @@ import {
  * 没设备就整体跳过，不要让它们在 CI 里逐个失败。
  */
 
+/** 隔离后端网关端口（与 e2e-backend.sh 的 GW_PORT 一致）。 */
+const GATEWAY_PORT = 18100
+
 const deviceTest = test.extend({})
 
 deviceTest.describe('跨端：配额', () => {
   test.beforeEach(async () => {
+    // ⚠️ 判据是「设备在线 **且** 装了 App」，不是只判在线。
+    //
+    // 原来只判 `deviceOnline()`：设备在线但**没装** App（或装的包名对不上）时，
+    // 用例照样往下走，最后报「App 未在超时内进入前台」—— 那个报错长得像
+    // 「App 起不来 / 崩了」，真实原因却是包没装或包名对不上。
+    // 2026-10-25 实测：设备上装的是 `com.tingxia.audio`（release 包），
+    // 而驱动写死 `com.tingxia.audio.debug` ⇒ `am start` 静默失败。
+    //
+    // 现在改成显式 skip，并把「为什么 skip」写进 skip 原因 ——
+    // 显式 skip 是**信号**（看得到缺什么），假红是**噪音**（看不出缺什么）。
     test.skip(!deviceOnline(), '真机不在线，跳过跨端用例')
+    test.skip(
+      !deviceAppReady(),
+      `真机上没装听匣 App（找过 ${PKG_CANDIDATES.join(' / ')}），跳过跨端用例`,
+    )
+    // ⚠️ 关键前置：真机上的 App 必须**指着同一个后端**。
+    // 装的是 release 变体时它连的是生产 api.stashbox.cn ⇒ 拿它的数据去比
+    // 隔离库里的数据，红得毫无道理（实测报「App 未在超时内进入前台」，
+    // 真实原因是后端根本不是同一个）。此时显式 skip 并说清原因。
+    const kind = deviceAppBackendKind(GATEWAY_PORT)
+    test.skip(
+      kind !== 'e2e',
+      `真机上的 App 不是指向隔离后端（判定=${kind}，需要 debug 变体 + adb reverse tcp:${GATEWAY_PORT}），跳过跨端用例`,
+    )
     // 这组用例会互相影响：上一条把配额设成 0（停用）之后如果不还原，
     // 下一条造数据就会吃 403 quota exceeded，看着像功能坏了。
     await resetQuota()
@@ -90,7 +119,9 @@ deviceTest.describe('跨端：配额', () => {
 
 deviceTest.describe('跨端：文章', () => {
   test.beforeEach(async () => {
-    test.skip(!deviceOnline(), '真机不在线，跳过跨端用例')
+    // ⚠️ 这一组**不需要真机**：文章是服务端直调 D9 回调造的
+    // （createArticleViaD9 走的是 HTTP，不是 adb），断言的是后台列表查不查得到。
+    // ⇒ 不在这里加真机前置，否则会白白 skip 掉一条本来能跑的用例。
     await resetQuota()
   })
 
@@ -107,8 +138,21 @@ deviceTest.describe('跨端：文章', () => {
 
     // 文章管理页**没有搜索框**（只有标签筛选，见 ArticlesToolbar.tsx），
     // 只能靠「新文章必在倒序第一页」这个前提来断言。
+    //
+    // ⚠️ 定位方式：按**承载完整 ID 的 title 属性**找，不是按 ID 文本。
+    // ID 列渲染的是 `shortId(article.id, 6)`（`art_4356…b0e539` 这种截断），
+    // 完整 ID 只在 `<code title="完整ID">` 的 title 属性里
+    // （src/pages/articles/ArticlesTable.tsx:125-130）⇒
+    // 用完整 ID 去 getByText 找，**永远找不到**。
+    //
+    // 这是同一类问题的第三例（前两例：文章操作按钮的 aria-label 根本不存在、
+    // 跨端那条找的是完整 ID 文本）—— 断言的都是产品**没有**的契约。
+    //
+    // 用 `:visible` 是因为桌面表格与移动卡片**都渲染**了这段 HTML，
+    // 其中一份被 CSS 隐藏（`hidden xl:table-cell`）⇒ 不加这个限定会撞上
+    // 「第一个匹配是隐藏的」而误报。
     await expect(
-      table.getByText(articleId).first(),
+      authedPage.locator(`code[title="${articleId}"]:visible`).first(),
       `App 侧剪藏的 ${articleId} 在后台文章列表第一页查不到 —— 两端看的不是同一份数据？`,
     ).toBeVisible({ timeout: 15_000 })
   })
@@ -175,6 +219,13 @@ ${body}
 /** 造一篇文章（走 D9 回调 = App 剪藏用的同一个后端入口），返回 article_id */
 async function createArticleViaD9(userId: number, marker: string): Promise<string> {
   const gateway = GATEWAY
+  // ⚠️ 这个 URL 是**假的**（`mp.weixin.qq.com/s/crossdevice_<时间戳>` 并不存在），
+  // 但它能抓得到 —— 因为 e2e 栈开着 `STASHBOX_E2E_FETCH_MOCK=1`，
+  // 抓取走内存夹具页（见 backend/content-service/fetchers/e2e_mock.py）。
+  //
+  // 2026-10-25 之前这里必失败：入口 2026-10-03 起改成「先抓后扣」，
+  // 抓不到正文就当场 502（`没能提取出文章正文`）⇒ 夹具失效。
+  // 那时本用例报的错是「造文章失败: 502」，看着像后端坏了。
   const out = runBackendPy(`
 with httpx.Client(base_url='${gateway}', timeout=30, headers=h) as c:
     r = c.post('/api/v1/callback/d9-add-article',

@@ -13,9 +13,110 @@ import { test, expect, authedPage as _ } from './fixtures'
  */
 
 const SERIAL = process.env.E2E_ANDROID_SERIAL ?? 'f1a9e47d'
-const PKG = 'com.tingxia.audio.debug'
-const ACTIVITY = `${PKG}/com.tingxia.audio.MainActivity`
-/** 真机在登录的账号 —— 后台要改的就是这个用户的配额 */
+
+/**
+ * 真机上可能装的包（**按优先级**）。
+ *
+ * 为什么要**探测**而不是写死：applicationId 随 buildType 变
+ * （`debug` → `com.tingxia.audio.debug`，`release` → `com.tingxia.audio`），
+ * 设备上装的是哪一个取决于最后一次是谁打包的。
+ *
+ * 写死的后果实测过（2026-10-25）：设备上装的是 `com.tingxia.audio`（release 包，
+ * 连的是生产 `https://api.stashbox.cn`），而这里写死 `.debug` ⇒
+ * `am start` **静默失败** ⇒ 报「App 未在超时内进入前台」。
+ * 那个报错长得像「App 起不来」，真实原因却是包名对不上 ——
+ * 排查方向完全跑偏（实测查了 logcat、看了崩溃栈，都没有）。
+ *
+ * 活动类名**不随 applicationId 变**（都是 `com.tingxia.audio.MainActivity`），
+ * 只有「包名」这一段会变。
+ */
+const PKG_CANDIDATES = [
+  'com.tingxia.audio.debug',
+  'com.tingxia.audio.minifydebug',
+  'com.tingxia.audio',
+]
+
+/** 探测到的包（缓存；探测不到缓存空串，重复探测没意义）。 */
+let _pkgCache: string | null = null
+
+/**
+ * 设备上到底装了哪个包。装不上返回 null（调用方据此显式 skip，
+ * 而不是让断言红成一个看不出原因的样子）。
+ */
+export function devicePackage(): string | null {
+  if (_pkgCache !== null) return _pkgCache === '' ? null : _pkgCache
+  const out = adb(['shell', 'pm', 'list', 'packages'], { allowFail: true })
+  // 注意必须带行尾：`com.tingxia.audio` 是 `com.tingxia.audio.debug` 的前缀，
+  // 不带行尾会把 debug 包误判成 release 包。
+  for (const p of PKG_CANDIDATES) {
+    if (out.includes(`package:${p}\n`)) {
+      _pkgCache = p
+      return p
+    }
+  }
+  _pkgCache = ''
+  return null
+}
+
+/** 设备上装的那个包；没装就抛错（错误信息要能指认「是没装还是包名变了」）。 */
+export function requireDevicePackage(): string {
+  const p = devicePackage()
+  if (!p) {
+    throw new Error(
+      `设备 ${SERIAL} 上没找到听匣 App（找过：${PKG_CANDIDATES.join(' / ')}）。\n` +
+        '  · 装一个：./gradlew :app:assembleDebug -PapiBaseUrl=http://127.0.0.1:18100/\n' +
+        '  · 然后 adb install -r app/build/outputs/apk/debug/app-debug.apk\n' +
+        '  · 真机要连上隔离后端：adb reverse tcp:18100 tcp:18100',
+    )
+  }
+  return p
+}
+
+/** 设备上的 App 是否在线（装了 + 能连上 adb）。 */
+export function deviceAppReady(): boolean {
+  if (!deviceOnline()) return false
+  return devicePackage() !== null
+}
+
+/**
+ * 真机上的 App 到底连的是**哪个后端**。
+ *
+ * 返回：
+ * - `'e2e'`         装的是 debug 变体，且设备能探活隔离栈（adb reverse 已建）
+ * - `'production'`  装的是 release 变体 —— 它连的是**生产** `api.stashbox.cn`
+ * - `'unknown'`     没装 App、或 reverse 没建、设备探不通
+ *
+ * ## 为什么必须先判这个
+ *
+ * 跨端用例断言的是「同一份数据在两端表现一致」。而**两端的 App 必须指着
+ * 同一个后端**，否则就是拿设备上的生产数据去比隔离库里的数据 —— 红得毫无道理。
+ *
+ * 实测（2026-10-25）：设备上装的是 release 包（连生产），跨端用例报的是
+ * 「App 未在超时内进入前台」，真实原因是包名对不上 + 后端根本不是同一个。
+ * 判据缺失时，**症状永远指向错误的方向**。
+ *
+ * 判据怎么做的：debug 变体的 base url 是**编译期**注入的
+ * （`./gradlew :app:assembleDebug -PapiBaseUrl=http://127.0.0.1:18100/`），
+ * 而 release 变体固定连生产 ⇒ 按**装的哪个变体**就能判；
+ * 再用「设备能不能探活隔离栈」把 adb reverse 缺失这一层也堵上。
+ */
+export function deviceAppBackendKind(gatewayPort: number): 'e2e' | 'production' | 'unknown' {
+  const pkg = devicePackage()
+  if (!pkg) return 'unknown'
+  if (pkg === 'com.tingxia.audio') return 'production' // release 变体
+  // debug 变体：还得确认 reverse 隧道通
+  return deviceCanReachGateway(gatewayPort) ? 'e2e' : 'unknown'
+}
+
+/** 设备能不能探活隔离栈（`adb reverse tcp:<port> tcp:<port>` 之后才行）。 */
+export function deviceCanReachGateway(port: number): boolean {
+  const out = adb(
+    ['shell', 'curl', '-s', '-m', '4', '-o', '/dev/null', '-w', '%{http_code}', `http://127.0.0.1:${port}/healthz`],
+    { allowFail: true },
+  )
+  return out.trim() === '200'
+}
+
 const DEVICE_USER_ID = 1
 
 export function adb(args: string[], opts: { allowFail?: boolean } = {}): string {
@@ -122,15 +223,17 @@ export function tapUntil(
 
 /** 冷启动 App。force-stop 后再起，走的是真实冷启动路径（DI 装配 / token 恢复）。 */
 export function launchApp(): void {
-  adb(['shell', 'am', 'force-stop', PKG])
-  adb(['shell', 'am', 'start', '-n', ACTIVITY])
+  const pkg = requireDevicePackage()
+  adb(['shell', 'am', 'force-stop', pkg])
+  adb(['shell', 'am', 'start', '-n', `${pkg}/com.tingxia.audio.MainActivity`])
   waitForForeground()
 }
 
 export function waitForForeground(timeoutMs = 30_000): void {
+  const pkg = requireDevicePackage()
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
-    if (adb(['shell', 'dumpsys', 'activity', 'activities'], { allowFail: true }).includes(PKG)) {
+    if (adb(['shell', 'dumpsys', 'activity', 'activities'], { allowFail: true }).includes(pkg)) {
       // 6 秒，不是 2 秒。Activity 变成前台 ≠ 首页能点：Compose 首帧 +
       // 列表数据加载没完成时，dumpsys 已经报 PKG 在前台上，但点「剪藏」
       // 会没反应。实测冷启动等 2 秒必踩，等 7 秒才稳。
@@ -218,4 +321,4 @@ export function uiSummary(limit = 20): string {
   )
 }
 
-export { DEVICE_USER_ID, PKG, SERIAL }
+export { DEVICE_USER_ID, PKG_CANDIDATES, SERIAL }

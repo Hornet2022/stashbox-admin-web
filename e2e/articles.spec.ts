@@ -33,17 +33,25 @@ test.describe('articles', () => {
       return
     }
 
-    const retryBtn = authedPage.locator('button[aria-label^="强制重试文章"]').first()
+    // ⚠️ 这里原来找的是 `button[aria-label^="强制重试文章"]` / `[aria-label^="失效文章"]`
+    // / `[aria-label^="删除文章"]` —— **这三个 aria-label 在产品里根本不存在**
+    // （src/pages/articles/ArticlesTable.tsx:43-63 用的是按钮文案「重试/失效音频/删除」，
+    // 只有标签页那三个按钮有 aria-label，文章页没有）。
+    // ⇒ 那条用例**永远红**，且症状是「按钮没渲染」，极易误判成权限/夹具问题。
+    // 2026-10-25 实测：playwright e2e 43 条里就有一条因此失败。
+    //
+    // 现在按**可访问名**找（getByRole 的 name 默认是子串匹配，所以用 exact 收紧）。
+    const retryBtn = authedPage.getByRole('button', { name: '重试', exact: true }).first()
     await retryBtn.waitFor({ state: 'visible', timeout: 10_000 })
-    await expect(authedPage.locator('button[aria-label^="失效文章"]').first()).toBeVisible()
-    await expect(authedPage.locator('button[aria-label^="删除文章"]').first()).toBeVisible()
+    await expect(authedPage.getByRole('button', { name: '失效音频', exact: true }).first()).toBeVisible()
+    await expect(authedPage.getByRole('button', { name: '删除', exact: true }).first()).toBeVisible()
   })
 
   test('点击强制重试 → 打开 Modal → 关闭', async ({ authedPage, role }) => {
     test.skip(!canWrite(role), `当前角色 ${role} 无操作权限，跳过`)
 
     await authedPage.goto('/articles')
-    const retryBtn = authedPage.locator('button[aria-label^="强制重试文章"]').first()
+    const retryBtn = authedPage.getByRole('button', { name: '重试', exact: true }).first()
     await retryBtn.waitFor({ state: 'visible', timeout: 10_000 })
 
     await retryBtn.click()
