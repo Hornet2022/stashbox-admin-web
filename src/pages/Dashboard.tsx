@@ -12,7 +12,7 @@ import {
   type StatTone,
 } from '../components/ui'
 import { DISTILL_STEP_LABELS, SOURCE_LABELS, TONE_BG, labelFor } from '../constants/labels'
-import type { DashboardStats } from '../types'
+import type { ClientPerfMetric, DashboardStats } from '../types'
 import { sectionTitleClass } from '../components/ui'
 
 /**
@@ -253,6 +253,33 @@ export function Dashboard() {
         </div>
       </Section>
 
+      <Section title="客户端体验" caption="客户端上报的耗时；P50 是典型用户，P95 是最慢的 5%">
+        {/* 2026-10-25：补上首屏 / 音频启动两张卡。
+            为什么不塞进「规模与存量」那组：那是**存量**（用户数、文章数），
+            这两个是**客户端体验**（耗时）—— 混在一组会让「先看需要处理的，
+            再看存量」的层级失效。
+            为什么用两列而不是三列：这一组只有两张卡（跟下面「来源分布 +
+            蒸馏耗时」那两个详情面板同一个层级的两件式排布）；
+            而「需要关注」/「规模与存量」那两组的**三列密度**是 5cc6fe1 定的
+            原则（两组必须同密度），不在这一组的适用范围里。
+            ⚠️ 加卡**没有**改动「规模与存量」的列数 —— e2e/responsive.spec.ts
+            那条硬钉 3 列的断言仍然成立。 */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <ClientPerfCard
+            label="首屏加载"
+            metric={stats?.client_perf?.first_frame}
+            windowDays={stats?.client_perf?.window_days}
+            loading={loading}
+          />
+          <ClientPerfCard
+            label="音频启动"
+            metric={stats?.client_perf?.audio_start}
+            windowDays={stats?.client_perf?.window_days}
+            loading={loading}
+          />
+        </div>
+      </Section>
+
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SourceBreakdown stats={stats} loading={loading} />
         <DistillDuration p95={p95} />
@@ -337,6 +364,81 @@ function RetentionCard({
           : hasSample
             ? `${retention?.retained} / ${retention?.cohort_size} 人 · 目标 ≥ ${Math.round(RETENTION_TARGET * 100)}%`
             : '上月没有活跃样本（不是 0%）'
+      }
+    />
+  )
+}
+
+/* ── 客户端性能 ──────────────────────────────────────────────────── */
+
+/**
+ * 客户端性能卡（首屏 / 音频启动）—— 2026-10-25 补。
+ *
+ * ## 为什么值得单独两张卡
+ *
+ * 这两个指标是**客户端上报**的（`app_first_frame` / `audio_play_start_client`，
+ * 带 `duration_ms`），数据早就在库里，但一直没有聚合端点也没有卡 ——
+ * 内测用户反馈「启动慢 / 点了没反应」时，我们只能去手写 SQL 查 `feedback` 表。
+ *
+ * ## 为什么展示 P50 + P95 而不是均值
+ *
+ * 启动耗时分布很宽（冷/热启动、弱网/强网），均值会被长尾带跑。
+ * 仓里既有的时长指标（admin 的「蒸馏耗时」）也是 P50 + P95，口径一致。
+ *
+ * ## 颜色看 P50，但 P95 必须露出来
+ *
+ * 目标线（首屏 1500ms / 音频启动 500ms）是**典型用户**的预算，
+ * 所以颜色按 P50 判（p50 < 目标 ⇒ 达标）；
+ * 但 P95（最慢的 5%）必须同时显示 —— 只看 P50 会漏掉「大部分人还行，
+ * 但有一小撮人等得没法用」这种情况。颜色不反映 P95，但数字会。
+ *
+ * ## 三种状态必须分开说（与「月留存」卡同一个道理）
+ *
+ * 1. 字段**不存在**（后端还没这版 / 部署顺序反了）⇒ 「后端尚未提供该指标」
+ * 2. 有字段但**没有样本**（`p50_ms` 为 null）⇒ 「最近 N 天没有样本（不是 0ms）」
+ * 3. 有样本 ⇒ P50 + P95 + 样本量 + 目标线
+ *
+ * ⚠️ 把 2 说成 1 会让人以为「这个指标没上线」；把 2 渲染成 `0ms`
+ * 会显示一个假的「启动很快」—— 比缺数据更坏。
+ */
+function ClientPerfCard({
+  label,
+  metric,
+  windowDays,
+  loading,
+}: {
+  label: string
+  metric: ClientPerfMetric | undefined
+  windowDays: number | undefined
+  loading: boolean
+}) {
+  // 整个指标不存在 = 后端还没提供（不是「没样本」）
+  const notProvided = metric === undefined || metric === null
+  const p50 = metric?.p50_ms ?? null
+  const samples = metric?.samples ?? 0
+  // ⚠️ 四个条件都要在：任何一个漏掉，都会渲染出一个**假的数字**。
+  //   · samples > 0   —— 后端说没有样本时不能显示分位数（自相矛盾的响应）
+  //   · p50 !== null  —— 后端没给分位数时不能显示 0（`?? 0` 会造出 0ms）
+  //   · p50 > 0       —— 0ms 不是一次真实测量（后端口径也把 ≤0 排除在样本外）
+  const hasSample = !notProvided && samples > 0 && p50 !== null && p50 > 0
+  const meetsTarget = hasSample && p50 < metric.target_ms
+  const tone: StatTone = notProvided ? 'neutral' : !hasSample ? 'warn' : meetsTarget ? 'good' : 'bad'
+  const days = windowDays ?? 7
+
+  return (
+    <StatCard
+      label={label}
+      value={hasSample ? `${Math.round(p50)}ms` : '—'}
+      tone={tone}
+      loading={loading}
+      footnote={
+        notProvided
+          ? '后端尚未提供该指标'
+          : hasSample
+            ? `P95 ${Math.round(metric.p95_ms ?? 0)}ms · ${metric.samples} 个样本 · 目标 < ${metric.target_ms}ms`
+            : samples > 0
+              ? `后端没给出耗时分位数（${samples} 个样本）`
+              : `最近 ${days} 天没有样本（不是 0ms）`
       }
     />
   )

@@ -105,8 +105,51 @@ export interface DashboardStats {
     /** 现在的自然月 */
     current_month: string
   }
+  /**
+   * 客户端性能：首屏加载 / 音频启动（2026-10-25 补）。
+   *
+   * 口径见后端 `backend/common/client_perf.py`：
+   *   · 事件 `app_first_frame` / `audio_play_start_client`
+   *     （**不是**服务端的 `audio_play_start` —— 那条是「取到音频直链」，
+   *      名字相同但测的是另一件事，见后端 events.py 的说明）
+   *   · 最近 N 天（UTC）的窗口，N = `window_days`
+   *   · 统计量 **P50 + P95**（仓里既有的时长指标都用这个口径）
+   *   · 目标线首屏 1500ms / 音频启动 500ms（来自仓内既有定义，后端一起下发）
+   *
+   * ⚠️ `p50_ms` / `p95_ms` 是 **null** 而不是 0 ——
+   * 「没有样本」和「0ms」是两回事，渲染成 0ms 会显示一个假的「启动很快」。
+   */
+  client_perf?: ClientPerfStats
   /** 缓存生成时间（ISO8601），前端可显示"X 秒前更新" */
   generated_at?: string
+}
+
+/** 客户端性能的一个指标（首屏 或 音频启动） */
+export interface ClientPerfMetric {
+  /** 埋点事件名，如 "app_first_frame" */
+  event: string
+  /** 有效样本数（duration_ms 缺失 / 非数字 / ≤0 的行不算样本） */
+  samples: number
+  /** 中位数；没有样本时为 null */
+  p50_ms: number | null
+  /** 最慢的 5%；没有样本时为 null */
+  p95_ms: number | null
+  /** 目标线（毫秒），来自后端下发的仓内既有定义 */
+  target_ms: number
+}
+
+/** 客户端性能的一组指标 */
+export interface ClientPerfStats {
+  /** 统计窗口天数 */
+  window_days: number
+  /** 窗口起点（含），YYYY-MM-DD */
+  window_start: string
+  /** 窗口终点（不含），YYYY-MM-DD */
+  window_end: string
+  /** 首屏加载 */
+  first_frame: ClientPerfMetric
+  /** 音频启动（客户端真的出声了） */
+  audio_start: ClientPerfMetric
 }
 
 /** GET /api/v1/admin/users 行

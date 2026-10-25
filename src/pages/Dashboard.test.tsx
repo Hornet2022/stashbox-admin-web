@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { Dashboard } from './Dashboard'
 
@@ -32,6 +32,21 @@ function renderDashboard() {
       <Dashboard />
     </MemoryRouter>,
   )
+}
+
+/**
+ * 取出某张指标卡（按 label 定位）。
+ *
+ * 为什么需要它：**多张卡会显示同一句文案**（「月留存」「首屏加载」「音频启动」
+ * 在后端没提供指标时都显示「后端尚未提供该指标」）。
+ * 用 `screen.getByText(...)` 断言这种文案，一旦再加一张卡就会撞上
+ * "found multiple elements" —— 那是**测试自己**的脆弱，不是页面的问题。
+ * ⇒ 断言必须落在**某一张卡内部**。
+ */
+function cardOf(label: string): HTMLElement {
+  const el = screen.getByText(label).closest('div.rounded-lg')
+  if (!el) throw new Error(`找不到「${label}」那张指标卡`)
+  return el as HTMLElement
 }
 
 // 与 content-service/admin_router.py 真实返回形态一致（CP-STATS-REWORK 拓字段）
@@ -338,7 +353,161 @@ describe('Dashboard', () => {
     await waitFor(() => {
       expect(screen.getByText('月留存')).toBeInTheDocument()
     })
-    expect(screen.getByText('后端尚未提供该指标')).toBeInTheDocument()
-    expect(screen.queryByText('上月没有活跃样本（不是 0%）')).not.toBeInTheDocument()
+    // ⚠️ 必须**在「月留存」这张卡内部**断言：
+    // 「后端尚未提供该指标」这句文案现在不止一张卡会用
+    // （首屏/音频启动在指标缺失时也是这句），全屏 getByText 会撞多个元素。
+    expect(within(cardOf('月留存')).getByText('后端尚未提供该指标')).toBeInTheDocument()
+    expect(
+      within(cardOf('月留存')).queryByText('上月没有活跃样本（不是 0%）'),
+    ).not.toBeInTheDocument()
+  })
+
+  // 2026-10-25：客户端性能卡（首屏 / 音频启动）
+  const sampleClientPerf = {
+    window_days: 7,
+    window_start: '2026-10-19',
+    window_end: '2026-10-26',
+    first_frame: {
+      event: 'app_first_frame',
+      samples: 12,
+      p50_ms: 1234,
+      p95_ms: 2100,
+      target_ms: 1500,
+    },
+    audio_start: {
+      event: 'audio_play_start_client',
+      samples: 8,
+      p50_ms: 380,
+      p95_ms: 900,
+      target_ms: 500,
+    },
+  }
+
+  it('首屏与音频启动卡显示 P50，并带上 P95、样本量与目标线', async () => {
+    mockedGetStats.mockResolvedValue({ ...sampleStats, client_perf: sampleClientPerf })
+    renderDashboard()
+    await waitFor(() => {
+      expect(screen.getByText('首屏加载')).toBeInTheDocument()
+    })
+    expect(screen.getByText('1234ms')).toBeInTheDocument()
+    expect(screen.getByText('P95 2100ms · 12 个样本 · 目标 < 1500ms')).toBeInTheDocument()
+    expect(screen.getByText('380ms')).toBeInTheDocument()
+    expect(screen.getByText('P95 900ms · 8 个样本 · 目标 < 500ms')).toBeInTheDocument()
+  })
+
+  it('后端还没提供 client_perf 字段时不能说成「没有样本」', async () => {
+    // stats 里没有 client_perf 字段 ⇒ 这是「指标还没上线」，
+    // 不是「最近没人上报」—— 两种状态必须分开说。
+    mockedGetStats.mockResolvedValue({ ...sampleStats })
+    renderDashboard()
+    await waitFor(() => {
+      expect(screen.getByText('首屏加载')).toBeInTheDocument()
+    })
+    for (const label of ['首屏加载', '音频启动']) {
+      const card = within(cardOf(label))
+      expect(card.getByText('后端尚未提供该指标')).toBeInTheDocument()
+      expect(card.queryByText(/没有样本/)).not.toBeInTheDocument()
+    }
+  })
+
+  it('有字段但没有样本时显示「没有样本（不是 0ms）」', async () => {
+    // p50_ms 为 null = 没有有效样本。渲染成 0ms 会显示一个假的「启动很快」。
+    mockedGetStats.mockResolvedValue({
+      ...sampleStats,
+      client_perf: {
+        ...sampleClientPerf,
+        first_frame: { ...sampleClientPerf.first_frame, samples: 0, p50_ms: null, p95_ms: null },
+        audio_start: { ...sampleClientPerf.audio_start, samples: 0, p50_ms: null, p95_ms: null },
+      },
+    })
+    renderDashboard()
+    await waitFor(() => {
+      expect(screen.getByText('首屏加载')).toBeInTheDocument()
+    })
+    for (const label of ['首屏加载', '音频启动']) {
+      const card = within(cardOf(label))
+      expect(card.getByText('最近 7 天没有样本（不是 0ms）')).toBeInTheDocument()
+      expect(card.queryByText('0ms')).not.toBeInTheDocument()
+    }
+  })
+
+  it('P50 超过目标线时卡片标红，达标时标绿', async () => {
+    // 颜色按 P50 判（目标线是典型用户的预算），但 P95 仍然显示在脚注里。
+    mockedGetStats.mockResolvedValue({
+      ...sampleStats,
+      client_perf: {
+        ...sampleClientPerf,
+        // 首屏 P50 2100 > 目标 1500 ⇒ 超标
+        first_frame: { ...sampleClientPerf.first_frame, p50_ms: 2100 },
+      },
+    })
+    renderDashboard()
+    await waitFor(() => {
+      expect(screen.getByText('首屏加载')).toBeInTheDocument()
+    })
+    expect(screen.getByText('2100ms').className).toContain('text-error-ink')
+    // 音频启动 P50 380 < 目标 500 ⇒ 达标
+    expect(screen.getByText('380ms').className).toContain('text-success-ink')
+  })
+
+  it('P50 恰好等于目标线时算超标（目标线是「< 1500ms」，不含等号）', async () => {
+    // 仓内定义原文是「首屏加载 < 1.5s」⇒ 等于 1500ms **不算达标**。
+    // 这条把「< 还是 ≤」钉死：口径里写的是哪个，页面就得是哪个。
+    mockedGetStats.mockResolvedValue({
+      ...sampleStats,
+      client_perf: {
+        ...sampleClientPerf,
+        first_frame: { ...sampleClientPerf.first_frame, p50_ms: 1500 },
+      },
+    })
+    renderDashboard()
+    await waitFor(() => {
+      expect(screen.getByText('首屏加载')).toBeInTheDocument()
+    })
+    expect(screen.getByText('1500ms').className).toContain('text-error-ink')
+  })
+
+  it('后端说 samples=0 却给了 p50 时，按「没有样本」渲染', async () => {
+    // 自相矛盾的响应（样本 0 却有分位数）。这时**不能**显示那个数字 ——
+    // 一个没有样本支撑的分位数不该被当成事实展示。
+    mockedGetStats.mockResolvedValue({
+      ...sampleStats,
+      client_perf: {
+        ...sampleClientPerf,
+        first_frame: { ...sampleClientPerf.first_frame, samples: 0, p50_ms: 1234, p95_ms: 2100 },
+      },
+    })
+    renderDashboard()
+    await waitFor(() => {
+      expect(screen.getByText('首屏加载')).toBeInTheDocument()
+    })
+    const card = within(cardOf('首屏加载'))
+    expect(card.getByText('最近 7 天没有样本（不是 0ms）')).toBeInTheDocument()
+    expect(card.queryByText('1234ms')).not.toBeInTheDocument()
+  })
+
+  it('后端说有样本却没给分位数时，不显示 0ms', async () => {
+    // 另一种自相矛盾：samples>0 但 p50_ms=null。
+    // ⚠️ 这条盯的是「没有可显示的分位数时，绝不能显示 0ms」——
+    // 0ms 看起来像"启动极快"，是个**假的乐观结论**。
+    //
+    // （把 `p50_ms ?? null` 写成 `?? 0` 现在不会露出 0ms ——
+    //   因为卡片里还有一道 `p50 > 0` 的守卫兜着。
+    //   那个变异因此是**行为等价**的，测不出差异 —— 这正是防御深度的结果，
+    //   不是漏网。）
+    mockedGetStats.mockResolvedValue({
+      ...sampleStats,
+      client_perf: {
+        ...sampleClientPerf,
+        first_frame: { ...sampleClientPerf.first_frame, samples: 12, p50_ms: null, p95_ms: null },
+      },
+    })
+    renderDashboard()
+    await waitFor(() => {
+      expect(screen.getByText('首屏加载')).toBeInTheDocument()
+    })
+    const card = within(cardOf('首屏加载'))
+    expect(card.getByText('后端没给出耗时分位数（12 个样本）')).toBeInTheDocument()
+    expect(card.queryByText('0ms')).not.toBeInTheDocument()
   })
 })
