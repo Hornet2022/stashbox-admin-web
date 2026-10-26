@@ -83,6 +83,27 @@ describe('Tags', () => {
     expect(screen.getByPlaceholderText(/英文标识/)).toBeInTheDocument()
   })
 
+  it('新增弹窗含分类下拉（主题/subject），创建时把 category 传给 createTag', async () => {
+    const user = userEvent.setup()
+    mockedListTags.mockResolvedValue(sampleTags)
+    const mockedCreateTag = vi.mocked(adminModule.createTag)
+    mockedCreateTag.mockResolvedValue({ id: 3, name: 'tech' })
+    renderTags()
+    await waitFor(() => {
+      expect(screen.getAllByText('tech').length).toBeGreaterThanOrEqual(1)
+    })
+    await user.click(screen.getByText('新增标签'))
+    // 分类 Field 用自定义 Select，默认渲染当前值「主题」（对应 value 'subject'）
+    expect(screen.getByText('分类')).toBeInTheDocument()
+    expect(screen.getByText('主题')).toBeInTheDocument()
+    await user.type(screen.getByPlaceholderText(/机器学习/), '机器学习')
+    await user.type(screen.getByPlaceholderText(/英文标识/), 'ml')
+    await user.click(screen.getByRole('button', { name: '创建' }))
+    await waitFor(() => {
+      expect(mockedCreateTag).toHaveBeenCalledWith('ml', '机器学习', 'subject')
+    })
+  })
+
   it('missing 端点 → ErrorNotice', async () => {
     mockedListTags.mockRejectedValue({ response: { status: 404 } })
     renderTags()

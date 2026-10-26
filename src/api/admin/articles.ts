@@ -52,26 +52,32 @@ export async function listArticles(params: {
  * ⇒ 运营可以在这里指定分类；服务端优先用运营指定的（`articles.manual_tags`）。
  * 不传 = 沿用 LLM 猜的（老行为不变）。
  */
+/**
+ * @returns 服务端返回的 `warning`（可能为 null）。它是**非阻塞**的提醒 ——
+ *   录入本身已成功，但结果里带运营该知道的事（如：这篇文章此前已被蒸馏过，
+ *   改分类不会生效，需重新蒸馏才换分类）。调用方应把它展示给运营，
+ *   而不是当成错误吞掉。
+ */
 export async function createArticle(
   url: string,
   title?: string,
   tags?: string[],
-): Promise<void> {
-  await apiClient.post('/api/v1/admin/articles', {
+): Promise<string | null> {
+  const { data } = await apiClient.post('/api/v1/admin/articles', {
     url,
-    source: 'url',
     title,
     tags: tags && tags.length ? tags : undefined,
   },
   // ⚠️ 必须单独放宽：这条路径的抓取在**服务端同步完成**
   // （`_prefetch_for_capture` → `fetcher.fetch(budget=30s)`），不是「收下 URL 立刻返回」。
   // 剪藏整条降级链最坏 ~40.6s（实测），而 axios 全局 timeout 只有 15s
-  // ⇒ 运营点「录入」大概率超时，但服务端其实已经把文章建好了 ——
+  // ⇒ 运营点「发布」大概率超时，但服务端其实已经把文章建好了 ——
   // 运营看到红字就再点一次，于是库里多一条重复文章。
   //
   // 60s 与网关的 STASHBOX_GATEWAY_UPSTREAM_TIMEOUT（默认 60）对齐：
   // 客户端比网关还短的话，超时文案（"可能已提交"）根本没机会发出来。
   { timeout: 60_000 })
+  return data?.warning ?? null
 }
 
 /**
@@ -98,12 +104,15 @@ export async function createArticle(
  * 所以这里显式给 `multipart/form-data`：让 `hasJSONContentType` 为假，
  * FormData 原样发出；随后 adapter 会把它删掉、由浏览器补上带 boundary 的头。
  */
+/**
+ * @returns 服务端返回的 `warning`（可能为 null），语义同 `createArticle`。
+ */
 export async function createArticleFromDocument(
   file: File | null,
   text: string | null,
   title?: string,
   tags?: string[],
-): Promise<void> {
+): Promise<string | null> {
   const form = new FormData()
   if (file) {
     form.append('file', file, file.name)
@@ -121,11 +130,11 @@ export async function createArticleFromDocument(
       if (t.trim()) form.append('tags', t.trim())
     }
   }
-  await apiClient.post('/api/v1/admin/articles/document', form, {
+  return await apiClient.post('/api/v1/admin/articles/document', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
     // 上传 10MB 文件 + 服务端解析，15s 的全局超时偏紧（见 client.ts 的 timeout）。
     timeout: 120000,
-  })
+  }).then((res) => res.data?.warning ?? null)
 }
 
 export async function forceRetryArticle(

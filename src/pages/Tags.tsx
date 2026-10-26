@@ -5,7 +5,7 @@ import { toErrorMessage } from '../api/client'
 import { useApi } from '../hooks/useApi'
 import { useRole, hasPermission, STAFF_ROLES } from '../hooks/useRole'
 import { toast } from '../store/toast'
-import { Modal } from '../components/ui'
+import { Modal, Select } from '../components/ui'
 import {
   EmptyRow,
   ErrorNotice,
@@ -56,6 +56,10 @@ export function Tags() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
+  // CP-ADMIN-3：分类下拉。后端 tags.category 唯一已知取值是 subject（可读名「主题」，
+  // 见后端 admin_router.ADMIN_TAG_CATEGORY_LABELS），故这里只给单一选项，不放开自由
+  // 输入，避免运营创建后端无法打标签的分类（未知分类会被后端 fallback 回英文原串）。
+  const [category, setCategory] = useState('subject')
   const [submitting, setSubmitting] = useState(false)
   const [modalError, setModalError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -148,11 +152,12 @@ export function Tags() {
     setSubmitting(true)
     setModalError(null)
     try {
-      await createTag(slug.trim(), name.trim())
+      await createTag(slug.trim(), name.trim(), category)
       setShowSuccess(true)
       setTimeout(() => {
         setName('')
         setSlug('')
+        setCategory('subject')
         closeModal()
         reload()
       }, 700)
@@ -302,6 +307,13 @@ export function Tags() {
               placeholder="英文标识，如 machine-learning"
               className={inputClass}
               autoComplete="off"
+            />
+          </Field>
+          <Field label="分类">
+            <Select
+              value={category}
+              onChange={setCategory}
+              options={[{ value: 'subject', label: '主题' }]}
             />
           </Field>
 

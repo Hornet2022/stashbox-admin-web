@@ -16,13 +16,19 @@ export async function listTags(): Promise<ListResult<TagRow>> {
   return normalizeList<TagRow>(data)
 }
 
-export async function createTag(slug: string, name: string): Promise<{ id: number; name: string }> {
+export async function createTag(
+  slug: string,
+  name: string,
+  category = 'subject',
+): Promise<{ id: number; name: string }> {
   // 网关注册的是 POST /api/v1/tags（CP3.6-A2，admin-web 复用用户侧创建入口）。
   // slug 是后端必填（TagCreateRequest: slug/name/category），原实现只传 name，
   // 导致新建标签**必然 422**。它不是可选的展示字段，是标识符。
+  // category 后端可选、默认 "subject"（唯一已知取值，可读名「主题」）——
+  // 显式传默认值，让创建请求与后端契约对齐（见 admin_router.ADMIN_TAG_CATEGORY_LABELS）。
   // 说明：曾经 UI 上还有「描述」输入框，但后端 Tag 模型 / 请求体 / 建表迁移里
   // 都没有 description 列 —— 填什么都不落库，已从 UI 移除，避免假装能保存。
-  const { data } = await apiClient.post('/api/v1/tags', { slug, name })
+  const { data } = await apiClient.post('/api/v1/tags', { slug, name, category })
   return data as { id: number; name: string }
 }
 

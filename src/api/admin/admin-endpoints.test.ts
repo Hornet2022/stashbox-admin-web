@@ -99,13 +99,18 @@ describe('articles 端点', () => {
   })
 
   it('createArticle → POST /admin/articles（admin 入口：不扣运营配额、不挂运营名下）', async () => {
-    await createArticle('https://example.com/a', 'Title A')
+    // ⚠️ 2026-10-26 审计修：body 不再传 `source: 'url'`（后端 admin 入口恒为 url，
+    // 该字段是用户端才会带的；多传会让「用户剪藏 vs 运营录入」两条路径的请求体
+    // 长得不一样，误导排障）。tags 为空时不发该字段。
+    mockedPost.mockResolvedValueOnce({ data: { warning: '去重提示' } })
+    const warning = await createArticle('https://example.com/a', 'Title A')
+    expect(warning).toBe('去重提示')
     expect(mockedPost).toHaveBeenCalledWith(
       '/api/v1/admin/articles',
       {
         url: 'https://example.com/a',
-        source: 'url',
         title: 'Title A',
+        tags: undefined,
       },
       // ⚠️ timeout 必须**显式**给（2026-10-25 修）：
       // 这条路径的抓取在服务端**同步**完成（`_prefetch_for_capture` → budget=30s），
@@ -125,6 +130,14 @@ describe('articles 端点', () => {
     const timeout = (config as { timeout?: number }).timeout ?? 0
     // 全局默认是 15000（见 client.ts）—— 不显式覆盖就落回这个值。
     expect(timeout).toBeGreaterThanOrEqual(60_000)
+  })
+
+  it('createArticle → 传 tags 时透传；无 warning 时返回 null', async () => {
+    mockedPost.mockResolvedValueOnce({ data: {} })
+    const nullWarning = await createArticle('https://example.com/c', 'T', ['tech'])
+    expect(nullWarning).toBeNull()
+    const [, body] = mockedPost.mock.calls[0]
+    expect(body).toEqual({ url: 'https://example.com/c', title: 'T', tags: ['tech'] })
   })
 
   it('createArticleFromDocument → POST /admin/articles/document（admin 侧文档录入）', async () => {
@@ -190,11 +203,26 @@ describe('tags 端点', () => {
   // slug 是后端必填（TagCreateRequest: slug/name/category），之前这个用例断言的
   // body 里既没有 slug 还带了个后端根本不存在的 description 字段 —— 用例是绿的，
   // 真实调用却必然 422。这条断言现在对齐真实契约。
-  it('createTag → POST /tags 带 slug（后端必填，缺了必 422）', async () => {
+  // slug 是后端必填（TagCreateRequest: slug/name/category），之前这个用例断言的
+  // body 里既没有 slug 还带了个后端根本不存在的 description 字段 —— 用例是绿的，
+  // 真实调用却必然 422。这条断言现在对齐真实契约。
+  // category 后端可选、默认 "subject"（唯一已知取值，可读名「主题」），createTag
+  // 显式传默认值，让 body 与后端契约一致（见 admin_router.ADMIN_TAG_CATEGORY_LABELS）。
+  it('createTag → POST /tags 带 slug + category（后端必填/默认契约）', async () => {
     await createTag('machine-learning', '机器学习')
     expect(mockedPost).toHaveBeenCalledWith('/api/v1/tags', {
       slug: 'machine-learning',
       name: '机器学习',
+      category: 'subject',
+    })
+  })
+
+  it('createTag 显式传 category 时透传该值', async () => {
+    await createTag('machine-learning', '机器学习', 'subject')
+    expect(mockedPost).toHaveBeenCalledWith('/api/v1/tags', {
+      slug: 'machine-learning',
+      name: '机器学习',
+      category: 'subject',
     })
   })
 

@@ -45,6 +45,7 @@ vi.mock('../hooks/useRole', () => ({
 }))
 
 import { Articles } from './Articles'
+import { ToastContainer } from '../components/Toast'
 import { createArticle, createArticleFromDocument } from '../api/admin'
 
 const mockedCreateArticle = vi.mocked(createArticle)
@@ -172,5 +173,25 @@ describe('新建文章抽屉 · 三种录入方式', () => {
     await waitFor(() => expect(mockedCreateArticle).toHaveBeenCalledTimes(1))
     expect(mockedCreateArticle.mock.calls[0][0]).toBe('https://example.com/a')
     expect(mockedCreateDocument).not.toHaveBeenCalled()
+  })
+
+  it('服务端返回 warning 时用 info toast 展示（非阻塞提醒，不能吞掉）', async () => {
+    // 例：文章此前已被蒸馏过 ⇒ 改分类不生效，需重新蒸馏才换分类。
+    mockedCreateArticle.mockResolvedValueOnce('该文章此前已被蒸馏过，改分类需重新蒸馏才生效')
+    const user = userEvent.setup()
+    render(
+      <>
+        <Articles />
+        <ToastContainer />
+      </>,
+    )
+    await openDrawer(user)
+
+    await user.type(screen.getByPlaceholderText('https://...'), 'https://example.com/warn')
+    await user.click(screen.getByRole('button', { name: '确认创建文章' }))
+
+    await waitFor(() => expect(mockedCreateArticle).toHaveBeenCalledTimes(1))
+    // warning 必须原样展示给运营
+    expect(await screen.findByText('该文章此前已被蒸馏过，改分类需重新蒸馏才生效')).toBeTruthy()
   })
 })

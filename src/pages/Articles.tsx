@@ -235,8 +235,9 @@ export function Articles() {
     setCreateSubmitting(true)
     setCreateModalError(null)
     try {
+      let warning: string | null = null
       if (createMode === 'url') {
-        await createArticle(
+        warning = await createArticle(
           createUrl.trim(),
           createTitle.trim() || undefined,
           createTags,
@@ -244,12 +245,18 @@ export function Articles() {
       } else {
         // 文件与文本**二选一**（服务端也这么判）——
         // 这里按模式只发一个，避免服务端以「二选一」为由打回。
-        await createArticleFromDocument(
+        warning = await createArticleFromDocument(
           createMode === 'file' ? createFile : null,
           createMode === 'text' ? createText : null,
           createTitle.trim() || undefined,
           createTags,
         )
+      }
+      // 服务端的 `warning` 是**非阻塞**提醒（录入已成功），不能当成错误吞掉。
+      // 例：文章此前已被蒸馏过 ⇒ 改分类不生效，需重新蒸馏才换分类。
+      // 用 toast 而非 modal —— 录入成功后 700ms 抽屉就自动关了，modal 赶不上。
+      if (warning) {
+        toast(warning, 'info')
       }
       setShowSuccess(true)
       setTimeout(() => {
