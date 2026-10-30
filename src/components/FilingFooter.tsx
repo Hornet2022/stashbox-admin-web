@@ -54,7 +54,10 @@ export function FilingFooter() {
               target="_blank"
               rel="noreferrer noopener"
             >
-              {psbIcon && <img src={psbIcon} alt="" aria-hidden="true" className="h-[15px] w-[15px]" />}
+              {psbIcon && (
+                /* 官方徽章是竖长的（168×187），写死 15×15 会压扁 —— 只定宽，高度自适应。 */
+                <img src={psbIcon} alt="" aria-hidden="true" className="h-auto w-[15px] align-middle" />
+              )}
               <span>{psb}</span>
             </a>
           )}
