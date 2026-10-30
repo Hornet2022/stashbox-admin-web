@@ -29,6 +29,12 @@ export function FilingFooter() {
   const icp = import.meta.env.VITE_ICP_NUMBER ?? ''
   const psb = import.meta.env.VITE_PSB_NUMBER ?? ''
   const psbIcon = import.meta.env.VITE_PSB_ICON ?? ''
+  // 公安备案号 → 官方查询链接（带编号，点进去直达这一条备案）。
+  // 编号就是备案号里的连续数字（鄂公网安备42018502009586号 → 42018502009586）。
+  const psbCode = psb.replace(/\D/g, '')
+  const psbHref = psbCode
+    ? `https://beian.mps.gov.cn/#/query/webSearch?code=${psbCode}`
+    : 'https://beian.mps.gov.cn'
   if (!siteName && !copyright && !icp && !psb) return null
   return (
     <footer className="shrink-0 border-t border-neutral-200 px-4 py-3.5 text-center text-xs leading-5 text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
@@ -44,7 +50,7 @@ export function FilingFooter() {
           {psb && (
             <a
               className="inline-flex items-center gap-1 align-middle"
-              href="https://beian.mps.gov.cn"
+              href={psbHref}
               target="_blank"
               rel="noreferrer noopener"
             >
