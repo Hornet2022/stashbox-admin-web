@@ -250,8 +250,22 @@ export interface LlmConfig {
   api_key_set: boolean
   api_key_last4?: string | null
   base_url?: string | null
-  /** db = system_config 表里配了；env = 回落环境变量/默认值 */
+  /**
+   * 来源（2026-11-10 起上游配置**只认 DB**）：
+   *   - `db`       —— 值来自 system_config 表
+   *   - `defaults` —— 表里没有这一行，用的是代码默认值
+   *
+   * ⚠️ 不再有 `env`：env 只在部署播种时用一次，运行时不再参与。
+   */
   source?: string | null
+  /** 调用预算（秒）—— 后台可改，落 DB */
+  timeout?: number | null
+  /** 调用重试次数 —— 后台可改，落 DB */
+  max_retries?: number | null
+  /** 连接超时（秒），独立于读超时 —— 后台可改，落 DB */
+  connect_timeout?: number | null
+  /** OCR 用的视觉模型（与 LLM 同一个端点/key） */
+  ocr_model?: string | null
   updated_at?: string | null
 }
 

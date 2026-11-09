@@ -110,6 +110,10 @@ export function LlmSettings() {
   const [apiKey, setApiKey] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
+  // 调用预算（2026-11-10 起落 DB，不再在 env 里）
+  const [timeout, setTimeout] = useState('')
+  const [maxRetries, setMaxRetries] = useState('')
+  const [connectTimeout, setConnectTimeout] = useState('')
 
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -123,9 +127,20 @@ export function LlmSettings() {
     setBaseUrl(data.base_url ?? '')
     setApiKey('')
     setShowApiKey(false)
+    setTimeout(data.timeout != null ? String(data.timeout) : '')
+    setMaxRetries(data.max_retries != null ? String(data.max_retries) : '')
+    setConnectTimeout(data.connect_timeout != null ? String(data.connect_timeout) : '')
   }, [data])
 
   const canSave = !saving && model.trim().length > 0
+
+  /** 数值输入 → number | undefined（空 = 不动已存的值） */
+  const parseNum = (raw: string): number | undefined => {
+    const trimmed = raw.trim()
+    if (!trimmed) return undefined
+    const n = Number(trimmed)
+    return Number.isFinite(n) ? n : undefined
+  }
 
   const handleSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -139,6 +154,12 @@ export function LlmSettings() {
         ...(apiKey ? { api_key: apiKey } : {}),
         ...(provider === 'openai' && baseUrl.trim() ? { base_url: baseUrl.trim() } : {}),
         ...(provider === 'qwen_vl' && baseUrl.trim() ? { base_url: baseUrl.trim() } : {}),
+        // 预算字段：空 = 不动已存的值（不传 ≠ 传 0）
+        ...(parseNum(timeout) !== undefined ? { timeout: parseNum(timeout)! } : {}),
+        ...(parseNum(maxRetries) !== undefined ? { max_retries: parseNum(maxRetries)! } : {}),
+        ...(parseNum(connectTimeout) !== undefined
+          ? { connect_timeout: parseNum(connectTimeout)! }
+          : {}),
       })
       toast('保存成功', 'success')
       setApiKey('')
@@ -220,6 +241,22 @@ export function LlmSettings() {
 
               <dt className={dtClass}>Base URL</dt>
               <dd className={ddClass}>{data?.base_url || '—'}</dd>
+
+              {/* 调用预算（2026-11-10 起落 DB） */}
+              <dt className={dtClass}>读超时</dt>
+              <dd className={ddClass}>
+                {data?.timeout != null ? `${data.timeout}s` : '—'}
+              </dd>
+
+              <dt className={dtClass}>重试次数</dt>
+              <dd className={ddClass}>
+                {data?.max_retries != null ? String(data.max_retries) : '—'}
+              </dd>
+
+              <dt className={dtClass}>连接超时</dt>
+              <dd className={ddClass}>
+                {data?.connect_timeout != null ? `${data.connect_timeout}s` : '—'}
+              </dd>
 
               <dt className={dtClass}>上次更新</dt>
               <dd className={dtClass}>{data?.updated_at ? formatTime(data.updated_at) : '—'}</dd>
@@ -308,6 +345,40 @@ export function LlmSettings() {
                 />
               </Field>
             )}
+
+            {/* 调用预算（2026-11-10 起落 DB，不再在 env 里） */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Field label="读超时（秒，留空不改）">
+                <input
+                  type="number"
+                  min={1}
+                  value={timeout}
+                  onChange={(e) => setTimeout(e.target.value)}
+                  placeholder="60"
+                  className={`t-input ${inputClass}`}
+                />
+              </Field>
+              <Field label="重试次数（留空不改）">
+                <input
+                  type="number"
+                  min={0}
+                  value={maxRetries}
+                  onChange={(e) => setMaxRetries(e.target.value)}
+                  placeholder="3"
+                  className={`t-input ${inputClass}`}
+                />
+              </Field>
+              <Field label="连接超时（秒，留空不改）">
+                <input
+                  type="number"
+                  min={1}
+                  value={connectTimeout}
+                  onChange={(e) => setConnectTimeout(e.target.value)}
+                  placeholder="10"
+                  className={`t-input ${inputClass}`}
+                />
+              </Field>
+            </div>
 
             <div className="flex items-center gap-2 pt-2">
               <button type="submit" className={buttonPrimaryClass} disabled={!canSave}>

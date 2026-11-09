@@ -17,8 +17,14 @@ export async function updateLlmConfig(payload: {
   model?: string
   api_key?: string
   base_url?: string | null
-  temperature?: number | null
-  max_tokens?: number | null
+  /**
+   * 调用预算（2026-11-10 起纳入 DB —— 以前在 env 里，是配置层的第二真相源）。
+   * 不传 = 不动已存的值。
+   */
+  timeout?: number | null
+  max_retries?: number | null
+  connect_timeout?: number | null
+  ocr_model?: string | null
 }): Promise<LlmConfig> {
   const { data } = await apiClient.put('/api/v1/admin/llm/config', payload)
   return (data as { data?: LlmConfig }).data ?? (data as LlmConfig)
